@@ -1,66 +1,170 @@
-import Image from "next/image";
-import { supabase } from '@/lib/supabase'
+import Link from 'next/link'
 
-export default function Home() {
+export default function WelcomePage() {
+  const features = [
+    {
+      color: '#3B7DFF',
+      text: 'Build a life system you can trust with strategic clarity and adaptive execution',
+    },
+    {
+      color: '#FF9500',
+      text: 'Balance career, health, creativity, and growth without overwhelm',
+    },
+    {
+      color: '#34C759',
+      text: 'Recover after drift and stay aligned with what matters most',
+    },
+  ]
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            Hello, Warren VG.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#F2F2F7',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '48px 24px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+      }}
+    >
+      {/* App Icon */}
+      <div
+        style={{
+          width: 80,
+          height: 80,
+          background: '#3B7DFF',
+          borderRadius: 20,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: 20,
+        }}
+      >
+        <span style={{ color: 'white', fontSize: 36 }}>✦</span>
+      </div>
+
+      {/* Title */}
+      <h1
+        style={{
+          fontSize: 34,
+          fontWeight: 700,
+          color: '#1C1C1E',
+          marginBottom: 8,
+          textAlign: 'center',
+        }}
+      >
+        Cadence
+      </h1>
+
+      {/* Tagline */}
+      <p
+        style={{
+          fontSize: 16,
+          color: '#8E8E93',
+          textAlign: 'center',
+          maxWidth: 280,
+          lineHeight: 1.5,
+          marginBottom: 40,
+        }}
+      >
+        Turn big annual goals into an adaptive weekly operating system
+      </p>
+
+      {/* Feature Cards */}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 400,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          marginBottom: 40,
+        }}
+      >
+        {features.map((feature, i) => (
+          <div
+            key={i}
+            style={{
+              background: 'white',
+              borderRadius: 16,
+              padding: '16px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+            <div
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: feature.color,
+                flexShrink: 0,
+              }}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+            <p
+              style={{
+                fontSize: 15,
+                color: '#3C3C43',
+                lineHeight: 1.4,
+                margin: 0,
+              }}
+            >
+              {feature.text}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Get Started Button */}
+      <Link
+        href="/signup"
+        style={{
+          width: '100%',
+          maxWidth: 400,
+          background: '#3B7DFF',
+          color: 'white',
+          borderRadius: 16,
+          padding: '18px',
+          fontSize: 17,
+          fontWeight: 600,
+          textAlign: 'center',
+          textDecoration: 'none',
+          display: 'block',
+          marginBottom: 16,
+        }}
+      >
+        Get Started
+      </Link>
+
+      {/* View Demo */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          marginBottom: 24,
+          cursor: 'pointer',
+        }}
+      >
+        <span style={{ fontSize: 13, color: '#3C3C43' }}>▶</span>
+        <span style={{ fontSize: 15, color: '#3C3C43', fontWeight: 500 }}>
+          View Demo
+        </span>
+      </div>
+
+      {/* Sign In Link */}
+      <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>
+        Already have an account?{' '}
+        <Link
+          href="/login"
+          style={{ color: '#3B7DFF', textDecoration: 'none', fontWeight: 500 }}
+        >
+          Sign In
+        </Link>
+      </p>
     </div>
-  );
+  )
 }
