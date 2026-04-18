@@ -110,7 +110,6 @@ const handleAccept = async () => {
     setSaving(false)
   }
 }
-  }
 
   return (
     <div style={{ padding: '24px 20px', maxWidth: 480, margin: '0 auto' }}>
