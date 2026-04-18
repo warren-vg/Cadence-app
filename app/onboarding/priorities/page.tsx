@@ -54,25 +54,28 @@ const handleAccept = async () => {
         priority: i,
         progress: 0,
       }))
-      const { error: goalsError } = await supabase
-        .from('goals')
-        .insert(goalsToInsert)
-      if (goalsError) throw new Error(`Goals insert failed: ${goalsError.message}`)
+      const { error: goalsError } = await supabase.from('goals').insert(goalsToInsert)
+      if (goalsError) console.error('Goals insert error:', goalsError.message)
     }
 
     // Save energy blocks
     const storedEnergy = sessionStorage.getItem('onboarding_energy')
     if (storedEnergy) {
-      const assignments: Record<string, string> = JSON.parse(storedEnergy)
-      const blocksToInsert = Object.entries(assignments).map(([time, type]) => ({
-        user_id: user.id,
-        type,
-        start_time: time,
-        end_time: time,
-        day_of_week: 'Monday',
-      }))
-      if (blocksToInsert.length > 0) {
-        await supabase.from('energy_blocks').insert(blocksToInsert)
+      try {
+        const assignments: Record<string, string> = JSON.parse(storedEnergy)
+        const blocksToInsert = Object.entries(assignments).map(([time, type]) => ({
+          user_id: user.id,
+          type,
+          start_time: time,
+          end_time: time,
+          day_of_week: 'Monday',
+        }))
+        if (blocksToInsert.length > 0) {
+          const { error: energyError } = await supabase.from('energy_blocks').insert(blocksToInsert)
+          if (energyError) console.error('Energy blocks insert error:', energyError.message)
+        }
+      } catch (e) {
+        console.error('Energy parse error:', e)
       }
     }
 
@@ -83,23 +86,23 @@ const handleAccept = async () => {
         category: g.category,
         rank: i + 1,
       }))
-      await supabase.from('priority_stack').insert(priorityInsert)
+      const { error: priorityError } = await supabase.from('priority_stack').insert(priorityInsert)
+      if (priorityError) console.error('Priority stack insert error:', priorityError.message)
     }
 
     // Mark onboarding complete
-    await supabase
+    const { error: profileError } = await supabase
       .from('profiles')
       .update({ onboarding_complete: true })
       .eq('id', user.id)
+    if (profileError) console.error('Profile update error:', profileError.message)
 
-    // Clear session storage
     sessionStorage.removeItem('onboarding_goals')
     sessionStorage.removeItem('onboarding_energy')
 
     router.push('/dashboard')
   } catch (err) {
     console.error('Onboarding save error:', err)
-  } finally {
     setSaving(false)
   }
 }
