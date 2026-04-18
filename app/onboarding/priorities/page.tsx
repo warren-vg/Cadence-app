@@ -37,67 +37,79 @@ export default function OnboardingPrioritiesPage() {
     setGoals(updated)
   }
 
-  const handleAccept = async () => {
-    setSaving(true)
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
+const handleAccept = async () => {
+  setSaving(true)
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
 
-      // Save goals to database
-      const storedGoals = sessionStorage.getItem('onboarding_goals')
-      if (storedGoals) {
+    // Save goals to database
+    const storedGoals = sessionStorage.getItem('onboarding_goals')
+    if (storedGoals && storedGoals !== '[]') {
+      try {
         const allGoals: GoalEntry[] = JSON.parse(storedGoals)
-        const goalsToInsert = allGoals.map((g, i) => ({
-          user_id: user.id,
-          text: g.text,
-          category: g.category,
-          status: i < 4 ? 'active' : 'parking',
-          priority: i,
-          progress: 0,
-        }))
-        await supabase.from('goals').insert(goalsToInsert)
-      }
-
-      // Save energy blocks
-      const storedEnergy = sessionStorage.getItem('onboarding_energy')
-      if (storedEnergy) {
-        const assignments: Record<string, string> = JSON.parse(storedEnergy)
-        const blocksToInsert = Object.entries(assignments).map(([time, type]) => ({
-          user_id: user.id,
-          type,
-          start_time: time,
-          end_time: time,
-          day_of_week: 'Monday',
-        }))
-        if (blocksToInsert.length > 0) {
-          await supabase.from('energy_blocks').insert(blocksToInsert)
+        if (allGoals.length > 0) {
+          const goalsToInsert = allGoals.map((g, i) => ({
+            user_id: user.id,
+            text: g.text,
+            category: g.category,
+            status: i < 4 ? 'active' : 'parking',
+            priority: i,
+            progress: 0,
+          }))
+          const { error: goalsError } = await supabase
+            .from('goals')
+            .insert(goalsToInsert)
+          if (goalsError) console.error('Goals insert error:', goalsError)
         }
+      } catch (e) {
+        console.error('Goals parse error:', e)
       }
+    }
 
-      // Save priority stack
+    // Save energy blocks
+    const storedEnergy = sessionStorage.getItem('onboarding_energy')
+    if (storedEnergy) {
+      const assignments: Record<string, string> = JSON.parse(storedEnergy)
+      const blocksToInsert = Object.entries(assignments).map(([time, type]) => ({
+        user_id: user.id,
+        type,
+        start_time: time,
+        end_time: time,
+        day_of_week: 'Monday',
+      }))
+      if (blocksToInsert.length > 0) {
+        await supabase.from('energy_blocks').insert(blocksToInsert)
+      }
+    }
+
+    // Save priority stack
+    if (goals.length > 0) {
       const priorityInsert = goals.map((g, i) => ({
         user_id: user.id,
         category: g.category,
         rank: i + 1,
       }))
       await supabase.from('priority_stack').insert(priorityInsert)
-
-      // Mark onboarding complete
-      await supabase
-        .from('profiles')
-        .update({ onboarding_complete: true })
-        .eq('id', user.id)
-
-      // Clear session storage
-      sessionStorage.removeItem('onboarding_goals')
-      sessionStorage.removeItem('onboarding_energy')
-
-      router.push('/dashboard')
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setSaving(false)
     }
+
+    // Mark onboarding complete
+    await supabase
+      .from('profiles')
+      .update({ onboarding_complete: true })
+      .eq('id', user.id)
+
+    // Clear session storage
+    sessionStorage.removeItem('onboarding_goals')
+    sessionStorage.removeItem('onboarding_energy')
+
+    router.push('/dashboard')
+  } catch (err) {
+    console.error('Onboarding save error:', err)
+  } finally {
+    setSaving(false)
+  }
+}
   }
 
   return (
