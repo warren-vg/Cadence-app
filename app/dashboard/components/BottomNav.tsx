@@ -70,7 +70,9 @@ export default function BottomNav() {
     }}>
       <div style={{ display: 'flex', width: '100%', maxWidth: 480, margin: '0 auto' }}>
         {tabs.map(tab => {
-          const active = pathname === tab.path
+          const active = tab.path === '/dashboard'
+            ? pathname === '/dashboard'
+            : pathname.startsWith(tab.path)
           return (
             <button
               key={tab.path}
