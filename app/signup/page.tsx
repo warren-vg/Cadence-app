@@ -19,13 +19,13 @@ export default function SignupPage() {
     if (data.user) {
       await supabase.from('profiles').insert({ id: data.user.id, username: name, onboarding_complete: false })
     }
-    router.push('/dashboard')
+    router.push('/onboarding/goals')
   }
 
   const handleGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/dashboard` }
+      options: { redirectTo: `${window.location.origin}/onboarding/goals` }
     })
   }
 
