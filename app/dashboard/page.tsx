@@ -2,6 +2,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import {
+  toDateStr, getMonday, getTasksForDate, getWeekSummary, getMomentumScore,
+  toggleTask, formatTime,
+  type PlanTask,
+} from '@/lib/planData'
 
 interface Goal {
   id: string
@@ -34,7 +39,7 @@ function getMomentumText(score: number) {
   if (score >= 60) return "Strong week! Keep pushing toward your goals."
   if (score >= 40) return "Good progress. Stay consistent and build momentum."
   if (score > 0) return "Just getting started. Every step counts."
-  return "Set your goals to start tracking momentum."
+  return "Complete tasks to build your momentum score."
 }
 
 function CircularProgress({ pct, size = 52 }: { pct: number; size?: number }) {
@@ -48,62 +53,37 @@ function CircularProgress({ pct, size = 52 }: { pct: number; size?: number }) {
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', position: 'absolute', top: 0, left: 0 }}>
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#DBEAFE" strokeWidth={strokeWidth} />
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none"
-          stroke="#3B7DFF"
-          strokeWidth={strokeWidth}
-          strokeDasharray={`${circ}`}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-        />
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#3B7DFF" strokeWidth={strokeWidth}
+          strokeDasharray={`${circ}`} strokeDashoffset={offset} strokeLinecap="round" />
       </svg>
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 11, fontWeight: 700, color: '#1C1C1E',
-      }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#1C1C1E' }}>
         {pct}%
       </div>
     </div>
   )
 }
 
-function DonutChart({ tasksRatio, availableRatio, size = 96 }: { tasksRatio: number; availableRatio: number; size?: number }) {
+function DonutChart({ planned, total, size = 96 }: { planned: number; total: number; size?: number }) {
   const strokeWidth = 10
   const r = (size - strokeWidth * 2) / 2
   const cx = size / 2
   const cy = size / 2
   const circ = 2 * Math.PI * r
-  const tasksDash = circ * tasksRatio
-  const availDash = circ * availableRatio
-  const availRotate = -90 + 360 * tasksRatio
+  const ratio = total > 0 ? Math.min(planned / total, 1) : 0
+  const dash = circ * ratio
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
       <circle cx={cx} cy={cy} r={r} fill="none" stroke="#E5E5EA" strokeWidth={strokeWidth} />
-      {tasksRatio > 0 && (
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none" stroke="#3B7DFF" strokeWidth={strokeWidth}
-          strokeDasharray={`${tasksDash} ${circ - tasksDash}`}
-          strokeLinecap="butt"
-          transform={`rotate(-90 ${cx} ${cy})`}
-        />
+      {ratio > 0 && (
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#3B7DFF" strokeWidth={strokeWidth}
+          strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="butt"
+          transform={`rotate(-90 ${cx} ${cy})`} />
       )}
-      {availableRatio > 0 && (
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none" stroke="#34C759" strokeWidth={strokeWidth}
-          strokeDasharray={`${availDash} ${circ - availDash}`}
-          strokeLinecap="butt"
-          transform={`rotate(${availRotate} ${cx} ${cy})`}
-        />
-      )}
-      <text x={cx} y={cy - 5} textAnchor="middle" fontSize="15" fontWeight="700" fill="#1C1C1E">
-        {Math.round((tasksRatio + availableRatio) * 40)}h
+      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="14" fontWeight="700" fill="#1C1C1E">
+        {planned}h
       </text>
-      <text x={cx} y={cy + 10} textAnchor="middle" fontSize="9" fill="#8E8E93">Total</text>
+      <text x={cx} y={cy + 10} textAnchor="middle" fontSize="9" fill="#8E8E93">planned</text>
     </svg>
   )
 }
@@ -112,6 +92,9 @@ export default function DashboardPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [goals, setGoals] = useState<Goal[]>([])
+  const [todayTasks, setTodayTasks] = useState<PlanTask[]>([])
+  const [momentumScore, setMomentumScore] = useState(0)
+  const [weekSummary, setWeekSummary] = useState({ totalTasks: 0, completedTasks: 0, totalHours: 0 })
   const [loading, setLoading] = useState(true)
   const [greeting, setGreeting] = useState('')
   const [dateLabel, setDateLabel] = useState('')
@@ -120,7 +103,16 @@ export default function DashboardPage() {
     setGreeting(getGreeting())
     setDateLabel(getDateLabel())
 
-    const load = async () => {
+    const loadPlanData = () => {
+      const todayStr = toDateStr(new Date())
+      const tasks = getTasksForDate(todayStr)
+      setTodayTasks(tasks)
+      setMomentumScore(getMomentumScore())
+      const monday = getMonday(new Date())
+      setWeekSummary(getWeekSummary(monday))
+    }
+
+    const loadSupabase = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
@@ -133,14 +125,24 @@ export default function DashboardPage() {
       setGoals(goalsData || [])
       setLoading(false)
     }
-    load()
+
+    loadPlanData()
+    loadSupabase()
   }, [])
+
+  const handleToggleTask = (id: string) => {
+    const updated = toggleTask(id)
+    const todayStr = toDateStr(new Date())
+    setTodayTasks(updated.filter(t => t.date === todayStr).sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime)))
+    setMomentumScore(getMomentumScore())
+    const monday = getMonday(new Date())
+    setWeekSummary(getWeekSummary(monday))
+  }
 
   const activeGoals = goals.filter(g => g.status === 'active')
   const topPriorities = activeGoals.slice(0, 3)
-  const momentumScore = activeGoals.length > 0
-    ? Math.round(activeGoals.reduce((sum, g) => sum + (g.progress || 0), 0) / activeGoals.length)
-    : 0
+  const completedToday = todayTasks.filter(t => t.completed).length
+  const totalToday = todayTasks.length
 
   if (loading) {
     return (
@@ -151,6 +153,9 @@ export default function DashboardPage() {
   }
 
   const firstName = profile?.username?.split(' ')[0] || 'there'
+  const capacityPct = weekSummary.totalHours > 0
+    ? Math.min(100, Math.round((weekSummary.totalHours / 40) * 100))
+    : 0
 
   return (
     <div style={{ padding: '56px 16px 16px' }}>
@@ -179,86 +184,104 @@ export default function DashboardPage() {
       {/* Today's Focus Card */}
       <div style={{
         background: 'linear-gradient(135deg, #3B52FF 0%, #2D7DFF 100%)',
-        borderRadius: 20,
-        padding: '20px',
-        marginBottom: 14,
-        color: 'white',
+        borderRadius: 20, padding: '20px', marginBottom: 14, color: 'white',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
           <div>
             <p style={{ fontSize: 12, opacity: 0.8, margin: 0 }}>{dateLabel}</p>
             <h2 style={{ fontSize: 18, fontWeight: 700, margin: '2px 0 0' }}>Today's Focus</h2>
           </div>
           <span style={{
-            background: 'rgba(255,255,255,0.2)',
-            borderRadius: 20,
-            padding: '4px 10px',
-            fontSize: 12,
-            fontWeight: 600,
+            background: 'rgba(255,255,255,0.2)', borderRadius: 20,
+            padding: '4px 10px', fontSize: 12, fontWeight: 600,
           }}>
-            0/0 Done
+            {completedToday}/{totalToday} Done
           </span>
         </div>
 
-        <div style={{
-          background: 'rgba(255,255,255,0.12)',
-          borderRadius: 12,
-          padding: '14px 16px',
-          marginBottom: 12,
-          textAlign: 'center',
-        }}>
-          <p style={{ fontSize: 13, opacity: 0.85, margin: 0 }}>No tasks scheduled yet.</p>
-          <p style={{ fontSize: 12, opacity: 0.65, margin: '4px 0 0' }}>Build your daily plan in the Plan tab.</p>
-        </div>
+        {totalToday === 0 ? (
+          <div style={{
+            background: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: '14px 16px',
+            marginBottom: 12, textAlign: 'center',
+          }}>
+            <p style={{ fontSize: 13, opacity: 0.85, margin: 0 }}>No tasks scheduled yet.</p>
+            <p style={{ fontSize: 12, opacity: 0.65, margin: '4px 0 0' }}>Build your daily plan in the Plan tab.</p>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 12 }}>
+            {todayTasks.slice(0, 4).map((task, i) => {
+              return (
+                <div
+                  key={task.id}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    paddingTop: i > 0 ? 10 : 0,
+                    paddingBottom: i < Math.min(todayTasks.length, 4) - 1 ? 10 : 0,
+                    borderBottom: i < Math.min(todayTasks.length, 4) - 1 ? '1px solid rgba(255,255,255,0.12)' : 'none',
+                  }}
+                >
+                  <button
+                    onClick={() => handleToggleTask(task.id)}
+                    style={{
+                      width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                      background: task.completed ? 'white' : 'transparent',
+                      border: task.completed ? 'none' : '2px solid rgba(255,255,255,0.5)',
+                      cursor: 'pointer', padding: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}
+                  >
+                    {task.completed && (
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                    )}
+                  </button>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{
+                      fontSize: 14, fontWeight: 500, margin: 0,
+                      color: 'white', opacity: task.completed ? 0.5 : 1,
+                      textDecoration: task.completed ? 'line-through' : 'none',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {task.text}
+                    </p>
+                  </div>
+                  <span style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>{formatTime(task.scheduledTime)}</span>
+                </div>
+              )
+            })}
+            {todayTasks.length > 4 && (
+              <p style={{ fontSize: 12, opacity: 0.65, margin: '10px 0 0', textAlign: 'center' }}>
+                +{todayTasks.length - 4} more tasks
+              </p>
+            )}
+          </div>
+        )}
 
         <button
-          onClick={() => router.push('/dashboard/plan')}
+          onClick={() => router.push(`/dashboard/plan/daily?date=${toDateStr(new Date())}`)}
           style={{
-            width: '100%',
-            background: 'rgba(255,255,255,0.15)',
-            border: 'none',
-            borderRadius: 10,
-            padding: '10px',
-            color: 'white',
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            fontFamily: 'inherit',
+            width: '100%', background: 'rgba(255,255,255,0.15)', border: 'none',
+            borderRadius: 10, padding: '10px', color: 'white', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 6, fontFamily: 'inherit',
           }}
         >
           View Full Day
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
         </button>
       </div>
 
       {/* Momentum Score Card */}
-      <div style={{
-        background: 'white',
-        borderRadius: 20,
-        padding: '18px 20px',
-        marginBottom: 14,
-        border: '0.5px solid #E5E5EA',
-      }}>
+      <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: '50%',
-              background: '#FFF3E0',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
+            <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF9500" stroke="none">
                 <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
               </svg>
             </div>
             <div>
               <p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>Momentum Score</p>
-              <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>This week</p>
+              <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>Tasks completed vs planned</p>
             </div>
           </div>
           <span style={{ fontSize: 28, fontWeight: 700, color: '#FF9500' }}>{momentumScore}</span>
@@ -266,11 +289,9 @@ export default function DashboardPage() {
 
         <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, marginBottom: 10, overflow: 'hidden' }}>
           <div style={{
-            height: '100%',
-            width: `${momentumScore}%`,
+            height: '100%', width: `${momentumScore}%`,
             background: momentumScore >= 60 ? '#34C759' : momentumScore >= 30 ? '#FF9500' : '#FF3B30',
-            borderRadius: 4,
-            transition: 'width 0.6s ease',
+            borderRadius: 4, transition: 'width 0.6s ease',
           }} />
         </div>
 
@@ -278,26 +299,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Top Priorities Card */}
-      <div style={{
-        background: 'white',
-        borderRadius: 20,
-        padding: '18px 20px',
-        marginBottom: 14,
-        border: '0.5px solid #E5E5EA',
-      }}>
+      <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" />
-              <circle cx="12" cy="12" r="4" />
-              <circle cx="12" cy="12" r="1" fill="#3B7DFF" />
+              <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
             </svg>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Top Priorities</h2>
           </div>
-          <button
-            onClick={() => router.push('/dashboard/goals')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}
-          >
+          <button onClick={() => router.push('/dashboard/goals')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
             View All
           </button>
         </div>
@@ -313,33 +323,20 @@ export default function DashboardPage() {
               <button
                 key={goal.id}
                 onClick={() => router.push(`/dashboard/goals/${goal.id}`)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  padding: 0, textAlign: 'left', width: '100%',
-                  fontFamily: 'inherit',
-                }}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', width: '100%', fontFamily: 'inherit' }}
               >
                 <CircularProgress pct={goal.progress || 0} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{
-                    fontSize: 14, fontWeight: 500, color: '#1C1C1E',
-                    margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {goal.text}
                   </p>
                   <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
-                    <span style={{
-                      fontSize: 11, color: '#3B7DFF',
-                      background: '#EFF6FF', padding: '2px 8px', borderRadius: 20,
-                    }}>
+                    <span style={{ fontSize: 11, color: '#3B7DFF', background: '#EFF6FF', padding: '2px 8px', borderRadius: 20 }}>
                       {goal.category}
                     </span>
                   </div>
                 </div>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="9 18 15 12 9 6" />
-                </svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
               </button>
             ))}
           </div>
@@ -347,31 +344,21 @@ export default function DashboardPage() {
       </div>
 
       {/* This Week Card */}
-      <div style={{
-        background: 'white',
-        borderRadius: 20,
-        padding: '18px 20px',
-        marginBottom: 14,
-        border: '0.5px solid #E5E5EA',
-      }}>
+      <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="4" width="18" height="18" rx="2" />
-              <path d="M16 2v4M8 2v4M3 10h18" />
+              <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
             </svg>
             <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>This Week</h2>
           </div>
-          <button
-            onClick={() => router.push('/dashboard/plan')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}
-          >
+          <button onClick={() => router.push('/dashboard/plan')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
             Edit Plan
           </button>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <DonutChart tasksRatio={0.55} availableRatio={0.25} />
+          <DonutChart planned={weekSummary.totalHours} total={40} />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -379,50 +366,49 @@ export default function DashboardPage() {
                 <span style={{ fontSize: 13, color: '#3C3C43' }}>Tasks Planned</span>
               </div>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>
-                {activeGoals.length > 0 ? `${activeGoals.length * 3} tasks` : '—'}
+                {weekSummary.totalTasks > 0 ? `${weekSummary.totalTasks} tasks` : '—'}
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34C759' }} />
-                <span style={{ fontSize: 13, color: '#3C3C43' }}>Available</span>
+                <span style={{ fontSize: 13, color: '#3C3C43' }}>Completed</span>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>10h</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>
+                {weekSummary.completedTasks} tasks
+              </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#3C3C43' }}>Capacity Used</span>
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>—</span>
+              <span style={{ fontSize: 13, color: '#3C3C43' }}>Hours Planned</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>
+                {weekSummary.totalHours > 0 ? `${weekSummary.totalHours}h` : '—'}
+              </span>
             </div>
           </div>
         </div>
 
-        {activeGoals.length > 0 && (
-          <div style={{
-            background: '#F0FFF4',
-            borderRadius: 10,
-            padding: '10px 12px',
-            marginTop: 14,
-          }}>
+        {weekSummary.totalTasks > 0 && (
+          <div style={{ background: '#F0FFF4', borderRadius: 10, padding: '10px 12px', marginTop: 14 }}>
             <p style={{ fontSize: 12, color: '#16A34A', margin: 0 }}>
-              You have {activeGoals.length} active goal{activeGoals.length !== 1 ? 's' : ''}. Build your weekly plan to stay on track.
+              {weekSummary.completedTasks}/{weekSummary.totalTasks} tasks done · {capacityPct}% of weekly capacity used
+            </p>
+          </div>
+        )}
+
+        {weekSummary.totalTasks === 0 && (
+          <div style={{ background: '#F0FFF4', borderRadius: 10, padding: '10px 12px', marginTop: 14 }}>
+            <p style={{ fontSize: 12, color: '#16A34A', margin: 0 }}>
+              No tasks planned yet. Build your weekly plan to stay on track.
             </p>
           </div>
         )}
       </div>
 
       {/* Weekly Review Due Card */}
-      <div style={{
-        background: '#FFFBEB',
-        borderRadius: 20,
-        padding: '18px 20px',
-        marginBottom: 14,
-        border: '1px solid #FDE68A',
-      }}>
+      <div style={{ background: '#FFFBEB', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '1px solid #FDE68A' }}>
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <div style={{ flex: 1 }}>
             <p style={{ fontSize: 15, fontWeight: 700, color: '#92400E', margin: 0 }}>Weekly Review Due</p>
@@ -430,18 +416,8 @@ export default function DashboardPage() {
               Reflect on last week's progress and plan the week ahead.
             </p>
             <button
-              onClick={() => router.push('/dashboard/review')}
-              style={{
-                background: 'white',
-                border: '1px solid #D97706',
-                borderRadius: 8,
-                padding: '8px 16px',
-                fontSize: 13,
-                fontWeight: 600,
-                color: '#D97706',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
+              onClick={() => router.push('/dashboard/check-in/weekly')}
+              style={{ background: 'white', border: '1px solid #D97706', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#D97706', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Start Review
             </button>
@@ -453,28 +429,16 @@ export default function DashboardPage() {
       <button
         onClick={() => router.push('/dashboard/goals')}
         style={{
-          position: 'fixed',
-          bottom: 80,
-          right: 20,
-          width: 52,
-          height: 52,
-          borderRadius: '50%',
-          background: '#3B7DFF',
-          border: 'none',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: '0 4px 16px rgba(59, 125, 255, 0.4)',
-          zIndex: 99,
+          position: 'fixed', bottom: 80, right: 20, width: 52, height: 52, borderRadius: '50%',
+          background: '#3B7DFF', border: 'none', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 4px 16px rgba(59, 125, 255, 0.4)', zIndex: 99,
         }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
-          <line x1="12" y1="5" x2="12" y2="19" />
-          <line x1="5" y1="12" x2="19" y2="12" />
+          <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </button>
-
     </div>
   )
 }
