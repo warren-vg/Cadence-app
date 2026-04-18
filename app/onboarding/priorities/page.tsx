@@ -44,27 +44,20 @@ const handleAccept = async () => {
     if (!user) { router.push('/login'); return }
 
     // Save goals to database
-    const storedGoals = sessionStorage.getItem('onboarding_goals')
-    if (storedGoals && storedGoals !== '[]') {
-      try {
-        const allGoals: GoalEntry[] = JSON.parse(storedGoals)
-        if (allGoals.length > 0) {
-          const goalsToInsert = allGoals.map((g, i) => ({
-            user_id: user.id,
-            text: g.text,
-            category: g.category,
-            status: i < 4 ? 'active' : 'parking',
-            priority: i,
-            progress: 0,
-          }))
-          const { error: goalsError } = await supabase
-            .from('goals')
-            .insert(goalsToInsert)
-          if (goalsError) console.error('Goals insert error:', goalsError)
-        }
-      } catch (e) {
-        console.error('Goals parse error:', e)
-      }
+    const allGoals = [...goals, ...parked]
+    if (allGoals.length > 0) {
+      const goalsToInsert = allGoals.map((g, i) => ({
+        user_id: user.id,
+        text: g.text,
+        category: g.category,
+        status: i < 4 ? 'active' : 'parking',
+        priority: i,
+        progress: 0,
+      }))
+      const { error: goalsError } = await supabase
+        .from('goals')
+        .insert(goalsToInsert)
+      if (goalsError) throw new Error(`Goals insert failed: ${goalsError.message}`)
     }
 
     // Save energy blocks
