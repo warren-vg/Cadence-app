@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { generateGoalDetails, type Milestone } from '../_utils/generate'
+import { getProjects, linkGoalToProject, unlinkGoalFromProject, type Project } from '@/lib/projectData'
 
 interface Goal {
   id: string
@@ -147,9 +148,20 @@ export default function GoalDetailPage() {
   const [editingSteps, setEditingSteps]     = useState(false)
   const [editStepsVal, setEditStepsVal]     = useState('')
 
+  // Details inline edit
+  const [editingDetails, setEditingDetails] = useState(false)
+  const [editCategory, setEditCategory]     = useState('')
+  const [editQuarter, setEditQuarter]       = useState('')
+  const [editProjectId, setEditProjectId]   = useState<string>('')
+  const [projects, setProjects]             = useState<Project[]>([])
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting]     = useState(false)
   const [saving, setSaving]         = useState(false)
+
+  useEffect(() => {
+    setProjects(getProjects().filter(p => p.status !== 'archived'))
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -501,38 +513,146 @@ export default function GoalDetailPage() {
       <div style={{ background: 'white', borderRadius: 16, padding: '18px 20px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Details</span>
-          <button
-            onClick={() => router.push(`/dashboard/goals/${id}/edit`)}
-            style={actionBtnStyle}
-          >
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-            </svg>
-            Edit
-          </button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '0.5px solid #F2F2F7' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
-                <line x1="7" y1="7" x2="7.01" y2="7" />
+          {!editingDetails ? (
+            <button
+              onClick={() => {
+                setEditCategory(goal.category)
+                setEditQuarter(goal.quarter || 'Q2 2026')
+                const linked = getProjects().find(p => (p.linkedGoalIds || []).includes(id))
+                setEditProjectId(linked?.id || '')
+                setEditingDetails(true)
+              }}
+              style={actionBtnStyle}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
               </svg>
-              <span style={{ fontSize: 14, color: '#8E8E93' }}>Category</span>
-            </div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>{goal.category}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-              </svg>
-              <span style={{ fontSize: 14, color: '#8E8E93' }}>Timeline</span>
-            </div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>{quarter}</span>
-          </div>
+              Edit
+            </button>
+          ) : null}
         </div>
+
+        {editingDetails ? (
+          <>
+            {/* Category dropdown */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
+                </svg>
+                <span style={{ fontSize: 13, color: '#8E8E93' }}>Category</span>
+              </div>
+              <select
+                value={editCategory}
+                onChange={e => setEditCategory(e.target.value)}
+                style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', background: '#F9F9FB', appearance: 'none', boxSizing: 'border-box' }}
+              >
+                {['Career','Finance','Health','Creative','Travel','Relationships','Business','Personal Growth','Education'].map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Timeline / Quarter dropdown */}
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
+                <span style={{ fontSize: 13, color: '#8E8E93' }}>Timeline / Quarter</span>
+              </div>
+              <select
+                value={editQuarter}
+                onChange={e => setEditQuarter(e.target.value)}
+                style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', background: '#F9F9FB', appearance: 'none', boxSizing: 'border-box' }}
+              >
+                {['Q1 2026','Q2 2026','Q3 2026','Q4 2026','Q1 2027','Q2 2027'].map(q => (
+                  <option key={q} value={q}>{q}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Project dropdown */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="6" height="6" rx="1"/><rect x="2" y="15" width="6" height="6" rx="1"/><rect x="10" y="3" width="12" height="6" rx="1"/><rect x="10" y="15" width="12" height="6" rx="1"/>
+                </svg>
+                <span style={{ fontSize: 13, color: '#8E8E93' }}>Project</span>
+              </div>
+              <select
+                value={editProjectId}
+                onChange={e => setEditProjectId(e.target.value)}
+                style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', background: '#F9F9FB', appearance: 'none', boxSizing: 'border-box' }}
+              >
+                <option value="">None</option>
+                {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={async () => {
+                  setSaving(true)
+                  // Update goal in Supabase
+                  setGoal(prev => prev ? { ...prev, category: editCategory, quarter: editQuarter } : prev)
+                  await persist({ category: editCategory, quarter: editQuarter })
+
+                  // Handle project linking
+                  const prevLinked = getProjects().find(p => (p.linkedGoalIds || []).includes(id))
+                  if (prevLinked && prevLinked.id !== editProjectId) {
+                    unlinkGoalFromProject(prevLinked.id, id)
+                  }
+                  if (editProjectId) {
+                    linkGoalToProject(editProjectId, id)
+                  }
+
+                  setSaving(false)
+                  setEditingDetails(false)
+                }}
+                disabled={saving}
+                style={saveBtn}
+              >
+                {saving ? 'Saving…' : 'Save Changes'}
+              </button>
+              <button onClick={() => setEditingDetails(false)} style={cancelBtn}>Cancel</button>
+            </div>
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '0.5px solid #F2F2F7' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
+                  <line x1="7" y1="7" x2="7.01" y2="7" />
+                </svg>
+                <span style={{ fontSize: 14, color: '#8E8E93' }}>Category</span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>{goal.category}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, paddingBottom: 12, borderBottom: '0.5px solid #F2F2F7' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                </svg>
+                <span style={{ fontSize: 14, color: '#8E8E93' }}>Timeline</span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>{quarter}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="3" width="6" height="6" rx="1"/><rect x="2" y="15" width="6" height="6" rx="1"/><rect x="10" y="3" width="12" height="6" rx="1"/><rect x="10" y="15" width="12" height="6" rx="1"/>
+                </svg>
+                <span style={{ fontSize: 14, color: '#8E8E93' }}>Project</span>
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>
+                {getProjects().find(p => (p.linkedGoalIds || []).includes(id))?.title || '—'}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Goal Status card */}
