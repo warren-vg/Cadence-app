@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { generateGoalDetails, type Milestone } from '../_utils/generate'
 import { getProjects, linkGoalToProject, unlinkGoalFromProject, type Project } from '@/lib/projectData'
+import { calcGoalProgress } from '@/lib/planData'
 
 interface Goal {
   id: string
@@ -223,7 +224,14 @@ export default function GoalDetailPage() {
       m.id === milestoneId ? { ...m, completed: !m.completed } : m
     )
     setMilestones(updated)
-    await persist({ milestones: updated })
+
+    const newProgress = calcGoalProgress(updated, goal?.progress ?? 0)
+    setGoal(prev => prev ? { ...prev, progress: newProgress } : prev)
+
+    await persist({
+      milestones: updated,
+      progress:   newProgress,
+    })
   }
 
   const saveRefined = async () => {
@@ -422,22 +430,26 @@ export default function GoalDetailPage() {
             onAdd={() => {
               const text = prompt('New milestone:')
               if (!text?.trim()) return
-              const newM: Milestone = { id: `${id}-m${Date.now()}`, text: text.trim(), completed: false }
+              const newM = { id: `${id}-m${Date.now()}`, text: text.trim(), completed: false }
               const updated = [...milestones, newM]
               setMilestones(updated)
-              persist({ milestones: updated })
+              const newProgress = calcGoalProgress(updated, goal?.progress ?? 0)
+              setGoal(prev => prev ? { ...prev, progress: newProgress } : prev)
+              persist({ milestones: updated, progress: newProgress })
             }}
             onEdit={() => {
               const text = milestones.map(m => m.text).join('\n')
               const updated = prompt('Edit milestones (one per line):', text)
               if (updated === null) return
-              const newMilestones: Milestone[] = updated.split('\n').filter(Boolean).map((t, i) => ({
-                id: milestones[i]?.id || `${id}-m${Date.now()}-${i}`,
-                text: t.trim(),
+              const newMilestones = updated.split('\n').filter(Boolean).map((t, i) => ({
+                id:        milestones[i]?.id || `${id}-m${Date.now()}-${i}`,
+                text:      t.trim(),
                 completed: milestones[i]?.completed ?? false,
               }))
               setMilestones(newMilestones)
-              persist({ milestones: newMilestones })
+              const newProgress = calcGoalProgress(newMilestones, goal?.progress ?? 0)
+              setGoal(prev => prev ? { ...prev, progress: newProgress } : prev)
+              persist({ milestones: newMilestones, progress: newProgress })
             }}
             onRegenerate={() => router.push(`/dashboard/goals/${id}/refine`)}
           />

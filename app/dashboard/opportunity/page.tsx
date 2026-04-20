@@ -1,35 +1,20 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import {
+  evaluateOpportunity,
+  type OpportunityInputs,
+  type OpportunityResult,
+} from '@/lib/opportunityScore'
 
-interface Criterion {
-  key: string
-  label: string
-  description: string
-  weight: number
-  icon: string
-  positiveLabel: string
-  negativeLabel: string
-  inverted?: boolean
-}
+// ─── Slider component ─────────────────────────────────────────────────────────
 
-const CRITERIA: Criterion[] = [
-  { key: 'upside', label: 'Expected Upside', description: 'Potential value or impact', weight: 1, icon: '📈', positiveLabel: 'High upside', negativeLabel: 'Low upside' },
-  { key: 'time', label: 'Time Cost', description: 'Hours required per week', weight: 1, icon: '⏱', positiveLabel: 'High cost', negativeLabel: 'Low cost', inverted: true },
-  { key: 'energy', label: 'Energy Cost', description: 'Mental/physical drain', weight: 1, icon: '⚡', positiveLabel: 'High drain', negativeLabel: 'Low drain', inverted: true },
-  { key: 'alignment', label: 'Alignment with Goals', description: 'Supports your current priorities', weight: 1.5, icon: '🎯', positiveLabel: 'Well aligned', negativeLabel: 'Misaligned' },
-  { key: 'urgency', label: 'Urgency', description: 'Time-sensitivity of the decision', weight: 0.75, icon: '🚨', positiveLabel: 'Very urgent', negativeLabel: 'Not urgent' },
-]
-
-function getVerdict(score: number): { label: string; color: string; bg: string; icon: string; advice: string } {
-  if (score >= 75) return { label: 'Strong Yes', color: '#16A34A', bg: '#DCFCE7', icon: '✅', advice: 'This opportunity aligns well with your goals and offers strong potential. Consider prioritizing it.' }
-  if (score >= 55) return { label: 'Worth Exploring', color: '#3B7DFF', bg: '#EFF6FF', icon: '🔍', advice: 'Promising but not a slam dunk. Do more research before committing significant time.' }
-  if (score >= 40) return { label: 'Proceed Carefully', color: '#D97706', bg: '#FFFBEB', icon: '⚠️', advice: 'Mixed signals. Consider whether you can reduce the cost before committing.' }
-  return { label: 'Pass on This', color: '#FF3B30', bg: '#FFF0F0', icon: '🚫', advice: "This opportunity costs more than it gives back right now. Your time is better spent elsewhere." }
-}
-
-function Slider({ label, sublabel, value, onChange, inverted }: {
-  label: string; sublabel: string; value: number; onChange: (v: number) => void; inverted?: boolean
+function Slider({
+  label, sublabel, value, onChange, inverted,
+}: {
+  label: string; sublabel: string; value: number
+  onChange: (v: number) => void; inverted?: boolean
 }) {
   const displayColor = inverted
     ? value > 60 ? '#FF3B30' : value > 35 ? '#FF9500' : '#34C759'
@@ -45,10 +30,7 @@ function Slider({ label, sublabel, value, onChange, inverted }: {
         <span style={{ fontSize: 14, fontWeight: 700, color: displayColor }}>{value}%</span>
       </div>
       <input
-        type="range"
-        min={0}
-        max={100}
-        value={value}
+        type="range" min={0} max={100} value={value}
         onChange={e => onChange(Number(e.target.value))}
         style={{ width: '100%', accentColor: displayColor, cursor: 'pointer' }}
       />
@@ -60,39 +42,76 @@ function Slider({ label, sublabel, value, onChange, inverted }: {
   )
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+const DEFAULT_INPUTS: OpportunityInputs = {
+  upside: 50, alignment: 50, urgency: 50,
+  timeCost: 50, energyCost: 50, moneyCost: 50,
+}
+
 export default function OpportunityFilterPage() {
   const router = useRouter()
-  const [title, setTitle] = useState('')
-  const [values, setValues] = useState<Record<string, number>>({
-    upside: 50, time: 50, energy: 50, alignment: 50, urgency: 50,
-  })
-  const [result, setResult] = useState<null | { score: number; verdict: ReturnType<typeof getVerdict> }>(null)
-  const [running, setRunning] = useState(false)
 
-  const computeScore = () => {
-    let total = 0
-    let weightSum = 0
-    CRITERIA.forEach(c => {
-      const v = c.inverted ? (100 - values[c.key]) : values[c.key]
-      total += v * c.weight
-      weightSum += c.weight
-    })
-    return Math.round(total / weightSum)
-  }
+  const [title, setTitle]   = useState('')
+  const [inputs, setInputs] = useState<OpportunityInputs>(DEFAULT_INPUTS)
+  const [result, setResult] = useState<OpportunityResult | null>(null)
+  const [running, setRunning] = useState(false)
+  const [saving, setSaving]   = useState(false)
+
+  const setField = (key: keyof OpportunityInputs) => (v: number) =>
+    setInputs(prev => ({ ...prev, [key]: v }))
 
   const handleRun = () => {
     setRunning(true)
     setTimeout(() => {
-      const score = computeScore()
-      setResult({ score, verdict: getVerdict(score) })
+      setResult(evaluateOpportunity(inputs))
       setRunning(false)
-    }, 1000)
+    }, 800)
   }
 
   const handleReset = () => {
     setTitle('')
-    setValues({ upside: 50, time: 50, energy: 50, alignment: 50, urgency: 50 })
+    setInputs(DEFAULT_INPUTS)
     setResult(null)
+  }
+
+  const handleDecision = async (override?: 'accept') => {
+    if (!result) return
+    setSaving(true)
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const decision = override ?? result.decision
+
+        await supabase.from('opportunity_evaluations').insert({
+          user_id:     user.id,
+          title:       title.trim() || 'Untitled Opportunity',
+          upside:      inputs.upside,
+          alignment:   inputs.alignment,
+          urgency:     inputs.urgency,
+          time_cost:   inputs.timeCost,
+          energy_cost: inputs.energyCost,
+          money_cost:  inputs.moneyCost,
+          score:       result.score,
+          decision,
+        })
+
+        if (decision === 'accept') {
+          await supabase.from('projects').insert({
+            user_id: user.id,
+            title:   title.trim() || 'New Opportunity',
+            type:    'opportunity',
+            status:  'planning',
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Save opportunity error:', err)
+    }
+
+    setSaving(false)
+    router.push('/dashboard/projects')
   }
 
   return (
@@ -104,7 +123,9 @@ export default function OpportunityFilterPage() {
           onClick={() => router.back()}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginLeft: -4 }}
         >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
         </button>
         <div>
           <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>Projects</p>
@@ -113,8 +134,11 @@ export default function OpportunityFilterPage() {
         </div>
       </div>
 
-      {/* Opportunity Title */}
-      <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #E5E5EA', padding: '14px 16px', marginTop: 16, marginBottom: 14 }}>
+      {/* Title */}
+      <div style={{
+        background: 'white', borderRadius: 16, border: '0.5px solid #E5E5EA',
+        padding: '14px 16px', marginTop: 16, marginBottom: 14,
+      }}>
         <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 6px' }}>Opportunity Title</p>
         <input
           value={title}
@@ -128,18 +152,25 @@ export default function OpportunityFilterPage() {
         />
       </div>
 
-      {/* Sliders */}
-      <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #E5E5EA', padding: '18px 16px', marginBottom: 14 }}>
-        {CRITERIA.map(c => (
-          <Slider
-            key={c.key}
-            label={c.label}
-            sublabel={c.description}
-            value={values[c.key]}
-            onChange={v => setValues(prev => ({ ...prev, [c.key]: v }))}
-            inverted={c.inverted}
-          />
-        ))}
+      {/* Sliders — all 6 inputs */}
+      <div style={{
+        background: 'white', borderRadius: 16, border: '0.5px solid #E5E5EA',
+        padding: '18px 16px', marginBottom: 14,
+      }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          Benefits
+        </p>
+        <Slider label="Expected Upside"        sublabel="Potential value or impact"          value={inputs.upside}    onChange={setField('upside')}    />
+        <Slider label="Alignment with Goals"   sublabel="Supports your current priorities"   value={inputs.alignment} onChange={setField('alignment')} />
+        <Slider label="Urgency"                sublabel="Time-sensitivity of the decision"   value={inputs.urgency}   onChange={setField('urgency')}   />
+
+        <div style={{ borderTop: '0.5px solid #F2F2F7', margin: '4px 0 16px' }} />
+        <p style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+          Costs
+        </p>
+        <Slider label="Time Cost"   sublabel="Hours required per week"     value={inputs.timeCost}   onChange={setField('timeCost')}   inverted />
+        <Slider label="Energy Cost" sublabel="Mental / physical drain"     value={inputs.energyCost} onChange={setField('energyCost')} inverted />
+        <Slider label="Money Cost"  sublabel="Financial investment needed"  value={inputs.moneyCost}  onChange={setField('moneyCost')}  inverted />
       </div>
 
       {/* Run Button */}
@@ -156,59 +187,65 @@ export default function OpportunityFilterPage() {
             marginBottom: 14,
           }}
         >
-          {running ? (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}>
-                <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" />
-              </svg>
-              Analyzing…
-            </>
-          ) : (
-            <>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="22 3 2 9 11 13 15 22 22 3"/></svg>
-              Run Filter
-            </>
-          )}
+          {running ? 'Analyzing…' : 'Run Filter'}
         </button>
       )}
 
       {/* Result */}
       {result && (
         <>
-          {/* Score Card */}
+          {/* Score card */}
           <div style={{
-            background: result.verdict.bg,
-            borderRadius: 18, padding: '22px 20px', marginBottom: 14,
-            border: `1.5px solid ${result.verdict.color}22`,
-            textAlign: 'center',
+            background: result.bg, borderRadius: 18, padding: '22px 20px',
+            marginBottom: 14, border: `1.5px solid ${result.color}33`, textAlign: 'center',
           }}>
-            <p style={{ fontSize: 40, margin: '0 0 4px' }}>{result.verdict.icon}</p>
-            <p style={{ fontSize: 44, fontWeight: 800, color: result.verdict.color, margin: '0 0 4px', lineHeight: 1 }}>
+            <p style={{ fontSize: 40, margin: '0 0 4px' }}>{result.icon}</p>
+            <p style={{ fontSize: 44, fontWeight: 800, color: result.color, margin: '0 0 4px', lineHeight: 1 }}>
               {result.score}
             </p>
-            <p style={{ fontSize: 11, color: result.verdict.color, margin: '0 0 8px', opacity: 0.7 }}>out of 100</p>
-            <p style={{ fontSize: 18, fontWeight: 700, color: result.verdict.color, margin: '0 0 8px' }}>
-              {result.verdict.label}
-            </p>
-            {title && (
-              <p style={{ fontSize: 13, color: '#3C3C43', margin: '0 0 8px', fontStyle: 'italic' }}>"{title}"</p>
-            )}
-            <p style={{ fontSize: 13, color: '#3C3C43', margin: 0, lineHeight: 1.5 }}>
-              {result.verdict.advice}
-            </p>
+            <p style={{ fontSize: 11, color: result.color, margin: '0 0 8px', opacity: 0.7 }}>out of 100</p>
+            <p style={{ fontSize: 18, fontWeight: 700, color: result.color, margin: '0 0 8px' }}>{result.label}</p>
+            {title && <p style={{ fontSize: 13, color: '#3C3C43', margin: '0 0 8px', fontStyle: 'italic' }}>"{title}"</p>}
+            <p style={{ fontSize: 13, color: '#3C3C43', margin: 0, lineHeight: 1.5 }}>{result.advice}</p>
           </div>
 
-          {/* Breakdown */}
-          <div style={{ background: 'white', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Score Breakdown</h3>
-            {CRITERIA.map(c => {
-              const raw = values[c.key]
-              const effective = c.inverted ? 100 - raw : raw
+          {/* Rationale bullets */}
+          {result.rationale.length > 0 && (
+            <div style={{
+              background: 'white', borderRadius: 16, padding: '16px 18px',
+              border: '0.5px solid #E5E5EA', marginBottom: 14,
+            }}>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px' }}>Key Signals</p>
+              {result.rationale.map((r, i) => (
+                <div key={i} style={{ display: 'flex', gap: 8, marginBottom: i < result.rationale.length - 1 ? 8 : 0 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: '50%', background: result.color, marginTop: 7, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: '#3C3C43', lineHeight: 1.5 }}>{r}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Score breakdown */}
+          <div style={{
+            background: 'white', borderRadius: 18, padding: '18px 20px',
+            marginBottom: 14, border: '0.5px solid #E5E5EA',
+          }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Score Breakdown</p>
+            {([
+              { label: 'Upside',      effective: inputs.upside,          weight: '40%' },
+              { label: 'Alignment',   effective: inputs.alignment,        weight: '35%' },
+              { label: 'Urgency',     effective: inputs.urgency,          weight: '10%' },
+              { label: 'Time Cost',   effective: 100 - inputs.timeCost,   weight: '40%' },
+              { label: 'Energy Cost', effective: 100 - inputs.energyCost, weight: '35%' },
+              { label: 'Money Cost',  effective: 100 - inputs.moneyCost,  weight: '10%' },
+            ] as const).map(({ label, effective, weight }) => {
               const color = effective > 60 ? '#34C759' : effective > 35 ? '#FF9500' : '#FF3B30'
               return (
-                <div key={c.key} style={{ marginBottom: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: 13, color: '#3C3C43' }}>{c.label}</span>
+                <div key={label} style={{ marginBottom: 10 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                    <span style={{ fontSize: 13, color: '#3C3C43' }}>
+                      {label} <span style={{ fontSize: 11, color: '#C7C7CC' }}>({weight})</span>
+                    </span>
                     <span style={{ fontSize: 13, fontWeight: 600, color }}>{effective}</span>
                   </div>
                   <div style={{ background: '#F2F2F7', borderRadius: 4, height: 5, overflow: 'hidden' }}>
@@ -219,8 +256,64 @@ export default function OpportunityFilterPage() {
             })}
           </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 10 }}>
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+            {result.decision === 'accept' && (
+              <button
+                onClick={() => handleDecision()}
+                disabled={saving}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: 12,
+                  background: '#16A34A', border: 'none',
+                  fontSize: 14, fontWeight: 700, color: 'white',
+                  cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                {saving ? 'Saving…' : 'Accept & Create Project'}
+              </button>
+            )}
+            {result.decision === 'defer' && (
+              <>
+                <button
+                  onClick={() => handleDecision()}
+                  disabled={saving}
+                  style={{
+                    flex: 1, padding: '13px', borderRadius: 12,
+                    background: '#D97706', border: 'none',
+                    fontSize: 14, fontWeight: 600, color: 'white',
+                    cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  Defer
+                </button>
+                <button
+                  onClick={() => handleDecision('accept')}
+                  disabled={saving}
+                  style={{
+                    flex: 1, padding: '13px', borderRadius: 12,
+                    background: '#16A34A', border: 'none',
+                    fontSize: 14, fontWeight: 600, color: 'white',
+                    cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  Accept Anyway
+                </button>
+              </>
+            )}
+            {result.decision === 'reject' && (
+              <button
+                onClick={() => handleDecision()}
+                disabled={saving}
+                style={{
+                  flex: 1, padding: '13px', borderRadius: 12,
+                  background: '#DC2626', border: 'none',
+                  fontSize: 14, fontWeight: 700, color: 'white',
+                  cursor: saving ? 'default' : 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                {saving ? 'Saving…' : 'Pass on This'}
+              </button>
+            )}
             <button
               onClick={handleReset}
               style={{
@@ -232,24 +325,9 @@ export default function OpportunityFilterPage() {
             >
               Evaluate Another
             </button>
-            <button
-              onClick={() => router.push('/dashboard/goals/evaluate')}
-              style={{
-                flex: 1, padding: '13px', borderRadius: 12,
-                background: '#3B7DFF', border: 'none',
-                fontSize: 14, fontWeight: 700, color: 'white',
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
-            >
-              Add as Goal
-            </button>
           </div>
         </>
       )}
-
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   )
 }

@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  toDateStr, getMonday, getWeekSummary, saveReflection, getAllReflections,
+  toDateStr, getMonday, getWeekSummary, saveReflection,
+  getAllReflections, getWeekStreak, addDays,
 } from '@/lib/planData'
 
 const AI_INSIGHTS = [
@@ -13,17 +14,21 @@ const AI_INSIGHTS = [
 
 export default function WeeklyReviewPage() {
   const router = useRouter()
-  const [wins, setWins] = useState('')
+  const [wins, setWins]             = useState('')
   const [challenges, setChallenges] = useState('')
-  const [learnings, setLearnings] = useState('')
-  const [nextFocus, setNextFocus] = useState('')
+  const [learnings, setLearnings]   = useState('')
+  const [nextFocus, setNextFocus]   = useState('')
   const [showInsights, setShowInsights] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [submitted, setSubmitted]   = useState(false)
+  const [mounted, setMounted]       = useState(false)
+
+  const [streak, setStreak]         = useState(0)
 
   useEffect(() => {
     setMounted(true)
-    // Load existing reflection for this week if any
+
+    setStreak(getWeekStreak())
+
     try {
       const monday = getMonday(new Date())
       const weekOf = toDateStr(monday)
@@ -39,14 +44,14 @@ export default function WeeklyReviewPage() {
 
   if (!mounted) return null
 
-  const today = new Date()
-  const monday = getMonday(today)
+  const today   = new Date()
+  const monday  = getMonday(today)
+  const sunday  = addDays(monday, 6)
   const summary = getWeekSummary(monday)
+
   const weekScore = summary.totalTasks > 0
     ? Math.round((summary.completedTasks / summary.totalTasks) * 100)
     : 0
-
-  const streak = 4 // mock streak
 
   const handleSave = () => {
     const weekOf = toDateStr(monday)
@@ -58,6 +63,7 @@ export default function WeeklyReviewPage() {
       nextWeekFocus: nextFocus,
       weekScore,
     })
+    setStreak(getWeekStreak())
     setSubmitted(true)
   }
 
@@ -73,7 +79,9 @@ export default function WeeklyReviewPage() {
             onClick={() => router.back()}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4, color: '#3B7DFF', fontSize: 14, fontFamily: 'inherit' }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
             Back
           </button>
           <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Review Saved</h1>
@@ -85,7 +93,12 @@ export default function WeeklyReviewPage() {
             </svg>
           </div>
           <p style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px' }}>Week logged!</p>
-          <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 32px' }}>Your reflection has been saved.</p>
+          <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 6px' }}>Your reflection has been saved.</p>
+          {streak > 0 && (
+            <p style={{ fontSize: 14, color: '#D97706', fontWeight: 600, margin: '0 0 32px' }}>
+              🔥 {streak} week streak — keep it going!
+            </p>
+          )}
           <button
             onClick={handleBuildNext}
             style={{
@@ -110,13 +123,15 @@ export default function WeeklyReviewPage() {
           onClick={() => router.back()}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4, color: '#3B7DFF', fontSize: 14, fontFamily: 'inherit' }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
           Plan
         </button>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Weekly Review</h1>
         <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>
           Week of {monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
-          {new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          {sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </p>
       </div>
 
@@ -125,8 +140,7 @@ export default function WeeklyReviewPage() {
         {/* Week Score Banner */}
         <div style={{
           background: 'linear-gradient(135deg, #3B52FF 0%, #2D7DFF 100%)',
-          borderRadius: 18, padding: '20px',
-          marginBottom: 14, color: 'white',
+          borderRadius: 18, padding: '20px', marginBottom: 14, color: 'white',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
@@ -135,8 +149,8 @@ export default function WeeklyReviewPage() {
               <div style={{ display: 'flex', gap: 16 }}>
                 {[
                   { label: 'Completed', value: `${summary.completedTasks}/${summary.totalTasks}` },
-                  { label: 'Goals Moved', value: '3/4' },
-                  { label: 'Streak', value: `${streak} weeks` },
+                  { label: 'Hours',     value: `${summary.totalHours}h` },
+                  { label: 'Streak',    value: streak > 0 ? `${streak} wks 🔥` : 'New streak' },
                 ].map(s => (
                   <div key={s.label}>
                     <p style={{ fontSize: 14, fontWeight: 700, margin: '0 0 1px' }}>{s.value}</p>
@@ -159,10 +173,10 @@ export default function WeeklyReviewPage() {
 
         {/* Reflection Forms */}
         {[
-          { label: 'What went well this week?', placeholder: 'Celebrate your wins, big and small...', value: wins, setter: setWins },
-          { label: 'What blocked your progress?', placeholder: 'What got in the way?', value: challenges, setter: setChallenges },
-          { label: 'What did you learn?', placeholder: 'Key insights and lessons...', value: learnings, setter: setLearnings },
-          { label: 'Next week focus', placeholder: 'What\'s the one thing to prioritize?', value: nextFocus, setter: setNextFocus },
+          { label: 'What went well this week?',   placeholder: 'Celebrate your wins, big and small...', value: wins,       setter: setWins       },
+          { label: 'What blocked your progress?', placeholder: 'What got in the way?',                  value: challenges, setter: setChallenges  },
+          { label: 'What did you learn?',          placeholder: 'Key insights and lessons...',           value: learnings,  setter: setLearnings  },
+          { label: 'Next week focus',              placeholder: "What's the one thing to prioritize?",   value: nextFocus,  setter: setNextFocus  },
         ].map(field => (
           <div key={field.label} style={{
             background: 'white', borderRadius: 14, padding: '16px',
@@ -174,6 +188,7 @@ export default function WeeklyReviewPage() {
               onChange={e => field.setter(e.target.value)}
               placeholder={field.placeholder}
               rows={3}
+              maxLength={2000}
               style={{
                 width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 10,
                 padding: '12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit',
@@ -194,7 +209,7 @@ export default function WeeklyReviewPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
               </svg>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#1D4ED8', margin: 0 }}>AI Insights</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#1D4ED8', margin: 0 }}>Weekly Insights</p>
             </div>
             {AI_INSIGHTS.map((ins, i) => (
               <div key={i} style={{ display: 'flex', gap: 8, marginBottom: i < AI_INSIGHTS.length - 1 ? 8 : 0 }}>
@@ -205,7 +220,6 @@ export default function WeeklyReviewPage() {
           </div>
         )}
 
-        {/* Generate Insights Button */}
         <button
           onClick={() => setShowInsights(v => !v)}
           style={{
@@ -215,9 +229,6 @@ export default function WeeklyReviewPage() {
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1C1C1E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-          </svg>
           {showInsights ? 'Hide Insights' : 'Generate Insights'}
         </button>
 
