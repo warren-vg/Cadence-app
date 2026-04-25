@@ -1,10 +1,12 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 import {
-  toDateStr, getScheduleForDate, saveSchedule, getAllSchedule, formatTime, addMinutes,
-  type ScheduleBlock,
-} from '@/lib/planData'
+  getScheduleForDate, updateScheduleItem, deleteScheduleItem,
+  type DBScheduleItem,
+} from '@/lib/db'
+import { toDateStr, formatTime, addMinutes } from '@/lib/planData'
 
 const CAT_COLORS: Record<string, { bg: string; color: string; border: string }> = {
   work:     { bg: '#EFF6FF', color: '#3B7DFF', border: '#DBEAFE' },
@@ -21,86 +23,97 @@ const CAT_LABELS: Record<string, string> = {
 interface EditState {
   id: string
   title: string
-  startTime: string
+  start_time: string
   duration: number
   category: string
-  isFlexible: boolean
+  is_flexible: boolean
 }
 
 export default function ScheduleManagerPage() {
   const router = useRouter()
-  const [items, setItems] = useState<ScheduleBlock[]>([])
-  const [editId, setEditId] = useState<string | null>(null)
-  const [edit, setEdit] = useState<EditState | null>(null)
-  const [mounted, setMounted] = useState(false)
+  const [items, setItems]     = useState<DBScheduleItem[]>([])
+  const [userId, setUserId]   = useState<string | null>(null)
+  const [editId, setEditId]   = useState<string | null>(null)
+  const [edit, setEdit]       = useState<EditState | null>(null)
+  const [loading, setLoading] = useState(true)
   const [dateOffset, setDateOffset] = useState(0)
 
-  const today = new Date()
+  const today      = new Date()
   const targetDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + dateOffset)
-  const dateStr = toDateStr(targetDate)
+  const dateStr    = toDateStr(targetDate)
   const displayDate = dateOffset === 0 ? 'Today' : targetDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })
-  const fullDate = targetDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const fullDate    = targetDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
 
   useEffect(() => {
-    setMounted(true)
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) { router.push('/login'); return }
+      setUserId(user.id)
+      const data = await getScheduleForDate(user.id, dateStr)
+      setItems(data)
+      setLoading(false)
+    }
+    init()
   }, [])
 
   useEffect(() => {
-    if (!mounted) return
-    setItems(getScheduleForDate(dateStr))
-  }, [mounted, dateStr])
+    if (!userId) return
+    getScheduleForDate(userId, dateStr).then(setItems)
+  }, [userId, dateStr])
 
-  if (!mounted) return null
+  if (loading) return null
 
   const totalMinutes = items.reduce((s, i) => s + i.duration, 0)
-  const flexCount = items.filter(i => i.isFlexible).length
+  const flexCount    = items.filter(i => i.is_flexible).length
 
-  const startEdit = (item: ScheduleBlock) => {
+  const startEdit = (item: DBScheduleItem) => {
     setEditId(item.id)
-    setEdit({ id: item.id, title: item.title, startTime: item.startTime, duration: item.duration, category: item.category, isFlexible: item.isFlexible })
+    setEdit({ id: item.id, title: item.title, start_time: item.start_time, duration: item.duration, category: item.category, is_flexible: item.is_flexible })
   }
 
-  const saveEdit = () => {
-    if (!edit) return
-    const all = getAllSchedule()
-    const updated = all.map(i => i.id === edit.id ? { ...i, ...edit } : i)
-    // Cascade flexible items after edit
-    const dayItems = updated
-      .filter(i => i.date === dateStr)
-      .sort((a, b) => a.startTime.localeCompare(b.startTime))
+  const saveEdit = async () => {
+    if (!edit || !userId) return
 
-    let prevEnd = edit.startTime
+    await updateScheduleItem(edit.id, {
+      title:       edit.title,
+      start_time:  edit.start_time,
+      duration:    edit.duration,
+      category:    edit.category,
+      is_flexible: edit.is_flexible,
+    })
+
+    // Cascade flexible items that follow the edited block
+    const dayItems = items
+      .map(i => i.id === edit.id ? { ...i, start_time: edit.start_time, duration: edit.duration, is_flexible: edit.is_flexible } : i)
+      .sort((a, b) => a.start_time.localeCompare(b.start_time))
+
+    let prevEnd  = addMinutes(edit.start_time, edit.duration)
     let hitEdited = false
-    for (let i = 0; i < dayItems.length; i++) {
-      if (dayItems[i].id === edit.id) {
-        hitEdited = true
-        prevEnd = addMinutes(edit.startTime, edit.duration)
-        continue
-      }
-      if (hitEdited && dayItems[i].isFlexible) {
-        const newStart = prevEnd
-        const idx = updated.findIndex(x => x.id === dayItems[i].id)
-        if (idx >= 0) {
-          updated[idx] = { ...updated[idx], startTime: newStart }
-          prevEnd = addMinutes(newStart, updated[idx].duration)
-        }
+    const cascades: { id: string; start_time: string }[] = []
+
+    for (const item of dayItems) {
+      if (item.id === edit.id) { hitEdited = true; continue }
+      if (hitEdited && item.is_flexible) {
+        cascades.push({ id: item.id, start_time: prevEnd })
+        prevEnd = addMinutes(prevEnd, item.duration)
       } else if (hitEdited) {
-        const itemStart = dayItems[i].startTime
-        prevEnd = addMinutes(itemStart, dayItems[i].duration)
+        prevEnd = addMinutes(item.start_time, item.duration)
       }
     }
 
-    saveSchedule(updated)
-    setItems(updated.filter(i => i.date === dateStr).sort((a, b) => a.startTime.localeCompare(b.startTime)))
+    await Promise.all(cascades.map(c => updateScheduleItem(c.id, { start_time: c.start_time })))
+
+    const fresh = await getScheduleForDate(userId, dateStr)
+    setItems(fresh)
     setEditId(null)
     setEdit(null)
   }
 
-  const deleteItem = (id: string) => {
-    const all = getAllSchedule()
-    const updated = all.filter(i => i.id !== id)
-    saveSchedule(updated)
-    setItems(updated.filter(i => i.date === dateStr).sort((a, b) => a.startTime.localeCompare(b.startTime)))
+  const deleteItem = async (id: string) => {
+    await deleteScheduleItem(id)
+    setItems(prev => prev.filter(i => i.id !== id))
+    setEditId(null)
+    setEdit(null)
   }
 
   return (
@@ -170,8 +183,8 @@ export default function ScheduleManagerPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
             {items.map(item => {
-              const catStyle = CAT_COLORS[item.category] || CAT_COLORS.work
-              const endTime = addMinutes(item.startTime, item.duration)
+              const catStyle    = CAT_COLORS[item.category] || CAT_COLORS.work
+              const endTime     = addMinutes(item.start_time, item.duration)
               const durationHrs = item.duration / 60
 
               if (editId === item.id && edit) {
@@ -194,8 +207,8 @@ export default function ScheduleManagerPage() {
                         <label style={{ fontSize: 12, color: '#8E8E93', display: 'block', marginBottom: 4 }}>Start Time</label>
                         <input
                           type="time"
-                          value={edit.startTime}
-                          onChange={e => setEdit(v => v ? { ...v, startTime: e.target.value } : v)}
+                          value={edit.start_time}
+                          onChange={e => setEdit(v => v ? { ...v, start_time: e.target.value } : v)}
                           style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
                         />
                       </div>
@@ -220,8 +233,8 @@ export default function ScheduleManagerPage() {
                       <input
                         type="checkbox"
                         id={`flex-${item.id}`}
-                        checked={edit.isFlexible}
-                        onChange={e => setEdit(v => v ? { ...v, isFlexible: e.target.checked } : v)}
+                        checked={edit.is_flexible}
+                        onChange={e => setEdit(v => v ? { ...v, is_flexible: e.target.checked } : v)}
                         style={{ width: 16, height: 16, cursor: 'pointer' }}
                       />
                       <label htmlFor={`flex-${item.id}`} style={{ fontSize: 14, color: '#3C3C43', cursor: 'pointer' }}>Flexible (auto-adjusts)</label>
@@ -247,10 +260,10 @@ export default function ScheduleManagerPage() {
                         <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                       </svg>
                       <span style={{ fontSize: 13, color: '#8E8E93' }}>
-                        {formatTime(item.startTime)} - {formatTime(endTime)}
+                        {formatTime(item.start_time)} - {formatTime(endTime)}
                       </span>
                       <span style={{ fontSize: 12, color: '#8E8E93' }}>({durationHrs % 1 === 0 ? durationHrs : durationHrs.toFixed(1)} {durationHrs <= 1 ? 'hr' : 'hrs'})</span>
-                      {item.isFlexible && (
+                      {item.is_flexible && (
                         <span style={{ fontSize: 11, fontWeight: 500, color: '#3B7DFF', background: '#EFF6FF', borderRadius: 20, padding: '1px 7px' }}>Flexible</span>
                       )}
                     </div>

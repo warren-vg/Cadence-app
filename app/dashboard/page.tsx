@@ -298,26 +298,46 @@ export default function DashboardPage() {
         <p style={{ fontSize: 13, color: '#3C3C43', margin: 0 }}>{getMomentumText(momentumScore)}</p>
       </div>
 
-      {/* Top Priorities Card */}
-      <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
-            </svg>
-            <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Top Priorities</h2>
+      {/* Top Priorities / First Goal */}
+      {activeGoals.length === 0 ? (
+        <div style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)', borderRadius: 20, padding: '28px 20px 24px', marginBottom: 14, border: '1px solid #C7D2FE' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
+            <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 14px rgba(99,102,241,0.22)' }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#6366F1" />
+              </svg>
+            </div>
           </div>
-          <button onClick={() => router.push('/dashboard/goals')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
-            View All
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px', textAlign: 'center' }}>Set Your First Goal</h2>
+          <p style={{ fontSize: 14, color: '#6B7280', margin: '0 0 22px', textAlign: 'center', lineHeight: 1.55 }}>
+            Goals are the foundation of your Cadence. Define what matters most and start building real momentum.
+          </p>
+          <button
+            onClick={() => router.push('/dashboard/goals')}
+            style={{
+              width: '100%', background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
+              border: 'none', borderRadius: 12, padding: '14px',
+              color: 'white', fontSize: 15, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
+            }}
+          >
+            Create My First Goal
           </button>
         </div>
-
-        {topPriorities.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '20px 0', color: '#8E8E93' }}>
-            <p style={{ fontSize: 14, margin: 0 }}>No active goals yet.</p>
-            <p style={{ fontSize: 12, margin: '4px 0 0' }}>Add goals to see your priorities here.</p>
+      ) : (
+        <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
+              </svg>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Top Priorities</h2>
+            </div>
+            <button onClick={() => router.push('/dashboard/goals')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
+              View All
+            </button>
           </div>
-        ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {topPriorities.map(goal => (
               <button
@@ -340,8 +360,8 @@ export default function DashboardPage() {
               </button>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* This Week Card */}
       <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>

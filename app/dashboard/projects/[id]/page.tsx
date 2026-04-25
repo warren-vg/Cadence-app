@@ -3,10 +3,10 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
-  getProjectById, saveProject, archiveProject, restoreProject, deleteProject,
-  recalcProgress,
-  type Project, type ProjectTask, type ProjectType, type ProjectStatus,
-} from '@/lib/projectData'
+  getProjectById, getProjectTasks, createProjectTask,
+  toggleProjectTask, updateProject, deleteProject,
+  type DBProject, type DBProjectTask,
+} from '@/lib/db'
 
 interface Goal {
   id: string
@@ -31,11 +31,11 @@ function getCatStyle(cat: string) {
   return CATEGORY_COLORS[cat] || { bg: '#F2F2F7', color: '#8E8E93' }
 }
 
-const TYPE_COLORS: Record<ProjectType, string> = {
-  campaign: '#3B7DFF', study: '#9B59B6', creative: '#EA580C', opportunity: '#16A34A',
+const TYPE_COLORS: Record<DBProject['type'], string> = {
+  campaign: '#3B7DFF', study: '#9B59B6', creative: '#EA580C', opportunity: '#16A34A', business: '#D97706',
 }
 
-const STATUS_STYLES: Record<ProjectStatus, { bg: string; color: string; label: string }> = {
+const STATUS_STYLES: Record<DBProject['status'], { bg: string; color: string; label: string }> = {
   active:    { bg: '#DCFCE7', color: '#16A34A', label: 'active' },
   planning:  { bg: '#EFF6FF', color: '#3B7DFF', label: 'planning' },
   paused:    { bg: '#FFF7ED', color: '#EA580C', label: 'paused' },
@@ -43,7 +43,7 @@ const STATUS_STYLES: Record<ProjectStatus, { bg: string; color: string; label: s
   archived:  { bg: '#F5F5F5', color: '#8E8E93', label: 'archived' },
 }
 
-const TYPE_OPTIONS: { value: ProjectType; label: string }[] = [
+const TYPE_OPTIONS: { value: DBProject['type']; label: string }[] = [
   { value: 'campaign', label: 'Campaign' },
   { value: 'study', label: 'Study' },
   { value: 'creative', label: 'Creative' },
@@ -61,39 +61,49 @@ export default function ProjectDetailPage() {
   const params = useParams<{ id: string }>()
   const id = params.id
 
-  const [project, setProject] = useState<Project | null>(null)
-  const [linkedGoals, setLinkedGoals] = useState<Goal[]>([])
-  const [loading, setLoading] = useState(true)
+  const [project, setProject]     = useState<DBProject | null>(null)
+  const [tasks, setTasks]         = useState<DBProjectTask[]>([])
+  const [linkedGoal, setLinkedGoal] = useState<Goal | null>(null)
+  const [userId, setUserId]       = useState<string | null>(null)
+  const [loading, setLoading]     = useState(true)
 
   // Edit state
-  const [editing, setEditing] = useState(false)
-  const [editTitle, setEditTitle] = useState('')
-  const [editType, setEditType] = useState<ProjectType>('campaign')
+  const [editing, setEditing]         = useState(false)
+  const [editTitle, setEditTitle]     = useState('')
+  const [editType, setEditType]       = useState<DBProject['type']>('campaign')
   const [editTimeline, setEditTimeline] = useState('')
-  const [editNotes, setEditNotes] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [editNotes, setEditNotes]     = useState('')
+  const [saving, setSaving]           = useState(false)
+
+  // Add task state
+  const [showAddTask, setShowAddTask] = useState(false)
+  const [newTaskText, setNewTaskText] = useState('')
+  const [addingTask, setAddingTask]   = useState(false)
 
   const [showArchiveConfirm, setShowArchiveConfirm] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm]   = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-    const p = getProjectById(id)
-    if (!p) { router.push('/dashboard/projects'); return }
-    setProject(p)
-
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+      setUserId(user.id)
 
-      // Load goals linked to this project
-      if ((p.linkedGoalIds || []).length > 0) {
+      const [p, t] = await Promise.all([
+        getProjectById(id),
+        getProjectTasks(id),
+      ])
+      if (!p) { router.push('/dashboard/projects'); return }
+      setProject(p)
+      setTasks(t)
+
+      if (p.linked_goal_id) {
         const { data } = await supabase
           .from('goals')
           .select('id, text, category, progress, status')
-          .in('id', p.linkedGoalIds!)
-        setLinkedGoals(data || [])
+          .eq('id', p.linked_goal_id)
+          .single()
+        if (data) setLinkedGoal(data)
       }
       setLoading(false)
     }
@@ -109,51 +119,63 @@ export default function ProjectDetailPage() {
     setEditing(true)
   }
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!project) return
     setSaving(true)
-    const updated: Project = {
-      ...project,
-      title: editTitle.trim() || project.title,
-      type: editType,
-      timeline: editTimeline.trim(),
-      notes: editNotes.trim(),
-    }
-    saveProject(updated)
-    setProject(updated)
+    const newTitle    = editTitle.trim() || project.title
+    const newTimeline = editTimeline.trim() || null
+    const newNotes    = editNotes.trim() || null
+    const ok = await updateProject(id, { title: newTitle, type: editType, timeline: newTimeline, notes: newNotes })
+    if (ok) setProject(prev => prev ? { ...prev, title: newTitle, type: editType, timeline: newTimeline, notes: newNotes } : prev)
     setSaving(false)
     setEditing(false)
   }
 
-  const toggleTask = (taskId: string) => {
-    if (!project) return
-    const updated: Project = {
-      ...project,
-      tasks: (project.tasks || []).map(t => t.id === taskId ? { ...t, completed: !t.completed } : t),
+  const handleToggleTask = async (task: DBProjectTask) => {
+    const newCompleted = !task.completed
+    setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: newCompleted } : t))
+    const newProgress = await toggleProjectTask(task.id, id, task.completed)
+    if (newProgress !== null) {
+      setProject(prev => prev ? { ...prev, progress: newProgress } : prev)
+    } else {
+      setTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: task.completed } : t))
     }
-    updated.progress = recalcProgress(updated)
-    saveProject(updated)
-    setProject(updated)
   }
 
-  const handleArchive = () => {
-    archiveProject(id)
-    router.push('/dashboard/projects')
+  const handleAddTask = async () => {
+    if (!newTaskText.trim() || !userId) return
+    setAddingTask(true)
+    const created = await createProjectTask(userId, id, newTaskText.trim(), tasks.length)
+    if (created) {
+      setTasks(prev => [...prev, created])
+      const total = tasks.length + 1
+      const done  = tasks.filter(t => t.completed).length
+      setProject(prev => prev ? { ...prev, progress: Math.round((done / total) * 100) } : prev)
+      setNewTaskText('')
+      setShowAddTask(false)
+    }
+    setAddingTask(false)
   }
 
-  const handleRestore = () => {
-    restoreProject(id)
-    const p = getProjectById(id)
-    setProject(p || null)
-    setShowArchiveConfirm(false)
+  const handleArchive = async () => {
+    const updated = await updateProject(id, { status: 'archived' })
+    if (updated) router.push('/dashboard/projects')
   }
 
-  const handleDelete = () => {
-    deleteProject(id)
-    router.push('/dashboard/projects')
+  const handleRestore = async () => {
+    const ok = await updateProject(id, { status: 'active' })
+    if (ok) {
+      setProject(prev => prev ? { ...prev, status: 'active' } : prev)
+      setShowArchiveConfirm(false)
+    }
   }
 
-  if (!mounted || loading || !project) {
+  const handleDelete = async () => {
+    const ok = await deleteProject(id)
+    if (ok) router.push('/dashboard/projects')
+  }
+
+  if (loading || !project) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading...</div>
@@ -161,9 +183,8 @@ export default function ProjectDetailPage() {
     )
   }
 
-  const ss = STATUS_STYLES[project.status]
+  const ss        = STATUS_STYLES[project.status]
   const typeColor = TYPE_COLORS[project.type]
-  const tasks = project.tasks || []
   const completedCount = tasks.filter(t => t.completed).length
 
   return (
@@ -200,42 +221,39 @@ export default function ProjectDetailPage() {
       <div style={{ background: 'white', borderRadius: 16, padding: '18px 20px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Goals</span>
-          {linkedGoals.length > 0 && (
-            <span style={{ fontSize: 12, color: '#8E8E93' }}>{linkedGoals.filter(g => g.progress >= 100).length}/{linkedGoals.length} complete</span>
+          {linkedGoal && (
+            <span style={{ fontSize: 12, color: '#8E8E93' }}>{linkedGoal.progress >= 100 ? '1/1' : '0/1'} complete</span>
           )}
         </div>
-        {linkedGoals.length === 0 ? (
+        {!linkedGoal ? (
           <div style={{ textAlign: 'center', padding: '12px 0', color: '#8E8E93' }}>
             <p style={{ fontSize: 14, margin: '0 0 4px' }}>No goals linked yet.</p>
             <p style={{ fontSize: 12, margin: 0 }}>Open a goal and set its Project in the Details section.</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {linkedGoals.map(goal => {
-              const cs = getCatStyle(goal.category)
+          <button
+            onClick={() => router.push(`/dashboard/goals/${linkedGoal.id}`)}
+            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', width: '100%', fontFamily: 'inherit' }}
+          >
+            {(() => {
+              const cs = getCatStyle(linkedGoal.category)
               return (
-                <button
-                  key={goal.id}
-                  onClick={() => router.push(`/dashboard/goals/${goal.id}`)}
-                  style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', width: '100%', fontFamily: 'inherit' }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>
-                        {goal.text}
-                      </p>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: cs.color, flexShrink: 0 }}>{goal.progress}%</span>
-                    </div>
-                    <div style={{ background: '#F2F2F7', borderRadius: 4, height: 5, overflow: 'hidden', marginBottom: 5 }}>
-                      <div style={{ height: '100%', width: `${goal.progress}%`, background: cs.color, borderRadius: 4 }} />
-                    </div>
-                    <span style={{ fontSize: 11, color: cs.color, background: cs.bg, padding: '2px 7px', borderRadius: 20 }}>{goal.category}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>
+                      {linkedGoal.text}
+                    </p>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: cs.color, flexShrink: 0 }}>{linkedGoal.progress}%</span>
                   </div>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="2.5" strokeLinecap="round" style={{ marginTop: 2, flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
-                </button>
+                  <div style={{ background: '#F2F2F7', borderRadius: 4, height: 5, overflow: 'hidden', marginBottom: 5 }}>
+                    <div style={{ height: '100%', width: `${linkedGoal.progress}%`, background: cs.color, borderRadius: 4 }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: cs.color, background: cs.bg, padding: '2px 7px', borderRadius: 20 }}>{linkedGoal.category}</span>
+                </div>
               )
-            })}
-          </div>
+            })()}
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="2.5" strokeLinecap="round" style={{ marginTop: 2, flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
+          </button>
         )}
       </div>
 
@@ -244,17 +262,7 @@ export default function ProjectDetailPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Tasks</span>
           <button
-            onClick={() => {
-              const text = prompt('New task:')
-              if (!text?.trim()) return
-              const updated: Project = {
-                ...project,
-                tasks: [...(project.tasks || []), { id: `pt${Date.now()}`, text: text.trim(), completed: false }],
-              }
-              updated.progress = recalcProgress(updated)
-              saveProject(updated)
-              setProject(updated)
-            }}
+            onClick={() => setShowAddTask(true)}
             style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 4, padding: 0 }}
           >
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
@@ -268,7 +276,7 @@ export default function ProjectDetailPage() {
             {tasks.map((task, i) => (
               <div
                 key={task.id}
-                onClick={() => toggleTask(task.id)}
+                onClick={() => handleToggleTask(task)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer',
                   paddingTop: i > 0 ? 12 : 0,
@@ -290,6 +298,9 @@ export default function ProjectDetailPage() {
               </div>
             ))}
           </div>
+        )}
+        {tasks.length > 0 && (
+          <p style={{ fontSize: 12, color: '#8E8E93', margin: '12px 0 0' }}>{completedCount}/{tasks.length} completed</p>
         )}
       </div>
 
@@ -355,6 +366,30 @@ export default function ProjectDetailPage() {
         </div>
       )}
 
+      {/* ─── Add Task Modal ─── */}
+      {showAddTask && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }} onClick={() => setShowAddTask(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '20px 16px 36px', width: '100%', maxWidth: 480 }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D1D6', margin: '0 auto 18px' }} />
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Add Task</h3>
+            <input
+              value={newTaskText}
+              onChange={e => setNewTaskText(e.target.value)}
+              placeholder="Task description"
+              autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') handleAddTask() }}
+              style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '12px 14px', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', marginBottom: 14, boxSizing: 'border-box' }}
+            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowAddTask(false)} style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1px solid #E5E5EA', background: 'white', fontSize: 15, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+              <button onClick={handleAddTask} disabled={!newTaskText.trim() || addingTask} style={{ flex: 1, padding: '13px', borderRadius: 12, border: 'none', background: newTaskText.trim() ? '#3B7DFF' : '#D1D1D6', fontSize: 15, fontWeight: 700, color: 'white', cursor: newTaskText.trim() ? 'pointer' : 'default', fontFamily: 'inherit', opacity: addingTask ? 0.6 : 1 }}>
+                {addingTask ? 'Adding…' : 'Add Task'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ─── Edit Project Modal ─── */}
       {editing && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }} onClick={() => setEditing(false)}>
@@ -372,7 +407,7 @@ export default function ProjectDetailPage() {
             <label style={{ fontSize: 12, color: '#8E8E93', display: 'block', marginBottom: 4 }}>Type</label>
             <select
               value={editType}
-              onChange={e => setEditType(e.target.value as ProjectType)}
+              onChange={e => setEditType(e.target.value as DBProject['type'])}
               style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', marginBottom: 14, background: 'white', appearance: 'none', boxSizing: 'border-box' }}
             >
               {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}

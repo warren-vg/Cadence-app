@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { savePriorityStack, saveEnergyBlocks } from '@/lib/db'
 
 interface GoalEntry {
   text: string
@@ -58,36 +59,35 @@ const handleAccept = async () => {
       if (goalsError) console.error('Goals insert error:', goalsError.message)
     }
 
-    // Save energy blocks
+    // Save energy blocks to profiles.energy_blocks JSONB
     const storedEnergy = sessionStorage.getItem('onboarding_energy')
     if (storedEnergy) {
       try {
         const assignments: Record<string, string> = JSON.parse(storedEnergy)
-        const blocksToInsert = Object.entries(assignments).map(([time, type]) => ({
-          user_id: user.id,
-          type,
-          start_time: time,
-          end_time: time,
-          day_of_week: 'Monday',
-        }))
-        if (blocksToInsert.length > 0) {
-          const { error: energyError } = await supabase.from('energy_blocks').insert(blocksToInsert)
-          if (energyError) console.error('Energy blocks insert error:', energyError.message)
-        }
+        await saveEnergyBlocks(user.id, assignments)
       } catch (e) {
         console.error('Energy parse error:', e)
       }
     }
 
-    // Save priority stack
-    if (goals.length > 0) {
-      const priorityInsert = goals.map((g, i) => ({
-        user_id: user.id,
-        category: g.category,
-        rank: i + 1,
-      }))
-      const { error: priorityError } = await supabase.from('priority_stack').insert(priorityInsert)
-      if (priorityError) console.error('Priority stack insert error:', priorityError.message)
+    // Save priority stack to profiles.priority_stack JSONB
+    const priorityCategories = goals
+      .map(g => g.category)
+      .filter((c, i, arr) => arr.indexOf(c) === i)
+    await savePriorityStack(user.id, priorityCategories)
+
+    // Save work schedule from session storage
+    const storedWorkSchedule = sessionStorage.getItem('onboarding_work_schedule')
+    if (storedWorkSchedule) {
+      try {
+        const ws = JSON.parse(storedWorkSchedule)
+        await supabase
+          .from('profiles')
+          .update({ work_schedule: ws, timezone: ws.timezone })
+          .eq('id', user.id)
+      } catch (e) {
+        console.error('Work schedule parse error:', e)
+      }
     }
 
     // Mark onboarding complete
@@ -99,8 +99,9 @@ const handleAccept = async () => {
 
     sessionStorage.removeItem('onboarding_goals')
     sessionStorage.removeItem('onboarding_energy')
+    sessionStorage.removeItem('onboarding_work_schedule')
 
-    router.push('/dashboard')
+    router.push('/onboarding/complete')
   } catch (err) {
     console.error('Onboarding save error:', err)
     setSaving(false)
@@ -120,11 +121,11 @@ const handleAccept = async () => {
 
       {/* Progress Bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        {[1, 2, 3].map(step => (
-          <div key={step} style={{ flex: 1, height: 4, borderRadius: 2, background: '#3B7DFF' }} />
+        {[1, 2, 3, 4, 5].map(step => (
+          <div key={step} style={{ flex: 1, height: 4, borderRadius: 2, background: step <= 4 ? '#3B7DFF' : '#D1D1D6' }} />
         ))}
       </div>
-      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 3 of 3</p>
+      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 4 of 5</p>
 
       {/* Heading */}
       <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', marginBottom: 8 }}>

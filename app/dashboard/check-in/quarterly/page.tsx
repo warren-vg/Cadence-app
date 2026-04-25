@@ -21,44 +21,14 @@ const QUARTER_DATES: Record<Quarter, { label: string; months: string; year: numb
   Q4: { label: 'Q4 2026', months: 'Oct – Dec', year: 2026 },
 }
 
-const QUARTER_THEMES: Record<Quarter, string> = {
-  Q1: 'Foundation & Systems',
-  Q2: 'Growth & Execution',
-  Q3: 'Scale & Optimize',
-  Q4: 'Reflect & Accelerate',
-}
-
-const QUARTER_FOCUS: Record<Quarter, string> = {
-  Q1: 'Build financial stability and establish routines',
-  Q2: 'Launch consulting brand and creative projects',
-  Q3: 'Scale what works, optimize time and energy',
-  Q4: 'Year-end push, reflect and plan for 2027',
-}
-
 const NEXT_QUARTER: Record<Quarter, Quarter> = { Q1: 'Q2', Q2: 'Q3', Q3: 'Q4', Q4: 'Q1' }
 
-const PIVOTS: Record<Quarter, string[]> = {
-  Q1: [
-    'Move "Short story collection" to Q3 — Creative work needs more focus time after consulting brand stabilizes',
-    'Increase health goal target: Running habit is solid — consider training for half marathon',
-    'Add new focus for Q3: Build professional network through consulting work',
-  ],
-  Q2: [
-    'Move "Short story collection" to Q3 — Creative work needs more focus time after consulting brand stabilizes',
-    'Increase health goal target: Running habit is solid — consider training for half marathon',
-    'Add new focus for Q3: Build professional network through consulting work',
-  ],
-  Q3: [
-    'Move pending creative goals to Q4 — focus on scaling revenue first',
-    'Consolidate health habits into a single daily routine',
-    'Begin 2027 goal planning in November',
-  ],
-  Q4: [
-    'Archive goals with less than 20% progress — clear the slate for 2027',
-    'Run full year retrospective before setting Q1 goals',
-    'Schedule a planning retreat in December',
-  ],
+const CATEGORY_COLORS: Record<string, string> = {
+  Career: '#3B7DFF', Finance: '#16A34A', Health: '#EC4899',
+  Creative: '#EA580C', Travel: '#0284C7', Relationships: '#9333EA',
+  'Personal Growth': '#9333EA', Education: '#3B7DFF', Business: '#D97706', Community: '#15803D',
 }
+function getCatColor(cat: string) { return CATEGORY_COLORS[cat] || '#8E8E93' }
 
 function getCurrentQuarter(): Quarter {
   const m = new Date().getMonth()
@@ -68,29 +38,104 @@ function getCurrentQuarter(): Quarter {
   return 'Q4'
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  Career: '#3B7DFF', Finance: '#16A34A', Health: '#EC4899',
-  Creative: '#EA580C', Travel: '#0284C7', Relationships: '#9333EA',
-  'Personal Growth': '#9333EA', Education: '#3B7DFF', Business: '#D97706',
+// ─── Rules-based generators ───────────────────────────────────────────────────
+
+function calcQuarterlyScore(qGoals: Goal[]): number {
+  if (qGoals.length === 0) return 0
+  return Math.round(qGoals.reduce((s, g) => s + g.progress, 0) / qGoals.length)
 }
 
-function getCatColor(cat: string) { return CATEGORY_COLORS[cat] || '#8E8E93' }
+function generatePivotRecommendations(qGoals: Goal[]): string[] {
+  const pivots: string[] = []
+
+  const struggling = qGoals.filter(g => g.progress < 30 && g.status === 'active')
+  struggling.slice(0, 2).forEach(g => {
+    const title = g.text.length > 40 ? g.text.slice(0, 40) + '…' : g.text
+    pivots.push(`Break "${title}" into smaller milestones — at ${g.progress}%, needs a clearer path forward`)
+  })
+
+  const nearDone = qGoals.filter(g => g.progress >= 80 && g.progress < 100)
+  nearDone.slice(0, 1).forEach(g => {
+    const title = g.text.length > 40 ? g.text.slice(0, 40) + '…' : g.text
+    pivots.push(`Final push on "${title}" — at ${g.progress}%, this is closeable next quarter`)
+  })
+
+  const catMap: Record<string, number[]> = {}
+  qGoals.forEach(g => {
+    if (!catMap[g.category]) catMap[g.category] = []
+    catMap[g.category].push(g.progress)
+  })
+  const catAvgs = Object.entries(catMap)
+    .map(([cat, progs]) => ({ cat, avg: Math.round(progs.reduce((s, p) => s + p, 0) / progs.length) }))
+    .sort((a, b) => a.avg - b.avg)
+  if (catAvgs.length > 0 && catAvgs[0].avg < 50) {
+    pivots.push(`Schedule dedicated blocks for ${catAvgs[0].cat} goals — lowest category average at ${catAvgs[0].avg}%`)
+  }
+
+  if (pivots.length === 0) {
+    pivots.push('Maintain your momentum — consistent progress across all areas this quarter')
+    pivots.push('Review your top goal and raise the bar: push for 100% completion next quarter')
+  }
+
+  return pivots.slice(0, 3)
+}
+
+function generateNextQuarterTheme(qGoals: Goal[], nq: Quarter): { theme: string; focus: string } {
+  const score = calcQuarterlyScore(qGoals)
+  const catMap: Record<string, number[]> = {}
+  qGoals.forEach(g => {
+    if (!catMap[g.category]) catMap[g.category] = []
+    catMap[g.category].push(g.progress)
+  })
+  const catAvgs = Object.entries(catMap)
+    .map(([cat, progs]) => ({ cat, avg: Math.round(progs.reduce((s, p) => s + p, 0) / progs.length) }))
+    .sort((a, b) => b.avg - a.avg)
+  const strongCat = catAvgs[0]?.cat
+  const weakCat   = catAvgs[catAvgs.length - 1]?.cat
+
+  if (score >= 70) {
+    return {
+      theme: 'Scale & Accelerate',
+      focus: strongCat
+        ? `Build on ${strongCat} momentum${weakCat && weakCat !== strongCat ? `, while strengthening ${weakCat}` : ''}`
+        : `Leverage strong execution for ${QUARTER_DATES[nq].months}`,
+    }
+  } else if (score >= 40) {
+    return {
+      theme: 'Focus & Execute',
+      focus: weakCat
+        ? `Double down on ${weakCat} goals and build consistent execution habits`
+        : 'Tighten your focus and eliminate low-priority distractions',
+    }
+  } else {
+    return {
+      theme: 'Reset & Build',
+      focus: 'Simplify your goal list, rebuild foundational habits, and set realistic weekly targets',
+    }
+  }
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function QuarterlyReviewPage() {
   const router = useRouter()
-  const [activeQ] = useState<Quarter>(getCurrentQuarter())
-  const [goals, setGoals] = useState<Goal[]>([])
+  const [activeQ]  = useState<Quarter>(getCurrentQuarter())
+  const [userId, setUserId]   = useState<string | null>(null)
+  const [goals, setGoals]     = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
-  const [workedWell, setWorkedWell] = useState('')
+  const [workedWell, setWorkedWell]   = useState('')
   const [needsChange, setNeedsChange] = useState('')
-  const [generated, setGenerated] = useState(false)
-  const [generating, setGenerating] = useState(false)
-  const [accepted, setAccepted] = useState(false)
+  const [generated, setGenerated]     = useState(false)
+  const [generating, setGenerating]   = useState(false)
+  const [accepted, setAccepted]       = useState(false)
+  const [pivots, setPivots]           = useState<string[]>([])
+  const [nextTheme, setNextTheme]     = useState<{ theme: string; focus: string } | null>(null)
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+      setUserId(user.id)
       const { data } = await supabase
         .from('goals')
         .select('id, text, category, status, progress, quarter')
@@ -102,21 +147,40 @@ export default function QuarterlyReviewPage() {
     load()
   }, [])
 
-  const qGoals = goals.filter(g => g.quarter === activeQ || g.status === 'active')
-  const completed = qGoals.filter(g => g.progress >= 100).length
-  const avgProgress = qGoals.length > 0
-    ? Math.round(qGoals.reduce((s, g) => s + g.progress, 0) / qGoals.length)
-    : 0
-  const momentum = avgProgress >= 70 ? 'High' : avgProgress >= 40 ? 'Medium' : 'Low'
-  const momentumColor = momentum === 'High' ? '#34C759' : momentum === 'Medium' ? '#FF9500' : '#FF3B30'
+  const qGoals     = goals.filter(g => g.quarter === QUARTER_DATES[activeQ].label || g.status === 'active')
+  const completed  = qGoals.filter(g => g.progress >= 100).length
+  const avgProgress = calcQuarterlyScore(qGoals)
+  const momentum   = avgProgress >= 70 ? 'High' : avgProgress >= 40 ? 'Medium' : 'Low'
+  const nq         = NEXT_QUARTER[activeQ]
 
   const handleGenerate = () => {
     setGenerating(true)
-    setTimeout(() => { setGenerating(false); setGenerated(true) }, 1800)
+    setTimeout(() => {
+      setPivots(generatePivotRecommendations(qGoals))
+      setNextTheme(generateNextQuarterTheme(qGoals, nq))
+      setGenerating(false)
+      setGenerated(true)
+    }, 1400)
   }
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
+    if (!userId) return
     setAccepted(true)
+
+    await supabase.from('quarterly_reviews').insert({
+      user_id:                userId,
+      quarter:                QUARTER_DATES[activeQ].label,
+      score:                  avgProgress,
+      goals_completed:        completed,
+      goals_total:            qGoals.length,
+      worked_well:            workedWell,
+      needs_change:           needsChange,
+      pivot_recommendations:  pivots,
+      next_quarter_theme:     nextTheme?.theme || '',
+    }).then(({ error }) => {
+      if (error) console.warn('quarterly_reviews insert:', error.message)
+    })
+
     setTimeout(() => router.push('/dashboard/plan/quarterly'), 1200)
   }
 
@@ -127,8 +191,6 @@ export default function QuarterlyReviewPage() {
       </div>
     )
   }
-
-  const nq = NEXT_QUARTER[activeQ]
 
   return (
     <div style={{ padding: '0 0 32px' }}>
@@ -151,17 +213,14 @@ export default function QuarterlyReviewPage() {
       <div style={{ padding: '16px' }}>
 
         {/* Quarter Performance Banner */}
-        <div style={{
-          background: 'linear-gradient(135deg, #6B21A8 0%, #9B59B6 100%)',
-          borderRadius: 20, padding: '20px', marginBottom: 14, color: 'white',
-        }}>
+        <div style={{ background: 'linear-gradient(135deg, #6B21A8 0%, #9B59B6 100%)', borderRadius: 20, padding: '20px', marginBottom: 14, color: 'white' }}>
           <p style={{ fontSize: 13, opacity: 0.8, margin: '0 0 4px' }}>Quarter Performance</p>
           <p style={{ fontSize: 48, fontWeight: 800, margin: '0 0 14px', lineHeight: 1 }}>{avgProgress}%</p>
           <div style={{ display: 'flex', gap: 20 }}>
             {[
               { label: 'Goals Complete', value: `${completed}/${qGoals.length}` },
-              { label: 'Avg Progress', value: `${avgProgress}%` },
-              { label: 'Momentum', value: momentum },
+              { label: 'Avg Progress',   value: `${avgProgress}%` },
+              { label: 'Momentum',       value: momentum },
             ].map(s => (
               <div key={s.label}>
                 <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 1px' }}>{s.value}</p>
@@ -207,12 +266,7 @@ export default function QuarterlyReviewPage() {
               onChange={e => setWorkedWell(e.target.value)}
               placeholder="Key wins and successful strategies..."
               rows={3}
-              style={{
-                width: '100%', border: '1px solid #E5E5EA', borderRadius: 10,
-                padding: '10px 12px', fontSize: 14, color: '#1C1C1E',
-                background: '#F9F9FB', fontFamily: 'inherit', resize: 'none',
-                outline: 'none', boxSizing: 'border-box',
-              }}
+              style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', background: '#F9F9FB', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
           <div>
@@ -222,12 +276,7 @@ export default function QuarterlyReviewPage() {
               onChange={e => setNeedsChange(e.target.value)}
               placeholder="Adjustments and pivots to consider..."
               rows={3}
-              style={{
-                width: '100%', border: '1px solid #E5E5EA', borderRadius: 10,
-                padding: '10px 12px', fontSize: 14, color: '#1C1C1E',
-                background: '#F9F9FB', fontFamily: 'inherit', resize: 'none',
-                outline: 'none', boxSizing: 'border-box',
-              }}
+              style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', background: '#F9F9FB', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
         </div>
@@ -262,58 +311,50 @@ export default function QuarterlyReviewPage() {
           </button>
         )}
 
-        {/* AI-Generated Results */}
-        {generated && (
+        {/* Generated Results */}
+        {generated && nextTheme && (
           <>
             {/* Recommended Pivots */}
             <div style={{ background: 'white', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Recommended Pivot</h3>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Recommended Pivots</h3>
               </div>
               <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {PIVOTS[activeQ].map((p, i) => (
-                  <li key={i} style={{ fontSize: 13, color: '#3C3C43', lineHeight: 1.5 }}>
-                    <span style={{ fontWeight: 600 }}>{p.split(':')[0]}:</span>
-                    {p.includes(':') ? p.slice(p.indexOf(':') + 1) : ''}
-                  </li>
-                ))}
+                {pivots.map((p, i) => {
+                  const colonIdx = p.indexOf(' —')
+                  return (
+                    <li key={i} style={{ fontSize: 13, color: '#3C3C43', lineHeight: 1.5 }}>
+                      {colonIdx > 0 ? (
+                        <><span style={{ fontWeight: 600 }}>{p.slice(0, colonIdx)}</span>{p.slice(colonIdx)}</>
+                      ) : p}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
 
             {/* New Quarter Theme */}
-            <div style={{
-              background: 'linear-gradient(135deg, #6B21A8 0%, #9B59B6 100%)',
-              borderRadius: 18, padding: '18px 20px', marginBottom: 14, color: 'white',
-            }}>
-              <p style={{ fontSize: 11, opacity: 0.8, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}>New {QUARTER_DATES[nq].label} Theme</p>
-              <p style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>{QUARTER_THEMES[nq]}</p>
-              <p style={{ fontSize: 13, opacity: 0.85, margin: 0 }}>{QUARTER_FOCUS[nq]}</p>
+            <div style={{ background: 'linear-gradient(135deg, #6B21A8 0%, #9B59B6 100%)', borderRadius: 18, padding: '18px 20px', marginBottom: 14, color: 'white' }}>
+              <p style={{ fontSize: 11, opacity: 0.8, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {QUARTER_DATES[nq].label} Theme
+              </p>
+              <p style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>{nextTheme.theme}</p>
+              <p style={{ fontSize: 13, opacity: 0.85, margin: 0 }}>{nextTheme.focus}</p>
             </div>
 
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
               <button
                 onClick={() => router.push('/dashboard/plan/quarterly')}
-                style={{
-                  flex: 1, padding: '13px', borderRadius: 12,
-                  border: '1.5px solid #E5E5EA', background: 'white',
-                  fontSize: 14, fontWeight: 600, color: '#1C1C1E',
-                  cursor: 'pointer', fontFamily: 'inherit',
-                }}
+                style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid #E5E5EA', background: 'white', fontSize: 14, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Keep Current Plan
               </button>
               <button
                 onClick={handleAccept}
                 disabled={accepted}
-                style={{
-                  flex: 1, padding: '13px', borderRadius: 12,
-                  background: accepted ? '#34C759' : '#3B7DFF',
-                  border: 'none', fontSize: 14, fontWeight: 700, color: 'white',
-                  cursor: accepted ? 'default' : 'pointer', fontFamily: 'inherit',
-                  transition: 'background 0.3s',
-                }}
+                style={{ flex: 1, padding: '13px', borderRadius: 12, background: accepted ? '#34C759' : '#3B7DFF', border: 'none', fontSize: 14, fontWeight: 700, color: 'white', cursor: accepted ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'background 0.3s' }}
               >
                 {accepted ? 'Applied ✓' : 'Accept Pivot'}
               </button>
@@ -321,12 +362,7 @@ export default function QuarterlyReviewPage() {
 
             <button
               onClick={() => router.push('/dashboard/plan/quarterly')}
-              style={{
-                width: '100%', padding: '13px', borderRadius: 12,
-                background: '#F2F2F7', border: 'none',
-                fontSize: 14, fontWeight: 600, color: '#3C3C43',
-                cursor: 'pointer', fontFamily: 'inherit',
-              }}
+              style={{ width: '100%', padding: '13px', borderRadius: 12, background: '#F2F2F7', border: 'none', fontSize: 14, fontWeight: 600, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Rebuild Next 60 Days
             </button>

@@ -49,7 +49,7 @@ export default function OnboardingEnergyPage() {
 
       {/* Back */}
       <button
-        onClick={() => router.push('/onboarding/goals')}
+        onClick={() => router.push('/onboarding/work-schedule')}
         style={{ background: 'none', border: 'none', fontSize: 16, color: '#3C3C43', cursor: 'pointer', padding: 0, marginBottom: 20, display: 'flex', alignItems: 'center', gap: 6 }}
       >
         ← Back
@@ -57,11 +57,11 @@ export default function OnboardingEnergyPage() {
 
       {/* Progress Bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        {[1, 2, 3].map(step => (
-          <div key={step} style={{ flex: 1, height: 4, borderRadius: 2, background: step <= 2 ? '#3B7DFF' : '#D1D1D6' }} />
+        {[1, 2, 3, 4, 5].map(step => (
+          <div key={step} style={{ flex: 1, height: 4, borderRadius: 2, background: step <= 3 ? '#3B7DFF' : '#D1D1D6' }} />
         ))}
       </div>
-      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 2 of 3</p>
+      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 3 of 5</p>
 
       {/* Heading */}
       <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', marginBottom: 8 }}>

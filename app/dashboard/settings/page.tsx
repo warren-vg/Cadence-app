@@ -18,21 +18,20 @@ interface NotificationPrefs {
 
 type ThemeOption = 'automatic' | 'light' | 'dark'
 
-const PREFS_KEY = 'cadence_settings_prefs'
-
-function loadPrefs(): { notifications: NotificationPrefs; theme: ThemeOption } {
-  try {
-    const raw = localStorage.getItem(PREFS_KEY)
-    if (raw) return JSON.parse(raw)
-  } catch { /* ignore */ }
-  return {
-    notifications: { weeklyReviewReminder: true, dailyPlanReminder: true, goalProgressUpdates: false },
-    theme: 'automatic',
-  }
+const DEFAULT_NOTIFS: NotificationPrefs = {
+  weeklyReviewReminder: true, dailyPlanReminder: true, goalProgressUpdates: false,
 }
 
-function savePrefs(prefs: { notifications: NotificationPrefs; theme: ThemeOption }) {
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)) } catch { /* ignore */ }
+function loadTheme(): ThemeOption {
+  try {
+    const t = localStorage.getItem('cadence_theme')
+    if (t === 'light' || t === 'dark' || t === 'automatic') return t
+  } catch { /* ignore */ }
+  return 'automatic'
+}
+
+function saveTheme(t: ThemeOption) {
+  try { localStorage.setItem('cadence_theme', t) } catch { /* ignore */ }
 }
 
 function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
@@ -138,9 +137,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true)
-    const prefs = loadPrefs()
-    setNotifications(prefs.notifications)
-    setTheme(prefs.theme)
+    setTheme(loadTheme())
 
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -148,12 +145,13 @@ export default function SettingsPage() {
 
       const { data } = await supabase
         .from('profiles')
-        .select('id, username, avatar_url')
+        .select('id, username, avatar_url, notifications')
         .eq('id', user.id)
         .single()
 
       setProfile({ id: user.id, username: data?.username || '', email: user.email || '', avatar_url: data?.avatar_url || null })
       setName(data?.username || '')
+      setNotifications((data?.notifications as NotificationPrefs | null) ?? DEFAULT_NOTIFS)
       setLoading(false)
     }
     load()
@@ -163,8 +161,8 @@ export default function SettingsPage() {
     if (!profile) return
     setSaving(true)
     try {
-      await supabase.from('profiles').update({ username: name.trim() }).eq('id', profile.id)
-      savePrefs({ notifications, theme })
+      await supabase.from('profiles').update({ username: name.trim(), notifications }).eq('id', profile.id)
+      saveTheme(theme)
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch { /* ignore */ } finally {
@@ -179,8 +177,30 @@ export default function SettingsPage() {
 
   const handleExportData = async () => {
     if (!profile) return
-    const { data: goals } = await supabase.from('goals').select('*').eq('user_id', profile.id)
-    const blob = new Blob([JSON.stringify({ profile: { name, email: profile.email }, goals }, null, 2)], { type: 'application/json' })
+    const uid = profile.id
+    const [
+      { data: goals },
+      { data: tasks },
+      { data: projects },
+      { data: scheduleItems },
+      { data: quarterlyReviews },
+    ] = await Promise.all([
+      supabase.from('goals').select('*').eq('user_id', uid),
+      supabase.from('tasks').select('*').eq('user_id', uid),
+      supabase.from('projects').select('*').eq('user_id', uid),
+      supabase.from('schedule_items').select('*').eq('user_id', uid),
+      supabase.from('quarterly_reviews').select('*').eq('user_id', uid),
+    ])
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      profile: { name, email: profile.email },
+      goals: goals || [],
+      tasks: tasks || [],
+      projects: projects || [],
+      scheduleItems: scheduleItems || [],
+      quarterlyReviews: quarterlyReviews || [],
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -346,6 +366,13 @@ export default function SettingsPage() {
           sublabel="Adjust your daily schedule"
           right={<ChevronRight />}
           onClick={() => router.push('/onboarding/energy')}
+        />
+        <RowItem
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>}
+          label="Work Schedule"
+          sublabel="Set your available working hours"
+          right={<ChevronRight />}
+          onClick={() => router.push('/onboarding/work-schedule')}
           noBorder
         />
       </Card>

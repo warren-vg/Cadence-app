@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { generateGoalDetails, type Milestone } from '../_utils/generate'
-import { getProjects, linkGoalToProject, unlinkGoalFromProject, type Project } from '@/lib/projectData'
+import { getProjects, updateProject, DEFAULT_WORK_SCHEDULE, type DBProject } from '@/lib/db'
+import { generateTasksForGoal } from '@/lib/goalTemplates'
 import { calcGoalProgress } from '@/lib/planData'
 
 interface Goal {
@@ -149,25 +150,29 @@ export default function GoalDetailPage() {
   const [editingSteps, setEditingSteps]     = useState(false)
   const [editStepsVal, setEditStepsVal]     = useState('')
 
+  const [userId, setUserId]                 = useState<string | null>(null)
+
   // Details inline edit
   const [editingDetails, setEditingDetails] = useState(false)
   const [editCategory, setEditCategory]     = useState('')
   const [editQuarter, setEditQuarter]       = useState('')
   const [editProjectId, setEditProjectId]   = useState<string>('')
-  const [projects, setProjects]             = useState<Project[]>([])
+  const [projects, setProjects]             = useState<DBProject[]>([])
+  const [linkedProject, setLinkedProject]   = useState<DBProject | null>(null)
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting]     = useState(false)
   const [saving, setSaving]         = useState(false)
 
   useEffect(() => {
-    setProjects(getProjects().filter(p => p.status !== 'archived'))
-  }, [])
-
-  useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+      setUserId(user.id)
+
+      const projs = await getProjects(user.id)
+      setProjects(projs.filter(p => p.status !== 'archived'))
+      setLinkedProject(projs.find(p => p.linked_goal_id === id) || null)
 
       const { data, error } = await supabase
         .from('goals')
@@ -260,8 +265,27 @@ export default function GoalDetailPage() {
   }
 
   const updateStatus = async (newStatus: string) => {
+    const prevStatus = goal?.status
     setGoal(prev => prev ? { ...prev, status: newStatus } : prev)
     await supabase.from('goals').update({ status: newStatus }).eq('id', id)
+
+    if (newStatus === 'active' && prevStatus !== 'active' && goal && userId) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('energy_blocks, work_schedule')
+          .eq('id', userId)
+          .single()
+        const energyBlocks  = (profile?.energy_blocks  as Record<string, string>) || {}
+        const workSchedule  = profile?.work_schedule || DEFAULT_WORK_SCHEDULE
+        const generated     = generateTasksForGoal(goal, energyBlocks, workSchedule, new Date())
+        if (generated.length > 0) {
+          await supabase.from('tasks').insert(generated.map(t => ({ ...t, user_id: userId })))
+        }
+      } catch (e) {
+        console.warn('Task generation failed:', e)
+      }
+    }
   }
 
   const deleteGoal = async () => {
@@ -530,8 +554,7 @@ export default function GoalDetailPage() {
               onClick={() => {
                 setEditCategory(goal.category)
                 setEditQuarter(goal.quarter || 'Q2 2026')
-                const linked = getProjects().find(p => (p.linkedGoalIds || []).includes(id))
-                setEditProjectId(linked?.id || '')
+                setEditProjectId(linkedProject?.id || '')
                 setEditingDetails(true)
               }}
               style={actionBtnStyle}
@@ -611,13 +634,17 @@ export default function GoalDetailPage() {
                   setGoal(prev => prev ? { ...prev, category: editCategory, quarter: editQuarter } : prev)
                   await persist({ category: editCategory, quarter: editQuarter })
 
-                  // Handle project linking
-                  const prevLinked = getProjects().find(p => (p.linkedGoalIds || []).includes(id))
-                  if (prevLinked && prevLinked.id !== editProjectId) {
-                    unlinkGoalFromProject(prevLinked.id, id)
+                  // Handle project linking via Supabase
+                  if (linkedProject && linkedProject.id !== editProjectId) {
+                    await updateProject(linkedProject.id, { linked_goal_id: null })
+                    setLinkedProject(null)
                   }
-                  if (editProjectId) {
-                    linkGoalToProject(editProjectId, id)
+                  if (editProjectId && editProjectId !== linkedProject?.id) {
+                    await updateProject(editProjectId, { linked_goal_id: id })
+                    setLinkedProject(projects.find(p => p.id === editProjectId) || null)
+                  } else if (!editProjectId && linkedProject) {
+                    await updateProject(linkedProject.id, { linked_goal_id: null })
+                    setLinkedProject(null)
                   }
 
                   setSaving(false)
@@ -660,7 +687,7 @@ export default function GoalDetailPage() {
                 <span style={{ fontSize: 14, color: '#8E8E93' }}>Project</span>
               </div>
               <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>
-                {getProjects().find(p => (p.linkedGoalIds || []).includes(id))?.title || '—'}
+                {linkedProject?.title || '—'}
               </span>
             </div>
           </div>
