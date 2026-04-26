@@ -2,11 +2,11 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { toDateStr, getMonday, formatTime } from '@/lib/planData'
 import {
-  toDateStr, getMonday, getTasksForDate, getWeekSummary, getMomentumScore,
-  toggleTask, formatTime,
-  type PlanTask,
-} from '@/lib/planData'
+  getTasksForDate, getTasksForWeek, toggleTask as dbToggleTask,
+  type DBTask,
+} from '@/lib/db'
 
 interface Goal {
   id: string
@@ -92,57 +92,62 @@ export default function DashboardPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [goals, setGoals] = useState<Goal[]>([])
-  const [todayTasks, setTodayTasks] = useState<PlanTask[]>([])
-  const [momentumScore, setMomentumScore] = useState(0)
-  const [weekSummary, setWeekSummary] = useState({ totalTasks: 0, completedTasks: 0, totalHours: 0 })
+  const [todayTasks, setTodayTasks] = useState<DBTask[]>([])
+  const [weekTasks, setWeekTasks] = useState<DBTask[]>([])
   const [loading, setLoading] = useState(true)
   const [greeting, setGreeting] = useState('')
   const [dateLabel, setDateLabel] = useState('')
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
 
   useEffect(() => {
     setGreeting(getGreeting())
     setDateLabel(getDateLabel())
 
-    const loadPlanData = () => {
-      const todayStr = toDateStr(new Date())
-      const tasks = getTasksForDate(todayStr)
-      setTodayTasks(tasks)
-      setMomentumScore(getMomentumScore())
-      const monday = getMonday(new Date())
-      setWeekSummary(getWeekSummary(monday))
-    }
-
-    const loadSupabase = async () => {
+    const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const [{ data: profileData }, { data: goalsData }] = await Promise.all([
+      const todayStr = toDateStr(new Date())
+      const monday   = getMonday(new Date())
+
+      const [{ data: profileData }, { data: goalsData }, todayData, weekData] = await Promise.all([
         supabase.from('profiles').select('username, avatar_url').eq('id', user.id).single(),
         supabase.from('goals').select('*').eq('user_id', user.id).order('priority', { ascending: true }),
+        getTasksForDate(user.id, todayStr),
+        getTasksForWeek(user.id, monday),
       ])
 
       setProfile(profileData)
       setGoals(goalsData || [])
+      setTodayTasks(todayData)
+      setWeekTasks(weekData)
       setLoading(false)
     }
 
-    loadPlanData()
-    loadSupabase()
+    load()
   }, [])
 
-  const handleToggleTask = (id: string) => {
-    const updated = toggleTask(id)
-    const todayStr = toDateStr(new Date())
-    setTodayTasks(updated.filter(t => t.date === todayStr).sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime)))
-    setMomentumScore(getMomentumScore())
-    const monday = getMonday(new Date())
-    setWeekSummary(getWeekSummary(monday))
+  const handleToggleTask = async (task: DBTask) => {
+    setTodayTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t))
+    setWeekTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t))
+    const ok = await dbToggleTask(task.id, task.completed)
+    if (!ok) {
+      setTodayTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: task.completed } : t))
+      setWeekTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: task.completed } : t))
+    }
   }
 
   const activeGoals = goals.filter(g => g.status === 'active')
   const topPriorities = activeGoals.slice(0, 3)
   const completedToday = todayTasks.filter(t => t.completed).length
   const totalToday = todayTasks.length
+  const completedInWeek = weekTasks.filter(t => t.completed).length
+  const momentumScore = weekTasks.length > 0 ? Math.round((completedInWeek / weekTasks.length) * 100) : 0
+  const weekSummary = {
+    totalTasks:     weekTasks.length,
+    completedTasks: completedInWeek,
+    totalHours:     Math.round(weekTasks.reduce((s, t) => s + t.duration, 0) * 10) / 10,
+  }
 
   if (loading) {
     return (
@@ -221,7 +226,7 @@ export default function DashboardPage() {
                   }}
                 >
                   <button
-                    onClick={() => handleToggleTask(task.id)}
+                    onClick={() => handleToggleTask(task)}
                     style={{
                       width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                       background: task.completed ? 'white' : 'transparent',
@@ -244,7 +249,7 @@ export default function DashboardPage() {
                       {task.text}
                     </p>
                   </div>
-                  <span style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>{formatTime(task.scheduledTime)}</span>
+                  <span style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>{formatTime(task.scheduled_time)}</span>
                 </div>
               )
             })}
@@ -447,7 +452,7 @@ export default function DashboardPage() {
 
       {/* FAB */}
       <button
-        onClick={() => router.push('/dashboard/goals')}
+        onClick={() => setShowQuickAdd(true)}
         style={{
           position: 'fixed', bottom: 80, right: 20, width: 52, height: 52, borderRadius: '50%',
           background: '#3B7DFF', border: 'none', cursor: 'pointer',
@@ -459,6 +464,81 @@ export default function DashboardPage() {
           <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </button>
+
+      {/* Quick Add Modal */}
+      {showQuickAdd && (
+        <div
+          onClick={() => setShowQuickAdd(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'flex-end' }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{ width: '100%', background: 'white', borderRadius: '20px 20px 0 0', padding: '0 16px 40px' }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 8 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#E5E5EA' }} />
+            </div>
+            <p style={{ fontSize: 13, color: '#8E8E93', textAlign: 'center', margin: '0 0 16px' }}>What would you like to add?</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {[
+                {
+                  label: 'New Project',
+                  sub: 'Track a campaign, study, or creative work',
+                  bg: '#EFF6FF', color: '#3B7DFF',
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="3" width="6" height="6" rx="1"/><rect x="2" y="15" width="6" height="6" rx="1"/>
+                      <rect x="10" y="3" width="12" height="6" rx="1"/><rect x="10" y="15" width="12" height="6" rx="1"/>
+                    </svg>
+                  ),
+                  onClick: () => { setShowQuickAdd(false); router.push('/dashboard/projects') },
+                },
+                {
+                  label: 'New Goal',
+                  sub: 'Add a goal to your priorities',
+                  bg: '#F5F3FF', color: '#8B5CF6',
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="1" fill="#8B5CF6"/>
+                    </svg>
+                  ),
+                  onClick: () => { setShowQuickAdd(false); router.push('/dashboard/goals') },
+                },
+                {
+                  label: 'New Task',
+                  sub: 'Add a task to your daily plan',
+                  bg: '#F0FFF4', color: '#16A34A',
+                  icon: (
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  ),
+                  onClick: () => { setShowQuickAdd(false); router.push(`/dashboard/plan/daily?date=${toDateStr(new Date())}`) },
+                },
+              ].map(item => (
+                <button
+                  key={item.label}
+                  onClick={item.onClick}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    padding: '14px 16px', borderRadius: 16,
+                    background: 'white', border: '0.5px solid #E5E5EA',
+                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
+                  }}
+                >
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {item.icon}
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>{item.label}</p>
+                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>{item.sub}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

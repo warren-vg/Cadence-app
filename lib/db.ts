@@ -521,6 +521,27 @@ export async function getFriendGoals(friendId: string): Promise<Array<{
   return data ?? []
 }
 
+// ─── Goal CRUD ────────────────────────────────────────────────────────────────
+
+export async function createGoal(
+  userId: string,
+  goal: { text: string; category: string; status: string; priority: number; progress: number; notes?: string | null }
+): Promise<{ id: string; text: string; category: string; status: string; priority: number; progress: number; quarter?: string | null; refined_goal?: string | null } | null> {
+  const { data, error } = await supabase
+    .from('goals')
+    .insert({ ...goal, user_id: userId })
+    .select()
+    .single()
+  if (error) { console.error('createGoal:', error.message); return null }
+  return data
+}
+
+export async function cancelFriendRequest(requestId: string): Promise<boolean> {
+  const { error } = await supabase.from('friendships').delete().eq('id', requestId)
+  if (error) { console.error('cancelFriendRequest:', error.message); return false }
+  return true
+}
+
 // ─── Work Schedule Helpers ────────────────────────────────────────────────────
 
 export function isWorkDay(date: Date, workSchedule: WorkSchedule): boolean {

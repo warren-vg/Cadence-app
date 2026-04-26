@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { createGoal } from '@/lib/db'
 
 type TabType = 'inbox' | 'active' | 'parked' | 'archived'
 
@@ -199,17 +200,31 @@ function GoalCard({
   )
 }
 
+const GOAL_CATEGORIES = ['Career', 'Finance', 'Health', 'Relationships', 'Business', 'Community', 'Education', 'Creative', 'Recovery']
+
+const PRIORITY_COLORS: Record<string, string> = { high: '#FF3B30', medium: '#FF9500', low: '#34C759' }
+
 export default function GoalsPage() {
   const router = useRouter()
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [loading, setLoading] = useState(true)
+  const [goals, setGoals]       = useState<Goal[]>([])
+  const [loading, setLoading]   = useState(true)
   const [activeTab, setActiveTab] = useState<TabType>('active')
-  const [search, setSearch] = useState('')
+  const [search, setSearch]     = useState('')
+  const [userId, setUserId]     = useState<string | null>(null)
+
+  // New Goal modal
+  const [showNewGoal, setShowNewGoal]         = useState(false)
+  const [newTitle, setNewTitle]               = useState('')
+  const [newCategory, setNewCategory]         = useState('Career')
+  const [newPriority, setNewPriority]         = useState<'high'|'medium'|'low'>('medium')
+  const [newNotes, setNewNotes]               = useState('')
+  const [creatingGoal, setCreatingGoal]       = useState(false)
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+      setUserId(user.id)
       const { data } = await supabase
         .from('goals')
         .select('*')
@@ -224,6 +239,35 @@ export default function GoalsPage() {
   const updateStatus = async (id: string, newStatus: string) => {
     setGoals(prev => prev.map(g => g.id === id ? { ...g, status: newStatus } : g))
     await supabase.from('goals').update({ status: newStatus }).eq('id', id)
+  }
+
+  const handleCreateGoal = async () => {
+    if (!newTitle.trim() || !userId) return
+    setCreatingGoal(true)
+    const priorityNum = newPriority === 'high' ? 1 : newPriority === 'medium' ? 5 : 10
+    const created = await createGoal(userId, {
+      text:     newTitle.trim(),
+      category: newCategory,
+      status:   'active',
+      priority: priorityNum,
+      progress: 0,
+      notes:    newNotes.trim() || null,
+    })
+    if (created) {
+      setGoals(prev => [...prev, created as Goal])
+      setActiveTab('active')
+    }
+    setShowNewGoal(false)
+    setNewTitle('')
+    setNewCategory('Career')
+    setNewPriority('medium')
+    setNewNotes('')
+    setCreatingGoal(false)
+  }
+
+  const openNewGoal = () => {
+    setNewTitle(''); setNewCategory('Career'); setNewPriority('medium'); setNewNotes('')
+    setShowNewGoal(true)
   }
 
   const filteredGoals = goals.filter(g => {
@@ -374,7 +418,7 @@ export default function GoalsPage() {
 
       {/* FAB */}
       <button
-        onClick={() => router.push('/dashboard/goals/evaluate')}
+        onClick={openNewGoal}
         style={{
           position: 'fixed', bottom: 80, right: 20,
           width: 52, height: 52, borderRadius: '50%',
@@ -387,6 +431,159 @@ export default function GoalsPage() {
           <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
         </svg>
       </button>
+
+      {/* New Goal Modal */}
+      {showNewGoal && (
+        <div
+          onClick={() => setShowNewGoal(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+            zIndex: 200, display: 'flex', alignItems: 'flex-end',
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '100%', background: 'white',
+              borderRadius: '20px 20px 0 0',
+              padding: '0 0 40px',
+              maxHeight: '92vh', overflowY: 'auto',
+            }}
+          >
+            {/* Drag handle */}
+            <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#E5E5EA' }} />
+            </div>
+
+            {/* Modal header */}
+            <div style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '12px 20px 16px',
+            }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Add New Goal</h2>
+              <button
+                onClick={() => setShowNewGoal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Title */}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
+                  Goal Title
+                </label>
+                <input
+                  autoFocus
+                  placeholder="What do you want to achieve?"
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: 12,
+                    border: '1px solid #E5E5EA', fontSize: 15, color: '#1C1C1E',
+                    fontFamily: 'inherit', outline: 'none', background: '#F9F9F9',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
+                  Category
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {GOAL_CATEGORIES.map(cat => {
+                    const catStyle = getCatStyle(cat)
+                    const selected = newCategory === cat
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setNewCategory(cat)}
+                        style={{
+                          padding: '7px 14px', borderRadius: 20,
+                          border: selected ? `1.5px solid ${catStyle.color}` : '1.5px solid #E5E5EA',
+                          background: selected ? catStyle.bg : 'white',
+                          color: selected ? catStyle.color : '#8E8E93',
+                          fontSize: 13, fontWeight: selected ? 600 : 400,
+                          cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                      >
+                        {cat}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Priority */}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
+                  Priority
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(['high', 'medium', 'low'] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setNewPriority(p)}
+                      style={{
+                        flex: 1, padding: '10px 0', borderRadius: 12,
+                        border: newPriority === p ? `1.5px solid ${PRIORITY_COLORS[p]}` : '1.5px solid #E5E5EA',
+                        background: newPriority === p ? `${PRIORITY_COLORS[p]}15` : 'white',
+                        color: newPriority === p ? PRIORITY_COLORS[p] : '#8E8E93',
+                        fontSize: 13, fontWeight: newPriority === p ? 600 : 400,
+                        cursor: 'pointer', fontFamily: 'inherit',
+                        textTransform: 'capitalize',
+                      }}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
+                  Notes <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                </label>
+                <textarea
+                  placeholder="Add context or motivation..."
+                  value={newNotes}
+                  onChange={e => setNewNotes(e.target.value)}
+                  rows={3}
+                  style={{
+                    width: '100%', padding: '12px 14px', borderRadius: 12,
+                    border: '1px solid #E5E5EA', fontSize: 15, color: '#1C1C1E',
+                    fontFamily: 'inherit', outline: 'none', background: '#F9F9F9',
+                    resize: 'none', boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Create button */}
+              <button
+                onClick={handleCreateGoal}
+                disabled={!newTitle.trim() || creatingGoal}
+                style={{
+                  width: '100%', padding: '15px 0', borderRadius: 14,
+                  background: !newTitle.trim() || creatingGoal ? '#D1D1D6' : '#3B7DFF',
+                  border: 'none', color: 'white',
+                  fontSize: 16, fontWeight: 600,
+                  cursor: !newTitle.trim() || creatingGoal ? 'default' : 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {creatingGoal ? 'Creating…' : 'Create Goal'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -3,6 +3,14 @@
 import { toDateStr, addDays } from '@/lib/planData'
 import { findBestSlot, type DBTask, type WorkSchedule } from '@/lib/db'
 
+export const ENERGY_TO_CATEGORIES: Record<string, string[]> = {
+  deep:     ['Career', 'Education', 'Finance', 'Business'],
+  light:    ['Career', 'Finance', 'Education', 'Personal Growth', 'Relationships', 'Community'],
+  creative: ['Creative', 'Personal Growth', 'Education'],
+  social:   ['Health', 'Relationships', 'Community', 'Travel'],
+  recovery: [],
+}
+
 interface TaskTemplate {
   text: string
   duration: number         // hours

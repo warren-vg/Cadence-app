@@ -49,13 +49,6 @@ const BASE_WEEKS: WeekData[] = [
   { label: 'Week 4', short: 'W4', score: 78, completed: 12, total: 15, hours: 24, rate: 80, efficiency: 80, career: 8, health: 6, finance: 4, creative: 6 },
 ]
 
-const BASE_CATS: CatData[] = [
-  { category: 'Career',   progress: 45, hours: 8,  tasks: 12, efficiency: 1.5 },
-  { category: 'Finance',  progress: 60, hours: 4,  tasks: 8,  efficiency: 2.0 },
-  { category: 'Health',   progress: 70, hours: 6,  tasks: 10, efficiency: 1.7 },
-  { category: 'Creative', progress: 30, hours: 5,  tasks: 7,  efficiency: 1.4 },
-]
-
 // ─── Per-period data sets ─────────────────────────────────────────────────────
 
 const PERIOD_WEEKLY: Record<string, WeekData[]> = {
@@ -78,47 +71,6 @@ const PERIOD_WEEKLY: Record<string, WeekData[]> = {
     { label: 'Q3', short: 'Q3', score: 64, completed: 105, total: 163, hours: 295, rate: 64, efficiency: 64, career: 95,  health: 82, finance: 58, creative: 60 },
     { label: 'Q4', short: 'Q4', score: 75, completed: 125, total: 168, hours: 330, rate: 74, efficiency: 74, career: 110, health: 90, finance: 65, creative: 65 },
   ],
-}
-
-const PERIOD_CATS: Record<string, CatData[]> = {
-  'This Week': [
-    { category: 'Career',   progress: 45, hours: 2,   tasks: 3,   efficiency: 1.5 },
-    { category: 'Finance',  progress: 60, hours: 1,   tasks: 2,   efficiency: 2.0 },
-    { category: 'Health',   progress: 70, hours: 1.5, tasks: 3,   efficiency: 2.0 },
-    { category: 'Creative', progress: 30, hours: 1,   tasks: 1,   efficiency: 1.0 },
-  ],
-  'This Month': BASE_CATS,
-  'This Quarter': [
-    { category: 'Career',   progress: 45, hours: 29, tasks: 35,  efficiency: 1.2 },
-    { category: 'Finance',  progress: 60, hours: 15, tasks: 25,  efficiency: 1.7 },
-    { category: 'Health',   progress: 70, hours: 22, tasks: 38,  efficiency: 1.7 },
-    { category: 'Creative', progress: 30, hours: 16, tasks: 22,  efficiency: 1.4 },
-  ],
-  'This Year': [
-    { category: 'Career',   progress: 45, hours: 110, tasks: 140, efficiency: 1.3 },
-    { category: 'Finance',  progress: 60, hours: 58,  tasks: 95,  efficiency: 1.6 },
-    { category: 'Health',   progress: 70, hours: 82,  tasks: 148, efficiency: 1.8 },
-    { category: 'Creative', progress: 30, hours: 60,  tasks: 85,  efficiency: 1.4 },
-  ],
-}
-
-const PERIOD_INSIGHTS: Record<string, { wins: string[]; focus: string[] }> = {
-  'This Week': {
-    wins:  ['Portfolio site live', '3 runs completed', 'Budget on track'],
-    focus: ['Blog post delayed', 'Creative time low'],
-  },
-  'This Month': {
-    wins:  ['Monthly targets exceeded', '4-week running streak', 'Savings milestone hit'],
-    focus: ['Creative project behind schedule', 'Networking goals need attention'],
-  },
-  'This Quarter': {
-    wins:  ['Portfolio launched successfully', 'Health goal on track', '60% to finance goal'],
-    focus: ['Creative writing needs consistency', 'Career goals need a final push'],
-  },
-  'This Year': {
-    wins:  ['Strongest health year yet', 'Career momentum building', 'Savings discipline maintained'],
-    focus: ['Creative goals historically underserved', 'Better category balance needed'],
-  },
 }
 
 // ─── Chart colors ─────────────────────────────────────────────────────────────
@@ -153,6 +105,84 @@ function buildWeeklyDataFromTasks(tasks: DBTask[]): WeekData[] {
   return weeks.some(w => w.total > 0) ? weeks : BASE_WEEKS
 }
 
+function buildDailyDataFromTasks(tasks: DBTask[]): WeekData[] {
+  const today  = new Date()
+  const monday = getMonday(today)
+  const todayStr = toDateStr(today)
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+  const days: WeekData[] = []
+  for (let d = 0; d < 7; d++) {
+    const day    = addDays(monday, d)
+    const dayStr = toDateStr(day)
+    if (dayStr > todayStr) break
+    const dt = tasks.filter(t => t.date === dayStr)
+    const completed = dt.filter(t => t.completed).length
+    const total  = dt.length
+    const hours  = parseFloat(dt.reduce((s, t) => s + t.duration, 0).toFixed(1))
+    const rate   = total > 0 ? Math.round((completed / total) * 100) : 0
+    const byCat  = (cat: string) => parseFloat(dt.filter(t => t.category.toLowerCase() === cat).reduce((s, t) => s + t.duration, 0).toFixed(1))
+    days.push({ label: dayNames[d], short: dayNames[d], score: rate, completed, total, hours, rate, efficiency: rate, career: byCat('career'), health: byCat('health'), finance: byCat('finance'), creative: byCat('creative') })
+  }
+  return days
+}
+
+function buildQuarterlyDataFromTasks(tasks: DBTask[]): WeekData[] {
+  const now = new Date()
+  const qStartMonth = Math.floor(now.getMonth() / 3) * 3
+  const months: WeekData[] = []
+  for (let m = 0; m < 3; m++) {
+    const monthDate = new Date(now.getFullYear(), qStartMonth + m, 1)
+    if (monthDate > now) break
+    const nextMonth = new Date(now.getFullYear(), qStartMonth + m + 1, 1)
+    const monthStart = toDateStr(monthDate)
+    const monthEnd   = toDateStr(new Date(nextMonth.getTime() - 86400000))
+    const mt = tasks.filter(t => t.date >= monthStart && t.date <= monthEnd)
+    const completed = mt.filter(t => t.completed).length
+    const total  = mt.length
+    const hours  = parseFloat(mt.reduce((s, t) => s + t.duration, 0).toFixed(1))
+    const rate   = total > 0 ? Math.round((completed / total) * 100) : 0
+    const byCat  = (cat: string) => parseFloat(mt.filter(t => t.category.toLowerCase() === cat).reduce((s, t) => s + t.duration, 0).toFixed(1))
+    const label  = monthDate.toLocaleDateString('en-US', { month: 'short' })
+    months.push({ label, short: label, score: rate, completed, total, hours, rate, efficiency: rate, career: byCat('career'), health: byCat('health'), finance: byCat('finance'), creative: byCat('creative') })
+  }
+  return months
+}
+
+function buildYearlyDataFromTasks(tasks: DBTask[]): WeekData[] {
+  const now  = new Date()
+  const year = now.getFullYear()
+  const quarters: WeekData[] = []
+  for (let q = 0; q < 4; q++) {
+    const qStart = new Date(year, q * 3, 1)
+    if (qStart > now) break
+    const qEnd     = new Date(year, q * 3 + 3, 0)
+    const qStartStr = toDateStr(qStart)
+    const qEndStr   = toDateStr(qEnd)
+    const qt = tasks.filter(t => t.date >= qStartStr && t.date <= qEndStr)
+    const completed = qt.filter(t => t.completed).length
+    const total  = qt.length
+    const hours  = parseFloat(qt.reduce((s, t) => s + t.duration, 0).toFixed(1))
+    const rate   = total > 0 ? Math.round((completed / total) * 100) : 0
+    const byCat  = (cat: string) => parseFloat(qt.filter(t => t.category.toLowerCase() === cat).reduce((s, t) => s + t.duration, 0).toFixed(1))
+    quarters.push({ label: `Q${q + 1}`, short: `Q${q + 1}`, score: rate, completed, total, hours, rate, efficiency: rate, career: byCat('career'), health: byCat('health'), finance: byCat('finance'), creative: byCat('creative') })
+  }
+  return quarters
+}
+
+function buildCatDataFromTasks(goals: Goal[], tasks: DBTask[]): CatData[] {
+  const active = goals.filter(g => g.status === 'active')
+  return ['Career', 'Finance', 'Health', 'Creative'].map(cat => {
+    const matching = active.filter(g => g.category === cat)
+    const progress = matching.length > 0
+      ? Math.round(matching.reduce((s, g) => s + (g.progress || 0), 0) / matching.length) : 0
+    const catTasks = tasks.filter(t => t.category === cat)
+    const hours    = parseFloat(catTasks.reduce((s, t) => s + t.duration, 0).toFixed(1))
+    const taskCount = catTasks.length
+    const efficiency = hours > 0 ? parseFloat((taskCount / hours).toFixed(1)) : 0
+    return { category: cat, progress, hours, tasks: taskCount, efficiency }
+  })
+}
+
 function computeWeekStreak(tasks: DBTask[]): number {
   const today = new Date()
   let streak = 0
@@ -169,7 +199,7 @@ function computeWeekStreak(tasks: DBTask[]): number {
 
 function computeInsights(goals: Goal[]): { wins: string[]; focus: string[] } {
   const active = goals.filter(g => g.status === 'active')
-  if (!active.length) return PERIOD_INSIGHTS['This Month']
+  if (!active.length) return { wins: ['Keep up the consistent effort!'], focus: ['Stay consistent across all goal areas'] }
   const wins: string[]  = []
   const focus: string[] = []
   const sorted     = [...active].sort((a, b) => b.progress - a.progress)
@@ -198,16 +228,6 @@ function computeInsights(goals: Goal[]): { wins: string[]; focus: string[] } {
   }
 }
 
-function buildCatData(goals: Goal[]): CatData[] {
-  const active = goals.filter(g => g.status === 'active')
-  if (!active.length) return BASE_CATS
-  return BASE_CATS.map(base => {
-    const matching = active.filter(g => g.category === base.category)
-    if (!matching.length) return base
-    const avg = Math.round(matching.reduce((s, g) => s + (g.progress || 0), 0) / matching.length)
-    return { ...base, progress: avg }
-  })
-}
 
 function getPeriodLabel(period: string): string {
   const now   = new Date()
@@ -638,15 +658,18 @@ function CompletionModal({ weeks, onClose }: { weeks: WeekData[]; onClose: () =>
 
 export default function ProgressPage() {
   const router = useRouter()
-  const [goals, setGoals]         = useState<Goal[]>([])
-  const [baseCatData, setBaseCatData] = useState<CatData[]>(BASE_CATS)
-  const [activeModal, setActiveModal] = useState<ModalType>(null)
-  const [timePeriod, setTimePeriod]   = useState('This Month')
+  const [goals, setGoals]                 = useState<Goal[]>([])
+  const [allTasks, setAllTasks]           = useState<DBTask[]>([])
+  const [activeModal, setActiveModal]     = useState<ModalType>(null)
+  const [timePeriod, setTimePeriod]       = useState('This Month')
   const [showPeriodMenu, setShowPeriodMenu] = useState(false)
-  const [loading, setLoading]   = useState(true)
-  const [mounted, setMounted]   = useState(false)
-  const [monthlyWeeks, setMonthlyWeeks] = useState<WeekData[]>(BASE_WEEKS)
-  const [weekStreak, setWeekStreak]     = useState(0)
+  const [loading, setLoading]             = useState(true)
+  const [mounted, setMounted]             = useState(false)
+  const [weeklyData, setWeeklyData]       = useState<WeekData[]>([])
+  const [monthlyWeeks, setMonthlyWeeks]   = useState<WeekData[]>(BASE_WEEKS)
+  const [quarterlyData, setQuarterlyData] = useState<WeekData[]>([])
+  const [yearlyData, setYearlyData]       = useState<WeekData[]>([])
+  const [weekStreak, setWeekStreak]       = useState(0)
 
   // Per-chart tooltip indices
   const [momentumActive, setMomentumActive]     = useState<number | null>(null)
@@ -661,20 +684,22 @@ export default function ProgressPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const today      = new Date()
-      const monday12   = getMonday(addDays(today, -11 * 7))
-      const rangeStart = toDateStr(monday12)
+      const today     = new Date()
+      const yearStart = toDateStr(new Date(today.getFullYear(), 0, 1))
 
       const [{ data: goalData }, { data: taskData }] = await Promise.all([
         supabase.from('goals').select('id,text,category,status,progress').eq('user_id', user.id),
-        supabase.from('tasks').select('*').eq('user_id', user.id).gte('date', rangeStart).order('date', { ascending: true }),
+        supabase.from('tasks').select('*').eq('user_id', user.id).gte('date', yearStart).order('date', { ascending: true }),
       ])
 
       const goalList = (goalData || []) as Goal[]
       const taskList = (taskData || []) as DBTask[]
       setGoals(goalList)
-      setBaseCatData(buildCatData(goalList))
+      setAllTasks(taskList)
+      setWeeklyData(buildDailyDataFromTasks(taskList))
       setMonthlyWeeks(buildWeeklyDataFromTasks(taskList))
+      setQuarterlyData(buildQuarterlyDataFromTasks(taskList))
+      setYearlyData(buildYearlyDataFromTasks(taskList))
       setWeekStreak(computeWeekStreak(taskList))
       setLoading(false)
     }
@@ -692,16 +717,21 @@ export default function ProgressPage() {
   if (!mounted) return null
 
   // Compute display data for the selected period
-  const displayWeeks = timePeriod === 'This Month'
-    ? monthlyWeeks
-    : (PERIOD_WEEKLY[timePeriod] || BASE_WEEKS)
+  const displayWeeks =
+    timePeriod === 'This Week'    ? (weeklyData.length    >= 2 ? weeklyData    : PERIOD_WEEKLY['This Week']) :
+    timePeriod === 'This Month'   ? (monthlyWeeks.length  >= 2 ? monthlyWeeks  : PERIOD_WEEKLY['This Month']) :
+    timePeriod === 'This Quarter' ? (quarterlyData.length >= 2 ? quarterlyData : PERIOD_WEEKLY['This Quarter']) :
+    timePeriod === 'This Year'    ? (yearlyData.length    >= 2 ? yearlyData    : PERIOD_WEEKLY['This Year']) :
+    BASE_WEEKS
 
-  // Merge actual goal progress into period cat data
-  const periodCatsBase = PERIOD_CATS[timePeriod] || BASE_CATS
-  const displayCats = periodCatsBase.map(pc => {
-    const actual = baseCatData.find(c => c.category === pc.category)
-    return { ...pc, progress: actual?.progress ?? pc.progress }
-  })
+  // Period-filtered category data from real tasks
+  const periodStart =
+    timePeriod === 'This Week'    ? toDateStr(getMonday(new Date())) :
+    timePeriod === 'This Month'   ? toDateStr(new Date(new Date().getFullYear(), new Date().getMonth(), 1)) :
+    timePeriod === 'This Quarter' ? toDateStr(new Date(new Date().getFullYear(), Math.floor(new Date().getMonth() / 3) * 3, 1)) :
+    toDateStr(new Date(new Date().getFullYear(), 0, 1))
+  const periodTasks = allTasks.filter(t => t.date >= periodStart)
+  const displayCats = buildCatDataFromTasks(goals, periodTasks)
 
   const insights    = computeInsights(goals)
   const periodLabel = getPeriodLabel(timePeriod)

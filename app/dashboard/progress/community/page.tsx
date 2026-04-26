@@ -5,8 +5,21 @@ import { supabase } from '@/lib/supabase'
 import {
   getFriends, getPendingRequests, sendFriendRequest,
   respondToFriendRequest, removeFriend, sendHypeOrNudge, getFriendGoals,
+  cancelFriendRequest,
   type FriendProfile, type PendingRequest,
 } from '@/lib/db'
+
+function timeAgo(iso: string): string {
+  const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (secs < 60) return 'just now'
+  const mins = Math.floor(secs / 60)
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return `${Math.floor(days / 7)}w ago`
+}
 
 interface GoalItem {
   id: string
@@ -185,6 +198,7 @@ export default function CommunityPage() {
   const [addInput, setAddInput]         = useState('')
   const [addError, setAddError]         = useState('')
   const [addSending, setAddSending]     = useState(false)
+  const [confirmFriend, setConfirmFriend] = useState<FriendProfile | null>(null)
 
   const loadAll = async (uid: string) => {
     const [friendsList, pendingList] = await Promise.all([
@@ -245,6 +259,7 @@ export default function CommunityPage() {
     if (!userId) return
     await removeFriend(userId, friendId)
     setFriends(prev => prev.filter(f => f.friend_id !== friendId))
+    setConfirmFriend(null)
   }
 
   const handleHype = async (friendId: string) => {
@@ -257,6 +272,12 @@ export default function CommunityPage() {
       setHypedIds(prev => new Set([...prev, friendId]))
       setTimeout(() => setCooldowns(prev => { const n = { ...prev }; delete n[friendId]; return n }), 3000)
     }
+  }
+
+  const handleCancelRequest = async (requestId: string) => {
+    if (!userId) return
+    const ok = await cancelFriendRequest(requestId)
+    if (ok) setPending(prev => prev.filter(r => r.id !== requestId))
   }
 
   const handleNudge = async (friendId: string) => {
@@ -352,7 +373,9 @@ export default function CommunityPage() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>{req.username}</p>
-                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '1px 0 0' }}>{req.direction === 'incoming' ? 'Wants to connect' : 'Request sent'}</p>
+                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '1px 0 0' }}>
+                      {req.direction === 'incoming' ? 'Wants to connect' : 'Request sent'} · {timeAgo(req.created_at)}
+                    </p>
                   </div>
                   {req.direction === 'incoming' ? (
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -360,7 +383,7 @@ export default function CommunityPage() {
                       <button onClick={() => handleRespond(req.id, false)} style={{ padding: '7px 14px', borderRadius: 8, background: '#F2F2F7', border: 'none', fontSize: 13, fontWeight: 500, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}>Decline</button>
                     </div>
                   ) : (
-                    <span style={{ fontSize: 12, color: '#8E8E93', background: '#F2F2F7', padding: '4px 10px', borderRadius: 20 }}>Pending</span>
+                    <button onClick={() => handleCancelRequest(req.id)} style={{ padding: '7px 14px', borderRadius: 8, background: '#FFF0F0', border: '1px solid #FECACA', fontSize: 13, fontWeight: 600, color: '#DC2626', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                   )}
                 </div>
               ))}
@@ -410,7 +433,7 @@ export default function CommunityPage() {
                   cooldownMsg={cooldowns[friend.friend_id] || null}
                   onHype={() => handleHype(friend.friend_id)}
                   onNudge={() => handleNudge(friend.friend_id)}
-                  onRemove={() => handleRemove(friend.friend_id)}
+                  onRemove={() => setConfirmFriend(friend)}
                 />
               ))}
             </div>
@@ -432,6 +455,38 @@ export default function CommunityPage() {
           </p>
         </div>
       </div>
+
+      {/* Remove Friend Confirmation */}
+      {confirmFriend && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }}
+          onClick={() => setConfirmFriend(null)}
+        >
+          <div
+            style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '24px 20px 40px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px' }}>Remove Friend?</h2>
+            <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 24px', lineHeight: 1.5 }}>
+              Remove <strong style={{ color: '#1C1C1E' }}>@{confirmFriend.username}</strong> from your community? They won&apos;t be notified.
+            </p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button
+                onClick={() => setConfirmFriend(null)}
+                style={{ flex: 1, padding: '14px', borderRadius: 14, background: '#F2F2F7', border: 'none', fontSize: 15, fontWeight: 600, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleRemove(confirmFriend.friend_id)}
+                style={{ flex: 1, padding: '14px', borderRadius: 14, background: '#FF3B30', border: 'none', fontSize: 15, fontWeight: 600, color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

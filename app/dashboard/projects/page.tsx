@@ -14,6 +14,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'study',       label: 'Studies'   },
   { key: 'creative',    label: 'Creative'  },
   { key: 'opportunity', label: 'Opps'      },
+  { key: 'business',    label: 'Business'  },
   { key: 'archived',    label: 'Archived'  },
 ]
 
@@ -26,10 +27,11 @@ const STATUS_COLORS: Record<DBProject['status'], { bg: string; color: string; la
 }
 
 const TYPE_OPTIONS: { value: DBProject['type']; label: string }[] = [
-  { value: 'campaign',    label: 'Business'    },
+  { value: 'campaign',    label: 'Campaign'    },
   { value: 'study',       label: 'Study'       },
   { value: 'creative',    label: 'Creative'    },
   { value: 'opportunity', label: 'Opportunity' },
+  { value: 'business',    label: 'Business'    },
 ]
 
 export default function ProjectsPage() {
@@ -39,19 +41,26 @@ export default function ProjectsPage() {
   const [loading, setLoading]     = useState(true)
   const [userId, setUserId]       = useState<string | null>(null)
 
-  const [showNew, setShowNew]       = useState(false)
-  const [newTitle, setNewTitle]     = useState('')
-  const [newType, setNewType]       = useState<DBProject['type']>('campaign')
-  const [newTimeline, setNewTimeline] = useState('')
-  const [creating, setCreating]     = useState(false)
+  const [showNew, setShowNew]             = useState(false)
+  const [newTitle, setNewTitle]           = useState('')
+  const [newType, setNewType]             = useState<DBProject['type']>('campaign')
+  const [newTimeline, setNewTimeline]     = useState('')
+  const [newNotes, setNewNotes]           = useState('')
+  const [newLinkedGoalId, setNewLinkedGoalId] = useState<string | null>(null)
+  const [creating, setCreating]           = useState(false)
+  const [projectGoals, setProjectGoals]   = useState<{id: string; text: string}[]>([])
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
-      const data = await getProjects(user.id)
+      const [data, { data: goalsData }] = await Promise.all([
+        getProjects(user.id),
+        supabase.from('goals').select('id, text').eq('user_id', user.id).eq('status', 'active'),
+      ])
       setProjects(data)
+      setProjectGoals((goalsData || []) as {id: string; text: string}[])
       setLoading(false)
     }
     load()
@@ -66,8 +75,8 @@ export default function ProjectsPage() {
       status:         'planning',
       progress:       0,
       timeline:       newTimeline.trim() || null,
-      notes:          null,
-      linked_goal_id: null,
+      notes:          newNotes.trim() || null,
+      linked_goal_id: newLinkedGoalId,
     })
     if (created) {
       setProjects(prev => [created, ...prev])
@@ -75,6 +84,8 @@ export default function ProjectsPage() {
       setNewTitle('')
       setNewType('campaign')
       setNewTimeline('')
+      setNewNotes('')
+      setNewLinkedGoalId(null)
       router.push(`/dashboard/projects/${created.id}`)
     }
     setCreating(false)
@@ -224,7 +235,28 @@ export default function ProjectsPage() {
               value={newTimeline}
               onChange={e => setNewTimeline(e.target.value)}
               placeholder="e.g. Apr – Jun 2026"
-              style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 24, background: '#F8F8FC' }}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 16, background: '#F8F8FC' }}
+            />
+
+            <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Linked Goal <span style={{ fontWeight: 400 }}>(optional)</span></p>
+            <select
+              value={newLinkedGoalId || ''}
+              onChange={e => setNewLinkedGoalId(e.target.value || null)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 16, background: '#F8F8FC', appearance: 'none' }}
+            >
+              <option value="">No linked goal</option>
+              {projectGoals.map(g => (
+                <option key={g.id} value={g.id}>{g.text.length > 50 ? g.text.slice(0, 50) + '…' : g.text}</option>
+              ))}
+            </select>
+
+            <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Notes <span style={{ fontWeight: 400 }}>(optional)</span></p>
+            <textarea
+              value={newNotes}
+              onChange={e => setNewNotes(e.target.value)}
+              placeholder="Add context or notes..."
+              rows={3}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', marginBottom: 24, background: '#F8F8FC', resize: 'none' }}
             />
 
             <button

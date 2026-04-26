@@ -14,12 +14,13 @@ interface NotificationPrefs {
   weeklyReviewReminder: boolean
   dailyPlanReminder: boolean
   goalProgressUpdates: boolean
+  friendActivity: boolean
 }
 
 type ThemeOption = 'automatic' | 'light' | 'dark'
 
 const DEFAULT_NOTIFS: NotificationPrefs = {
-  weeklyReviewReminder: true, dailyPlanReminder: true, goalProgressUpdates: false,
+  weeklyReviewReminder: true, dailyPlanReminder: true, goalProgressUpdates: false, friendActivity: true,
 }
 
 function loadTheme(): ThemeOption {
@@ -127,9 +128,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
-  const [notifications, setNotifications] = useState<NotificationPrefs>({
-    weeklyReviewReminder: true, dailyPlanReminder: true, goalProgressUpdates: false,
-  })
+  const [notifications, setNotifications] = useState<NotificationPrefs>(DEFAULT_NOTIFS)
   const [theme, setTheme] = useState<ThemeOption>('automatic')
   const [showThemePicker, setShowThemePicker] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -302,9 +301,24 @@ export default function SettingsPage() {
               }}
             />
           </div>
-          <div style={{ padding: '12px 0' }}>
+          <div style={{ padding: '12px 0', borderBottom: '0.5px solid #F2F2F7' }}>
             <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px' }}>Email</p>
             <p style={{ fontSize: 15, color: '#3C3C43', margin: 0 }}>{profile?.email}</p>
+          </div>
+          <div style={{ padding: '14px 0' }}>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              style={{
+                width: '100%', background: saved ? '#34C759' : '#3B7DFF',
+                border: 'none', borderRadius: 10, padding: '12px',
+                color: 'white', fontSize: 15, fontWeight: 600,
+                cursor: saving ? 'default' : 'pointer',
+                fontFamily: 'inherit', transition: 'background 0.3s',
+              }}
+            >
+              {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Changes'}
+            </button>
           </div>
         </div>
       </Card>
@@ -314,21 +328,27 @@ export default function SettingsPage() {
       <Card>
         <RowItem
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>}
-          label="Weekly Review Reminder"
-          sublabel="Sunday evenings at 6 PM"
+          label="Weekly Review"
+          sublabel="Remind me Sunday evenings"
           right={<Toggle on={notifications.weeklyReviewReminder} onToggle={() => toggleNotif('weeklyReviewReminder')} />}
         />
         <RowItem
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
-          label="Daily Plan Reminder"
-          sublabel="Every morning at 8 AM"
+          label="Daily Plan"
+          sublabel="Morning reminder to plan my day"
           right={<Toggle on={notifications.dailyPlanReminder} onToggle={() => toggleNotif('dailyPlanReminder')} />}
         />
         <RowItem
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>}
-          label="Goal Progress Updates"
-          sublabel="When milestones are reached"
+          label="Goal Progress"
+          sublabel="Milestone and progress updates"
           right={<Toggle on={notifications.goalProgressUpdates} onToggle={() => toggleNotif('goalProgressUpdates')} />}
+        />
+        <RowItem
+          icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9333EA" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>}
+          label="Friend Activity"
+          sublabel="Hypes and nudges from friends"
+          right={<Toggle on={notifications.friendActivity} onToggle={() => toggleNotif('friendActivity')} />}
           noBorder
         />
       </Card>
@@ -402,24 +422,8 @@ export default function SettingsPage() {
         />
       </Card>
 
-      {/* Save Changes */}
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        style={{
-          width: '100%', marginTop: 32,
-          background: saved ? '#34C759' : '#3B7DFF',
-          border: 'none', borderRadius: 14, padding: '15px',
-          color: 'white', fontSize: 16, fontWeight: 700,
-          cursor: saving ? 'default' : 'pointer',
-          fontFamily: 'inherit', transition: 'background 0.3s',
-        }}
-      >
-        {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Changes'}
-      </button>
-
       {/* Version */}
-      <p style={{ textAlign: 'center', fontSize: 12, color: '#C7C7CC', marginTop: 20 }}>Cadence v1.0.0</p>
+      <p style={{ textAlign: 'center', fontSize: 12, color: '#C7C7CC', marginTop: 24 }}>Cadence v1.0.0</p>
 
       {/* Theme Picker Modal */}
       {showThemePicker && (
@@ -493,6 +497,14 @@ export default function SettingsPage() {
               </button>
               <button
                 onClick={async () => {
+                  if (!profile) return
+                  try {
+                    await fetch('/api/delete-account', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ userId: profile.id }),
+                    })
+                  } catch { /* ignore — sign out regardless */ }
                   await supabase.auth.signOut()
                   router.push('/login')
                 }}

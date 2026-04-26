@@ -167,18 +167,21 @@ export default function QuarterlyReviewPage() {
     if (!userId) return
     setAccepted(true)
 
-    await supabase.from('quarterly_reviews').insert({
-      user_id:                userId,
-      quarter:                QUARTER_DATES[activeQ].label,
-      score:                  avgProgress,
-      goals_completed:        completed,
-      goals_total:            qGoals.length,
-      worked_well:            workedWell,
-      needs_change:           needsChange,
-      pivot_recommendations:  pivots,
-      next_quarter_theme:     nextTheme?.theme || '',
-    }).then(({ error }) => {
-      if (error) console.warn('quarterly_reviews insert:', error.message)
+    await supabase.from('quarterly_reviews').upsert({
+      user_id:            userId,
+      quarter:            QUARTER_DATES[activeQ].label,
+      year:               new Date().getFullYear(),
+      worked_well:        workedWell,
+      needs_change:       needsChange,
+      performance_score:  avgProgress,
+      goals_completed:    completed,
+      goals_total:        qGoals.length,
+      avg_progress:       avgProgress,
+      ai_pivots:          pivots,
+      next_quarter_theme: nextTheme ? { theme: nextTheme.theme, focus: nextTheme.focus } : null,
+      submitted_at:       new Date().toISOString(),
+    }, { onConflict: 'user_id,quarter,year' }).then(({ error }) => {
+      if (error) console.warn('quarterly_reviews upsert:', error.message)
     })
 
     setTimeout(() => router.push('/dashboard/plan/quarterly'), 1200)

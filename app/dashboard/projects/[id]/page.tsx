@@ -50,11 +50,46 @@ const TYPE_OPTIONS: { value: DBProject['type']; label: string }[] = [
   { value: 'opportunity', label: 'Opportunity' },
 ]
 
-const AI_SUGGESTIONS = [
-  'Consider breaking the next task into smaller subtasks',
-  'Schedule dedicated focus time for this project this week',
-  'Review progress with stakeholders before next milestone',
-]
+function getContextualSuggestions(project: DBProject, tasks: DBProjectTask[]): string[] {
+  const incomplete = tasks.filter(t => !t.completed)
+  const suggestions: string[] = []
+
+  if (project.progress === 0 && tasks.length === 0) {
+    suggestions.push('Add tasks to break this project into actionable steps.')
+  } else if (project.progress === 0) {
+    suggestions.push('Start with the first task to build momentum — small steps compound over time.')
+  } else if (project.progress < 50) {
+    suggestions.push(`You're ${project.progress}% done. Schedule dedicated focus time this week to pick up speed.`)
+  } else if (project.progress < 100) {
+    suggestions.push(`You're ${project.progress}% done — in the home stretch! List remaining work and set a target completion date.`)
+  } else {
+    suggestions.push('Project complete! Document key learnings before archiving.')
+  }
+
+  if (project.status === 'paused') {
+    suggestions.push('Identify the blocker that caused the pause and define one concrete action to restart.')
+  } else if (incomplete.length === 1) {
+    const t = incomplete[0].text
+    suggestions.push(`One task left: "${t.length > 45 ? t.slice(0, 45) + '…' : t}" — close it out!`)
+  } else if (incomplete.length > 5) {
+    suggestions.push('Many tasks open — focus on the top 3 this week rather than tackling everything at once.')
+  } else if (tasks.length === 0) {
+    suggestions.push('Break your first milestone into 3–5 concrete tasks to make progress visible.')
+  } else {
+    suggestions.push('Review progress with a stakeholder or accountability partner before your next milestone.')
+  }
+
+  const typeHints: Record<DBProject['type'], string> = {
+    campaign:    'Track metrics weekly and adjust your strategy based on early results.',
+    study:       'Schedule review sessions within 24 hours of studying to improve long-term retention.',
+    creative:    'Ship an early draft for feedback — perfectionism at this stage slows momentum.',
+    opportunity: 'Define your go/no-go criteria and set a decision deadline to avoid analysis paralysis.',
+    business:    'Validate your core assumption before scaling — talk to at least 3 potential customers.',
+  }
+  suggestions.push(typeHints[project.type])
+
+  return suggestions
+}
 
 export default function ProjectDetailPage() {
   const router = useRouter()
@@ -186,6 +221,7 @@ export default function ProjectDetailPage() {
   const ss        = STATUS_STYLES[project.status]
   const typeColor = TYPE_COLORS[project.type]
   const completedCount = tasks.filter(t => t.completed).length
+  const suggestions = getContextualSuggestions(project, tasks)
 
   return (
     <div style={{ padding: '56px 16px 40px' }}>
@@ -311,7 +347,7 @@ export default function ProjectDetailPage() {
           <span style={{ fontSize: 15, fontWeight: 700, color: '#4338CA' }}>AI Suggestions</span>
         </div>
         <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {AI_SUGGESTIONS.map((s, i) => (
+          {suggestions.map((s: string, i: number) => (
             <li key={i} style={{ fontSize: 13, color: '#3730A3', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
               <span style={{ color: '#6366F1', marginTop: 1 }}>•</span> {s}
             </li>
@@ -395,7 +431,17 @@ export default function ProjectDetailPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }} onClick={() => setEditing(false)}>
           <div onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '20px 16px 36px', width: '100%', maxWidth: 480 }}>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D1D6', margin: '0 auto 18px' }} />
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 18px' }}>Edit Project</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Edit Project</h3>
+              <button
+                onClick={() => { setEditing(false); setShowDeleteConfirm(true) }}
+                style={{ background: '#FFF0F0', border: 'none', borderRadius: 8, width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
+                </svg>
+              </button>
+            </div>
 
             <label style={{ fontSize: 12, color: '#8E8E93', display: 'block', marginBottom: 4 }}>Title</label>
             <input
@@ -405,13 +451,22 @@ export default function ProjectDetailPage() {
             />
 
             <label style={{ fontSize: 12, color: '#8E8E93', display: 'block', marginBottom: 4 }}>Type</label>
-            <select
-              value={editType}
-              onChange={e => setEditType(e.target.value as DBProject['type'])}
-              style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', marginBottom: 14, background: 'white', appearance: 'none', boxSizing: 'border-box' }}
-            >
-              {TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+              {TYPE_OPTIONS.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setEditType(opt.value)}
+                  style={{
+                    padding: '11px', borderRadius: 12, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                    fontSize: 14, fontWeight: editType === opt.value ? 700 : 400,
+                    background: editType === opt.value ? '#1C1C1E' : '#F2F2F7',
+                    color:      editType === opt.value ? 'white'   : '#3C3C43',
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
 
             <label style={{ fontSize: 12, color: '#8E8E93', display: 'block', marginBottom: 4 }}>Timeline</label>
             <input
@@ -430,12 +485,16 @@ export default function ProjectDetailPage() {
               style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', resize: 'none', marginBottom: 18, boxSizing: 'border-box' }}
             />
 
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setEditing(false)} style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1px solid #E5E5EA', background: 'white', fontSize: 15, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={handleSaveEdit} disabled={saving} style={{ flex: 1, padding: '13px', borderRadius: 12, border: 'none', background: '#1C1C1E', fontSize: 15, fontWeight: 700, color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>
-                {saving ? 'Saving…' : 'Save Changes'}
-              </button>
-            </div>
+            <button onClick={handleSaveEdit} disabled={saving} style={{ width: '100%', padding: '13px', borderRadius: 12, border: 'none', background: '#1C1C1E', fontSize: 15, fontWeight: 700, color: 'white', cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10 }}>
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+            <button
+              onClick={() => { setEditing(false); setShowArchiveConfirm(true) }}
+              style={{ width: '100%', padding: '13px', borderRadius: 12, border: '1.5px solid #E5E5EA', background: 'white', fontSize: 15, fontWeight: 600, color: '#8E8E93', cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7 }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+              Archive Project
+            </button>
           </div>
         </div>
       )}

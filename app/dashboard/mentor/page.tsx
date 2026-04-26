@@ -2,11 +2,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { toDateStr, getMonday, formatTime, getCatStyle } from '@/lib/planData'
 import {
-  toDateStr, getMonday, getTasksForDate, getTasksForWeek, getMomentumScore,
-  getAllTasks, saveTasks, formatTime, getCatStyle,
-  type PlanTask,
-} from '@/lib/planData'
+  getTasksForDate, getTasksForWeek, toggleTask as dbToggleTask,
+  type DBTask,
+} from '@/lib/db'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -91,7 +91,7 @@ function getTaskImpact(category: string, index: number): string {
 
 // ─── Insight Generator ────────────────────────────────────────────────────────
 
-function generateInsight(goals: Goal[], tasks: PlanTask[], score: number): string {
+function generateInsight(goals: Goal[], tasks: DBTask[], score: number): string {
   const h = new Date().getHours()
   const dow = new Date().getDay()
   const activeGoals = goals.filter(g => g.status === 'active')
@@ -154,7 +154,7 @@ function generateInsight(goals: Goal[], tasks: PlanTask[], score: number): strin
 
 // ─── Bottom Line Generator ─────────────────────────────────────────────────────
 
-function generateBottomLine(tasks: PlanTask[], goals: Goal[]): string {
+function generateBottomLine(tasks: DBTask[], goals: Goal[]): string {
   const cats = [...new Set(tasks.map(t => t.category))]
   const activeCount = goals.filter(g => g.status === 'active').length
   if (tasks.length === 0) return 'No tasks scheduled today. Head to your Plan tab to map out your day.'
@@ -169,9 +169,10 @@ function generateBottomLine(tasks: PlanTask[], goals: Goal[]): string {
 function buildMentorResponse(
   msg: string,
   goals: Goal[],
-  todayTasks: PlanTask[],
+  todayTasks: DBTask[],
   score: number,
   username: string,
+  weekTasks: DBTask[],
 ): { content: string; actions?: ChatAction[] } {
   const lower = msg.toLowerCase()
   const firstName = username.split(' ')[0] || 'you'
@@ -192,7 +193,7 @@ function buildMentorResponse(
     }
     const done = todayTasks.filter(t => t.completed).length
     const taskList = todayTasks.map(t =>
-      `• ${t.text} at ${formatTime(t.scheduledTime)} (${t.duration}h, ${t.category})`
+      `• ${t.text} at ${formatTime(t.scheduled_time)} (${t.duration}h, ${t.category})`
     ).join('\n')
     return {
       content: `You have ${todayTasks.length} task${todayTasks.length > 1 ? 's' : ''} scheduled for today:\n\n${taskList}\n\n${done > 0 ? `You've already completed ${done} of them — solid progress.` : `None completed yet — get started with the first one to build momentum.`} ${done === todayTasks.length && done > 0 ? "You've finished everything for today. Outstanding." : ''} Need help prioritizing?`,
@@ -227,8 +228,6 @@ function buildMentorResponse(
     lower.includes('performing') ||
     lower.includes('how have i')
   ) {
-    const monday = getMonday(new Date())
-    const weekTasks = getTasksForWeek(monday)
     const weekDone = weekTasks.filter(t => t.completed).length
     return {
       content: `Your momentum score is ${score}/100 this week. You've completed ${weekDone} of ${weekTasks.length} tasks. ${
@@ -283,7 +282,7 @@ function buildMentorResponse(
     const topGoal = activeGoals[0]
     let advice = ''
     if (nextTask) {
-      advice += `Your most immediate move is to complete "${nextTask.text}" — it's scheduled for ${formatTime(nextTask.scheduledTime)} and directly advances your ${nextTask.category} goal.\n\n`
+      advice += `Your most immediate move is to complete "${nextTask.text}" — it's scheduled for ${formatTime(nextTask.scheduled_time)} and directly advances your ${nextTask.category} goal.\n\n`
     }
     if (topGoal) {
       const hrs = topGoal.estimated_weekly_hours || 3
@@ -408,7 +407,7 @@ function buildMentorResponse(
     const nextTask = todayTasks.find(t => !t.completed)
     if (nextTask) {
       return {
-        content: `Right now, your highest priority is "${nextTask.text}" — scheduled for ${formatTime(nextTask.scheduledTime)}, ${nextTask.priority} priority, advancing your ${nextTask.category} goal.\n\nAfter that, your north star for the week is "${activeGoals[0]?.text || 'your top active goal'}". Every completed task today is a vote for who you're becoming.`,
+        content: `Right now, your highest priority is "${nextTask.text}" — scheduled for ${formatTime(nextTask.scheduled_time)}, ${nextTask.priority} priority, advancing your ${nextTask.category} goal.\n\nAfter that, your north star for the week is "${activeGoals[0]?.text || 'your top active goal'}". Every completed task today is a vote for who you're becoming.`,
       }
     }
     if (activeGoals[0]) {
@@ -447,7 +446,9 @@ function SparkleIcon({ size = 18, color = 'white' }: { size?: number; color?: st
 export default function MentorPage() {
   const router = useRouter()
   const [goals, setGoals] = useState<Goal[]>([])
-  const [todayTasks, setTodayTasks] = useState<PlanTask[]>([])
+  const [todayTasks, setTodayTasks] = useState<DBTask[]>([])
+  const [weekTasks, setWeekTasks] = useState<DBTask[]>([])
+  const [userId, setUserId] = useState<string | null>(null)
   const [score, setScore] = useState(0)
   const [username, setUsername] = useState('')
   const [insight, setInsight] = useState('')
@@ -472,14 +473,21 @@ export default function MentorPage() {
       const name = profile?.username || ''
       const fetchedGoals: Goal[] = goalsData || []
       const todayStr = toDateStr(new Date())
-      const tasks = getTasksForDate(todayStr)
-      const momentumScore = getMomentumScore()
+      const monday = getMonday(new Date())
+      const [todayData, weekData] = await Promise.all([
+        getTasksForDate(user.id, todayStr),
+        getTasksForWeek(user.id, monday),
+      ])
+      const completedInWeek = weekData.filter(t => t.completed).length
+      const momentumScore = weekData.length > 0 ? Math.round((completedInWeek / weekData.length) * 100) : 0
 
+      setUserId(user.id)
       setUsername(name)
       setGoals(fetchedGoals)
-      setTodayTasks(tasks)
+      setTodayTasks(todayData)
+      setWeekTasks(weekData)
       setScore(momentumScore)
-      setInsight(generateInsight(fetchedGoals, tasks, momentumScore))
+      setInsight(generateInsight(fetchedGoals, todayData, momentumScore))
 
       const firstName = name.split(' ')[0] || 'there'
       setMessages([{
@@ -497,20 +505,26 @@ export default function MentorPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, typing])
 
-  const refreshTasks = useCallback(() => {
+  const refreshTasks = useCallback(async () => {
+    if (!userId) return
     const todayStr = toDateStr(new Date())
-    const updated = getTasksForDate(todayStr)
-    setTodayTasks(updated)
-    setScore(getMomentumScore())
-  }, [])
+    const monday = getMonday(new Date())
+    const [todayData, weekData] = await Promise.all([
+      getTasksForDate(userId, todayStr),
+      getTasksForWeek(userId, monday),
+    ])
+    setTodayTasks(todayData)
+    setWeekTasks(weekData)
+    const completed = weekData.filter(t => t.completed).length
+    setScore(weekData.length > 0 ? Math.round((completed / weekData.length) * 100) : 0)
+  }, [userId])
 
   const applyAction = async (action: ChatAction, msgId: string) => {
     if (action.type === 'confirm_task_done') {
-      const allTasks = getAllTasks()
-      const updated = allTasks.map(t =>
-        t.id === action.payload.taskId ? { ...t, completed: true } : t
-      )
-      saveTasks(updated)
+      const taskId = action.payload.taskId as string
+      setTodayTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: true } : t))
+      setWeekTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: true } : t))
+      await dbToggleTask(taskId, false)
       refreshTasks()
     } else if (action.type === 'update_goal_progress') {
       const { goalId, progress } = action.payload as { goalId: string; progress: number }
@@ -554,7 +568,7 @@ export default function MentorPage() {
     // Simulate processing delay
     await new Promise(r => setTimeout(r, 900 + Math.random() * 600))
 
-    const response = buildMentorResponse(text, goals, todayTasks, score, username)
+    const response = buildMentorResponse(text, goals, todayTasks, score, username, weekTasks)
     const assistantMsg: ChatMessage = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',

@@ -46,8 +46,6 @@ export default function WorkSchedulePage() {
     )
   }
 
-  const tzLabel = TIMEZONE_DISPLAY[timezone] || timezone
-
   const handleContinue = () => {
     if (employmentType !== 'not-working') {
       if (workDays.length === 0) { setTimeError('Please select at least one work day.'); return }
@@ -183,7 +181,18 @@ export default function WorkSchedulePage() {
         <p style={{ fontSize: 14, color: '#8E8E93', marginBottom: 12 }}>Your timezone</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#F8F8FC', borderRadius: 10, padding: '12px 14px' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-          <span style={{ fontSize: 14, color: '#1C1C1E', fontWeight: 500 }}>{tzLabel}</span>
+          <select
+            value={timezone}
+            onChange={e => setTimezone(e.target.value)}
+            style={{ border: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', flex: 1, cursor: 'pointer' }}
+          >
+            {!TIMEZONE_DISPLAY[timezone] && (
+              <option value={timezone}>{timezone}</option>
+            )}
+            {Object.entries(TIMEZONE_DISPLAY).map(([tz, label]) => (
+              <option key={tz} value={tz}>{label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
