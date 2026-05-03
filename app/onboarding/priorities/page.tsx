@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { savePriorityStack, saveEnergyBlocks } from '@/lib/db'
+import { savePriorityStack, saveEnergyBlocks, DEFAULT_WORK_SCHEDULE, type WorkSchedule } from '@/lib/db'
+import { generateTasksForGoal } from '@/lib/goalTemplates'
 
 interface GoalEntry {
   text: string
@@ -44,58 +45,65 @@ const handleAccept = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { router.push('/login'); return }
 
-    // Save goals to database
+    // Parse session data once — needed for both saving and task generation
+    let energyBlocks: Record<string, string> = {}
+    let workSchedule: WorkSchedule = DEFAULT_WORK_SCHEDULE
+    try {
+      const raw = sessionStorage.getItem('onboarding_energy')
+      if (raw) energyBlocks = JSON.parse(raw)
+    } catch (e) { console.error('Energy parse error:', e) }
+    try {
+      const raw = sessionStorage.getItem('onboarding_work_schedule')
+      if (raw) workSchedule = JSON.parse(raw)
+    } catch (e) { console.error('Work schedule parse error:', e) }
+
+    // Save goals — select back so we have IDs for task generation
     const allGoals = [...goals, ...parked]
+    let insertedGoals: { id: string; text: string; category: string; status: string }[] = []
     if (allGoals.length > 0) {
-      const goalsToInsert = allGoals.map((g, i) => ({
-        user_id: user.id,
-        text: g.text,
-        category: g.category,
-        status: i < 4 ? 'active' : 'parking',
-        priority: i,
-        progress: 0,
-      }))
-      const { error: goalsError } = await supabase.from('goals').insert(goalsToInsert)
+      const { data: goalsData, error: goalsError } = await supabase
+        .from('goals')
+        .insert(allGoals.map((g, i) => ({
+          user_id: user.id,
+          text: g.text,
+          category: g.category,
+          status: i < 4 ? 'active' : 'parking',
+          priority: i,
+          progress: 0,
+        })))
+        .select('id, text, category, status')
       if (goalsError) console.error('Goals insert error:', goalsError.message)
+      insertedGoals = goalsData || []
     }
 
-    // Save energy blocks to profiles.energy_blocks JSONB
-    const storedEnergy = sessionStorage.getItem('onboarding_energy')
-    if (storedEnergy) {
-      try {
-        const assignments: Record<string, string> = JSON.parse(storedEnergy)
-        await saveEnergyBlocks(user.id, assignments)
-      } catch (e) {
-        console.error('Energy parse error:', e)
+    // Save energy blocks, work schedule, priority stack, mark complete — in parallel
+    await Promise.all([
+      saveEnergyBlocks(user.id, energyBlocks),
+      savePriorityStack(user.id, goals.map(g => g.category).filter((c, i, arr) => arr.indexOf(c) === i)),
+      supabase.from('profiles').update({
+        work_schedule: workSchedule,
+        timezone: workSchedule.timezone,
+        onboarding_complete: true,
+      }).eq('id', user.id),
+    ])
+
+    // Generate and insert tasks for each active goal, passing accumulated tasks
+    // so slot-finding avoids double-booking the same time on the same day
+    const activeGoals = insertedGoals.filter(g => g.status === 'active')
+    if (activeGoals.length > 0) {
+      const accumulated: { date: string; scheduled_time: string }[] = []
+      const tasks = activeGoals.flatMap(goal => {
+        const generated = generateTasksForGoal(goal, energyBlocks, workSchedule, new Date(), accumulated)
+        accumulated.push(...generated)
+        return generated
+      })
+      if (tasks.length > 0) {
+        const { error: tasksError } = await supabase
+          .from('tasks')
+          .insert(tasks.map(t => ({ ...t, user_id: user.id })))
+        if (tasksError) console.error('Tasks insert error:', tasksError.message)
       }
     }
-
-    // Save priority stack to profiles.priority_stack JSONB
-    const priorityCategories = goals
-      .map(g => g.category)
-      .filter((c, i, arr) => arr.indexOf(c) === i)
-    await savePriorityStack(user.id, priorityCategories)
-
-    // Save work schedule from session storage
-    const storedWorkSchedule = sessionStorage.getItem('onboarding_work_schedule')
-    if (storedWorkSchedule) {
-      try {
-        const ws = JSON.parse(storedWorkSchedule)
-        await supabase
-          .from('profiles')
-          .update({ work_schedule: ws, timezone: ws.timezone })
-          .eq('id', user.id)
-      } catch (e) {
-        console.error('Work schedule parse error:', e)
-      }
-    }
-
-    // Mark onboarding complete
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ onboarding_complete: true })
-      .eq('id', user.id)
-    if (profileError) console.error('Profile update error:', profileError.message)
 
     sessionStorage.removeItem('onboarding_goals')
     sessionStorage.removeItem('onboarding_energy')

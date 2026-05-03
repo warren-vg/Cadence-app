@@ -153,3 +153,21 @@ CREATE POLICY "quarterly_reviews_own" ON quarterly_reviews FOR ALL USING (auth.u
 
 -- Allow reading other users' profiles for friend search (username only)
 CREATE POLICY "profiles_public_read" ON profiles FOR SELECT USING (true);
+
+-- ─── Weekly Reflections ────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS weekly_reflections (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id          UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  week_of          DATE NOT NULL,
+  wins             TEXT NOT NULL DEFAULT '',
+  challenges       TEXT NOT NULL DEFAULT '',
+  learnings        TEXT NOT NULL DEFAULT '',
+  next_week_focus  TEXT NOT NULL DEFAULT '',
+  week_score       INTEGER NOT NULL DEFAULT 0,
+  created_at       TIMESTAMPTZ DEFAULT now(),
+  UNIQUE (user_id, week_of)
+);
+
+ALTER TABLE weekly_reflections ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "weekly_reflections_own" ON weekly_reflections FOR ALL USING (auth.uid() = user_id);

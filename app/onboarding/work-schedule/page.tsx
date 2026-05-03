@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
 
 const EMPLOYMENT_TYPES = [
   { id: 'full-time',        label: 'Full-time' },
@@ -34,10 +35,31 @@ export default function WorkSchedulePage() {
   const [endTime, setEndTime]               = useState('17:00')
   const [timezone, setTimezone]             = useState('America/New_York')
   const [timeError, setTimeError]           = useState('')
+  const [isOnboarded, setIsOnboarded]       = useState(false)
 
   useEffect(() => {
     const detected = Intl.DateTimeFormat().resolvedOptions().timeZone
     if (detected) setTimezone(detected)
+
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('work_schedule, onboarding_complete')
+        .eq('id', user.id)
+        .single()
+      if (profile?.onboarding_complete) setIsOnboarded(true)
+      if (profile?.work_schedule) {
+        const ws = profile.work_schedule
+        if (ws.employmentType) setEmploymentType(ws.employmentType)
+        if (ws.workDays?.length)  setWorkDays(ws.workDays)
+        if (ws.workStartTime)     setStartTime(ws.workStartTime)
+        if (ws.workEndTime)       setEndTime(ws.workEndTime)
+        if (ws.timezone)          setTimezone(ws.timezone)
+      }
+    }
+    load()
   }, [])
 
   const toggleDay = (day: string) => {
@@ -46,7 +68,7 @@ export default function WorkSchedulePage() {
     )
   }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (employmentType !== 'not-working') {
       if (workDays.length === 0) { setTimeError('Please select at least one work day.'); return }
       const [sh, sm] = startTime.split(':').map(Number)
@@ -66,7 +88,11 @@ export default function WorkSchedulePage() {
       timezone,
     }
     sessionStorage.setItem('onboarding_work_schedule', JSON.stringify(schedule))
-    router.push('/onboarding/energy')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('profiles').update({ work_schedule: schedule }).eq('id', user.id)
+    }
+    router.push(isOnboarded ? '/dashboard/settings' : '/onboarding/energy')
   }
 
   const noWork = employmentType === 'not-working'

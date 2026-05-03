@@ -317,14 +317,14 @@ export function getUsedCapacity(goals: GoalForCapacity[]): number {
 
 export function getRemainingCapacity(
   goals: GoalForCapacity[],
-  weeklyCapacityHours = CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS
+  weeklyCapacityHours: number = CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS
 ): number {
   return weeklyCapacityHours - getUsedCapacity(goals)
 }
 
 export function getCapacityUsedPct(
   goals: GoalForCapacity[],
-  weeklyCapacityHours = CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS
+  weeklyCapacityHours: number = CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS
 ): number {
   return Math.round((getUsedCapacity(goals) / weeklyCapacityHours) * 100)
 }
@@ -340,12 +340,12 @@ export function getCapacityUsedPct(
  *   C4 Capacity health                     10%
  */
 export function getMomentumScore(
-  goals: Array<{ status: string; progress: number; estimatedWeeklyHours?: number | null }> = [],
-  weeklyCapacityHours = CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS
+  goals: Array<{ status: string; progress: number; estimatedWeeklyHours?: number | null }>,
+  weekTasks: Array<{ completed: boolean }>,
+  streak: number,
+  weeklyCapacityHours: number = CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS
 ): number {
-  const monday    = getMonday(new Date())
-  const weekTasks = getTasksForWeek(monday)
-  const C1        = weekTasks.length > 0
+  const C1 = weekTasks.length > 0
     ? Math.round((weekTasks.filter(t => t.completed).length / weekTasks.length) * 100)
     : 0
 
@@ -354,9 +354,8 @@ export function getMomentumScore(
     ? Math.round(activeGoals.reduce((s, g) => s + (g.progress || 0), 0) / activeGoals.length)
     : 0
 
-  const streak = getWeekStreak()
-  const C3     = Math.min(streak, CONSTANTS.STREAK_MAX_FOR_NORMALIZATION)
-               / CONSTANTS.STREAK_MAX_FOR_NORMALIZATION * 100
+  const C3 = Math.min(streak, CONSTANTS.STREAK_MAX_FOR_NORMALIZATION)
+           / CONSTANTS.STREAK_MAX_FOR_NORMALIZATION * 100
 
   const capPct = getCapacityUsedPct(goals, weeklyCapacityHours)
   const C4     = capPct <= 100

@@ -2,10 +2,10 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { toDateStr, getMonday, formatTime } from '@/lib/planData'
+import { toDateStr, getMonday, formatTime, getMomentumScore } from '@/lib/planData'
 import {
   getTasksForDate, getTasksForWeek, toggleTask as dbToggleTask,
-  type DBTask,
+  getWeekStreakFromDB, type DBTask,
 } from '@/lib/db'
 
 interface Goal {
@@ -15,6 +15,7 @@ interface Goal {
   status: string
   priority: number
   progress: number
+  estimated_weekly_hours?: number | null
 }
 
 interface Profile {
@@ -94,6 +95,8 @@ export default function DashboardPage() {
   const [goals, setGoals] = useState<Goal[]>([])
   const [todayTasks, setTodayTasks] = useState<DBTask[]>([])
   const [weekTasks, setWeekTasks] = useState<DBTask[]>([])
+  const [streak, setStreak] = useState(0)
+  const [weeklyCapacity, setWeeklyCapacity] = useState(40)
   const [loading, setLoading] = useState(true)
   const [greeting, setGreeting] = useState('')
   const [dateLabel, setDateLabel] = useState('')
@@ -110,17 +113,20 @@ export default function DashboardPage() {
       const todayStr = toDateStr(new Date())
       const monday   = getMonday(new Date())
 
-      const [{ data: profileData }, { data: goalsData }, todayData, weekData] = await Promise.all([
-        supabase.from('profiles').select('username, avatar_url').eq('id', user.id).single(),
+      const [{ data: profileData }, { data: goalsData }, todayData, weekData, currentStreak] = await Promise.all([
+        supabase.from('profiles').select('username, avatar_url, weekly_capacity').eq('id', user.id).single(),
         supabase.from('goals').select('*').eq('user_id', user.id).order('priority', { ascending: true }),
         getTasksForDate(user.id, todayStr),
         getTasksForWeek(user.id, monday),
+        getWeekStreakFromDB(user.id),
       ])
 
       setProfile(profileData)
       setGoals(goalsData || [])
       setTodayTasks(todayData)
       setWeekTasks(weekData)
+      setStreak(currentStreak)
+      if (profileData?.weekly_capacity) setWeeklyCapacity(profileData.weekly_capacity)
       setLoading(false)
     }
 
@@ -141,8 +147,13 @@ export default function DashboardPage() {
   const topPriorities = activeGoals.slice(0, 3)
   const completedToday = todayTasks.filter(t => t.completed).length
   const totalToday = todayTasks.length
+  const momentumScore = getMomentumScore(
+    goals.map(g => ({ status: g.status, progress: g.progress, estimatedWeeklyHours: g.estimated_weekly_hours ?? null })),
+    weekTasks,
+    streak,
+    weeklyCapacity,
+  )
   const completedInWeek = weekTasks.filter(t => t.completed).length
-  const momentumScore = weekTasks.length > 0 ? Math.round((completedInWeek / weekTasks.length) * 100) : 0
   const weekSummary = {
     totalTasks:     weekTasks.length,
     completedTasks: completedInWeek,

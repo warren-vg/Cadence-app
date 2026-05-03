@@ -1,10 +1,9 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  toDateStr, getMonday, getWeekSummary, saveReflection,
-  getAllReflections, getWeekStreak, addDays,
-} from '@/lib/planData'
+import { toDateStr, getMonday, getWeekSummary, addDays } from '@/lib/planData'
+import { supabase } from '@/lib/supabase'
+import { saveReflectionToDB, getReflectionForWeek, getWeekStreakFromDB } from '@/lib/db'
 
 const AI_INSIGHTS = [
   "You're most productive on Tue/Wed mornings — protect this time",
@@ -21,25 +20,29 @@ export default function WeeklyReviewPage() {
   const [showInsights, setShowInsights] = useState(false)
   const [submitted, setSubmitted]   = useState(false)
   const [mounted, setMounted]       = useState(false)
-
+  const [userId, setUserId]         = useState<string | null>(null)
   const [streak, setStreak]         = useState(0)
 
   useEffect(() => {
     setMounted(true)
-
-    setStreak(getWeekStreak())
-
-    try {
-      const monday = getMonday(new Date())
-      const weekOf = toDateStr(monday)
-      const existing = getAllReflections().find(r => r.weekOf === weekOf)
+    const init = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setUserId(user.id)
+      const weekOf = toDateStr(getMonday(new Date()))
+      const [existing, currentStreak] = await Promise.all([
+        getReflectionForWeek(user.id, weekOf),
+        getWeekStreakFromDB(user.id),
+      ])
+      setStreak(currentStreak)
       if (existing) {
         setWins(existing.wins)
         setChallenges(existing.challenges)
         setLearnings(existing.learnings)
-        setNextFocus(existing.nextWeekFocus)
+        setNextFocus(existing.next_week_focus)
       }
-    } catch { /* ignore */ }
+    }
+    init()
   }, [])
 
   if (!mounted) return null
@@ -53,17 +56,19 @@ export default function WeeklyReviewPage() {
     ? Math.round((summary.completedTasks / summary.totalTasks) * 100)
     : 0
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!userId) return
     const weekOf = toDateStr(monday)
-    saveReflection({
-      weekOf,
+    await saveReflectionToDB(userId, {
+      week_of:         weekOf,
       wins,
       challenges,
       learnings,
-      nextWeekFocus: nextFocus,
-      weekScore,
+      next_week_focus: nextFocus,
+      week_score:      weekScore,
     })
-    setStreak(getWeekStreak())
+    const newStreak = await getWeekStreakFromDB(userId)
+    setStreak(newStreak)
     setSubmitted(true)
   }
 

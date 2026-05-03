@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { getMonday, addDays, toDateStr } from '@/lib/planData'
-import type { DBTask } from '@/lib/db'
+import { getWeekStreakFromDB, type DBTask } from '@/lib/db'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -183,19 +183,7 @@ function buildCatDataFromTasks(goals: Goal[], tasks: DBTask[]): CatData[] {
   })
 }
 
-function computeWeekStreak(tasks: DBTask[]): number {
-  const today = new Date()
-  let streak = 0
-  for (let w = 0; w < 52; w++) {
-    const monday    = getMonday(addDays(today, -w * 7))
-    const weekStart = toDateStr(monday)
-    const weekEnd   = toDateStr(addDays(monday, 6))
-    const hasWork   = tasks.some(t => t.date >= weekStart && t.date <= weekEnd && t.completed)
-    if (!hasWork) break
-    streak++
-  }
-  return streak
-}
+
 
 function computeInsights(goals: Goal[]): { wins: string[]; focus: string[] } {
   const active = goals.filter(g => g.status === 'active')
@@ -687,9 +675,10 @@ export default function ProgressPage() {
       const today     = new Date()
       const yearStart = toDateStr(new Date(today.getFullYear(), 0, 1))
 
-      const [{ data: goalData }, { data: taskData }] = await Promise.all([
+      const [{ data: goalData }, { data: taskData }, streakVal] = await Promise.all([
         supabase.from('goals').select('id,text,category,status,progress').eq('user_id', user.id),
         supabase.from('tasks').select('*').eq('user_id', user.id).gte('date', yearStart).order('date', { ascending: true }),
+        getWeekStreakFromDB(user.id),
       ])
 
       const goalList = (goalData || []) as Goal[]
@@ -700,7 +689,7 @@ export default function ProgressPage() {
       setMonthlyWeeks(buildWeeklyDataFromTasks(taskList))
       setQuarterlyData(buildQuarterlyDataFromTasks(taskList))
       setYearlyData(buildYearlyDataFromTasks(taskList))
-      setWeekStreak(computeWeekStreak(taskList))
+      setWeekStreak(streakVal)
       setLoading(false)
     }
     load()

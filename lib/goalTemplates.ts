@@ -1,6 +1,6 @@
 // lib/goalTemplates.ts — Rules-based task generation for goal activation
 
-import { toDateStr, addDays } from '@/lib/planData'
+import { toDateStr } from '@/lib/planData'
 import { findBestSlot, type DBTask, type WorkSchedule } from '@/lib/db'
 
 export const ENERGY_TO_CATEGORIES: Record<string, string[]> = {
@@ -21,12 +21,13 @@ interface TaskTemplate {
 
 const CATEGORY_TEMPLATES: Record<string, TaskTemplate[]> = {
   Career: [
+    { text: 'Get started: {goal}',           duration: 1,    energyType: 'deep',    recurrence: 'once',   dayPreference: -1 },
     { text: 'Deep work session: {goal}',     duration: 2,    energyType: 'deep',    recurrence: 'weekly', dayPreference: 0 },
     { text: 'Review progress on {goal}',     duration: 0.5,  energyType: 'light',   recurrence: 'weekly', dayPreference: 4 },
     { text: 'Research and planning: {goal}', duration: 1,    energyType: 'deep',    recurrence: 'weekly', dayPreference: 1 },
-    { text: 'Networking / outreach',         duration: 0.5,  energyType: 'social',  recurrence: 'weekly', dayPreference: 2 },
   ],
   Finance: [
+    { text: 'Get started: {goal}',           duration: 0.5,  energyType: 'deep',    recurrence: 'once',   dayPreference: -1 },
     { text: 'Review budget and progress',    duration: 0.5,  energyType: 'deep',    recurrence: 'weekly', dayPreference: 0 },
     { text: 'Research: {goal}',              duration: 1,    energyType: 'deep',    recurrence: 'once',   dayPreference: -1 },
     { text: 'Update financial tracker',      duration: 0.25, energyType: 'light',   recurrence: 'weekly', dayPreference: 4 },
@@ -60,6 +61,7 @@ const CATEGORY_TEMPLATES: Record<string, TaskTemplate[]> = {
     { text: 'Book and arrange logistics',    duration: 0.5,  energyType: 'light',   recurrence: 'once',   dayPreference: -1 },
   ],
   Business: [
+    { text: 'Get started: {goal}',           duration: 1,    energyType: 'deep',    recurrence: 'once',   dayPreference: -1 },
     { text: 'Strategy session: {goal}',      duration: 2,    energyType: 'deep',    recurrence: 'weekly', dayPreference: 0 },
     { text: 'Execute on priority task',      duration: 1.5,  energyType: 'deep',    recurrence: 'weekly', dayPreference: 2 },
     { text: 'Review metrics and adjust',     duration: 0.5,  energyType: 'light',   recurrence: 'weekly', dayPreference: 4 },
@@ -90,13 +92,17 @@ export function generateTasksForGoal(
   goal: { id: string; text: string; category: string },
   energyBlocks: Record<string, string>,
   workSchedule: WorkSchedule,
-  startDate: Date = new Date()
+  startDate: Date = new Date(),
+  alreadyScheduled: { date: string; scheduled_time: string }[] = []
 ): Omit<DBTask, 'id' | 'user_id' | 'completed_at' | 'created_at'>[] {
   const templates = (CATEGORY_TEMPLATES[goal.category] || CATEGORY_TEMPLATES['Personal Growth']).slice(0, 4)
-  const today     = new Date(startDate)
-  const todayDay  = today.getDay() // 0=Sun
+  const today    = new Date(startDate)
+  const todayDay = today.getDay() // 0=Sun
 
-  return templates.map((template, i) => {
+  const results: Omit<DBTask, 'id' | 'user_id' | 'completed_at' | 'created_at'>[] = []
+
+  for (let i = 0; i < templates.length; i++) {
+    const template  = templates[i]
     const goalShort = goal.text.split(' ').slice(0, 4).join(' ')
     const text      = template.text.replace('{goal}', goalShort)
 
@@ -110,17 +116,23 @@ export function generateTasksForGoal(
       targetDate.setDate(today.getDate() + i)
     }
 
+    const dateStr = toDateStr(targetDate)
+    const occupiedOnDay = [
+      ...alreadyScheduled.filter(t => t.date === dateStr),
+      ...results.filter(t => t.date === dateStr),
+    ]
+
     const slot = findBestSlot(
       { energyType: template.energyType, category: goal.category, duration: template.duration },
       targetDate,
       energyBlocks,
-      [],
+      occupiedOnDay,
       workSchedule
     )
 
-    return {
+    results.push({
       text,
-      date:           toDateStr(targetDate),
+      date:           dateStr,
       scheduled_time: slot || '18:00',
       duration:       template.duration,
       category:       goal.category,
@@ -128,6 +140,8 @@ export function generateTasksForGoal(
       completed:      false,
       goal_id:        goal.id,
       project_id:     null,
-    }
-  })
+    })
+  }
+
+  return results
 }

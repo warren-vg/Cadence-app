@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { createGoal } from '@/lib/db'
+import { type Milestone } from './_utils/generate'
 
 type TabType = 'inbox' | 'active' | 'parked' | 'archived'
 
@@ -28,6 +29,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
   Community:        { bg: '#F0FDF4', color: '#15803D' },
   'Personal Growth':{ bg: '#FDF4FF', color: '#9333EA' },
   Education:        { bg: '#EFF6FF', color: '#3B7DFF' },
+  Recovery:         { bg: '#F0FDF9', color: '#0D9488' },
 }
 
 function getCatStyle(cat: string) {
@@ -213,24 +215,30 @@ export default function GoalsPage() {
   const [userId, setUserId]     = useState<string | null>(null)
 
   // New Goal modal
-  const [showNewGoal, setShowNewGoal]         = useState(false)
-  const [newTitle, setNewTitle]               = useState('')
-  const [newCategory, setNewCategory]         = useState('Career')
-  const [newPriority, setNewPriority]         = useState<'high'|'medium'|'low'>('medium')
-  const [newNotes, setNewNotes]               = useState('')
-  const [creatingGoal, setCreatingGoal]       = useState(false)
+  const [showNewGoal, setShowNewGoal]             = useState(false)
+  const [newTitle, setNewTitle]                   = useState('')
+  const [newCategory, setNewCategory]             = useState('Career')
+  const [newPriority, setNewPriority]             = useState<'high'|'medium'|'low'>('medium')
+  const [newNotes, setNewNotes]                   = useState('')
+  const [newMilestones, setNewMilestones]         = useState<string[]>([''])
+  const [newSteps, setNewSteps]                   = useState<string[]>([''])
+  const [newLinkedProjectIds, setNewLinkedProjectIds] = useState<string[]>([])
+  const [newStartDate, setNewStartDate]           = useState('')
+  const [newEndDate, setNewEndDate]               = useState('')
+  const [availableProjects, setAvailableProjects] = useState<{id: string; title: string}[]>([])
+  const [creatingGoal, setCreatingGoal]           = useState(false)
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
-      const { data } = await supabase
-        .from('goals')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('priority', { ascending: true })
-      setGoals(data || [])
+      const [{ data: goalsData }, { data: projData }] = await Promise.all([
+        supabase.from('goals').select('*').eq('user_id', user.id).order('priority', { ascending: true }),
+        supabase.from('projects').select('id, title').eq('user_id', user.id).neq('status', 'archived'),
+      ])
+      setGoals(goalsData || [])
+      setAvailableProjects(projData || [])
       setLoading(false)
     }
     load()
@@ -245,28 +253,50 @@ export default function GoalsPage() {
     if (!newTitle.trim() || !userId) return
     setCreatingGoal(true)
     const priorityNum = newPriority === 'high' ? 1 : newPriority === 'medium' ? 5 : 10
+    const milestones: Milestone[] = newMilestones
+      .filter(m => m.trim())
+      .map(m => ({ id: crypto.randomUUID(), text: m.trim(), completed: false }))
+    const steps = newSteps.filter(s => s.trim()).map(s => s.trim())
+    let quarter: string | null = null
+    if (newStartDate || newEndDate) {
+      const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+      quarter = newStartDate && newEndDate
+        ? `${fmt(newStartDate)} – ${fmt(newEndDate)}`
+        : newStartDate ? `From ${fmt(newStartDate)}` : `Until ${fmt(newEndDate)}`
+    }
     const created = await createGoal(userId, {
-      text:     newTitle.trim(),
-      category: newCategory,
-      status:   'active',
-      priority: priorityNum,
-      progress: 0,
-      notes:    newNotes.trim() || null,
+      text:       newTitle.trim(),
+      category:   newCategory,
+      status:     'active',
+      priority:   priorityNum,
+      progress:   0,
+      notes:      newNotes.trim() || null,
+      milestones: milestones.length > 0 ? milestones : null,
+      steps:      steps.length > 0 ? steps : null,
+      quarter,
     })
     if (created) {
+      if (newLinkedProjectIds.length > 0) {
+        await Promise.all(
+          newLinkedProjectIds.map(pid =>
+            supabase.from('projects').update({ linked_goal_id: created.id }).eq('id', pid)
+          )
+        )
+      }
       setGoals(prev => [...prev, created as Goal])
       setActiveTab('active')
     }
     setShowNewGoal(false)
-    setNewTitle('')
-    setNewCategory('Career')
-    setNewPriority('medium')
-    setNewNotes('')
+    setNewTitle(''); setNewCategory('Career'); setNewPriority('medium'); setNewNotes('')
+    setNewMilestones(['']); setNewSteps(['']); setNewLinkedProjectIds([])
+    setNewStartDate(''); setNewEndDate('')
     setCreatingGoal(false)
   }
 
   const openNewGoal = () => {
     setNewTitle(''); setNewCategory('Career'); setNewPriority('medium'); setNewNotes('')
+    setNewMilestones(['']); setNewSteps(['']); setNewLinkedProjectIds([])
+    setNewStartDate(''); setNewEndDate('')
     setShowNewGoal(true)
   }
 
@@ -436,34 +466,24 @@ export default function GoalsPage() {
       {showNewGoal && (
         <div
           onClick={() => setShowNewGoal(false)}
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
-            zIndex: 200, display: 'flex', alignItems: 'flex-end',
-          }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 200, display: 'flex', alignItems: 'flex-end' }}
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{
-              width: '100%', background: 'white',
-              borderRadius: '20px 20px 0 0',
-              padding: '0 0 40px',
-              maxHeight: '92vh', overflowY: 'auto',
-            }}
+            style={{ width: '100%', background: 'white', borderRadius: '20px 20px 0 0', maxHeight: '92vh', overflowY: 'auto', paddingBottom: 40 }}
           >
             {/* Drag handle */}
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
               <div style={{ width: 36, height: 4, borderRadius: 2, background: '#E5E5EA' }} />
             </div>
 
-            {/* Modal header */}
-            <div style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '12px 20px 16px',
-            }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Add New Goal</h2>
+            {/* Header */}
+            <div style={{ position: 'relative', textAlign: 'center', padding: '12px 20px 4px' }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>New Goal</h2>
+              <p style={{ fontSize: 13, color: '#8E8E93', margin: '4px 0 0' }}>Create a new goal to track your progress</p>
               <button
                 onClick={() => setShowNewGoal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                style={{ position: 'absolute', top: 12, right: 20, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -471,60 +491,211 @@ export default function GoalsPage() {
               </button>
             </div>
 
-            <div style={{ padding: '0 20px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {/* Title */}
+            <div style={{ padding: '16px 20px 0', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+              {/* Goal Title */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
-                  Goal Title
-                </label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>Goal Title</label>
                 <input
                   autoFocus
-                  placeholder="What do you want to achieve?"
+                  placeholder="e.g. Launch a new podcast in 6 months with 10 episodes"
                   value={newTitle}
                   onChange={e => setNewTitle(e.target.value)}
                   style={{
                     width: '100%', padding: '12px 14px', borderRadius: 12,
                     border: '1px solid #E5E5EA', fontSize: 15, color: '#1C1C1E',
-                    fontFamily: 'inherit', outline: 'none', background: '#F9F9F9',
-                    boxSizing: 'border-box',
+                    fontFamily: 'inherit', outline: 'none', background: '#F9F9F9', boxSizing: 'border-box',
                   }}
                 />
               </div>
 
-              {/* Category */}
+              {/* Category - 3×3 grid */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
-                  Category
-                </label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>Category</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                   {GOAL_CATEGORIES.map(cat => {
-                    const catStyle = getCatStyle(cat)
+                    const cs = getCatStyle(cat)
                     const selected = newCategory === cat
                     return (
                       <button
                         key={cat}
                         onClick={() => setNewCategory(cat)}
                         style={{
-                          padding: '7px 14px', borderRadius: 20,
-                          border: selected ? `1.5px solid ${catStyle.color}` : '1.5px solid #E5E5EA',
-                          background: selected ? catStyle.bg : 'white',
-                          color: selected ? catStyle.color : '#8E8E93',
-                          fontSize: 13, fontWeight: selected ? 600 : 400,
+                          padding: '10px 8px', borderRadius: 12, border: 'none',
+                          background: selected ? cs.color : '#F2F2F7',
                           cursor: 'pointer', fontFamily: 'inherit',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         }}
                       >
-                        {cat}
+                        <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: selected ? 'rgba(255,255,255,0.7)' : cs.color }} />
+                        <span style={{ fontSize: 12, fontWeight: selected ? 600 : 400, color: selected ? 'white' : '#3C3C43', whiteSpace: 'nowrap' }}>{cat}</span>
                       </button>
                     )
                   })}
                 </div>
               </div>
 
-              {/* Priority */}
+              {/* Milestones */}
               <div>
                 <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
-                  Priority
+                  Milestones <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
                 </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {newMilestones.map((m, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        placeholder={`Milestone ${i + 1}`}
+                        value={m}
+                        onChange={e => { const next = [...newMilestones]; next[i] = e.target.value; setNewMilestones(next) }}
+                        style={{
+                          flex: 1, padding: '10px 12px', borderRadius: 10,
+                          border: '1px solid #E5E5EA', fontSize: 14, color: '#1C1C1E',
+                          fontFamily: 'inherit', outline: 'none', background: '#F9F9F9',
+                        }}
+                      />
+                      {newMilestones.length > 1 && (
+                        <button
+                          onClick={() => setNewMilestones(prev => prev.filter((_, j) => j !== i))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#8E8E93', flexShrink: 0 }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {newMilestones.length < 5 && (
+                    <button
+                      onClick={() => setNewMilestones(prev => [...prev, ''])}
+                      style={{ padding: '10px', borderRadius: 10, border: '1.5px dashed #D1D1D6', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: '#8E8E93' }}
+                    >
+                      + Add Milestone ({newMilestones.length}/5)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Steps */}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
+                  Action Steps <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {newSteps.map((s, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input
+                        placeholder={`Step ${i + 1}`}
+                        value={s}
+                        onChange={e => { const next = [...newSteps]; next[i] = e.target.value; setNewSteps(next) }}
+                        style={{
+                          flex: 1, padding: '10px 12px', borderRadius: 10,
+                          border: '1px solid #E5E5EA', fontSize: 14, color: '#1C1C1E',
+                          fontFamily: 'inherit', outline: 'none', background: '#F9F9F9',
+                        }}
+                      />
+                      {newSteps.length > 1 && (
+                        <button
+                          onClick={() => setNewSteps(prev => prev.filter((_, j) => j !== i))}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#8E8E93', flexShrink: 0 }}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {newSteps.length < 15 && (
+                    <button
+                      onClick={() => setNewSteps(prev => [...prev, ''])}
+                      style={{ padding: '10px', borderRadius: 10, border: '1.5px dashed #D1D1D6', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: '#8E8E93' }}
+                    >
+                      + Add Action Step ({newSteps.length}/15)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Linked Projects */}
+              {availableProjects.length > 0 && (
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
+                    Linked Projects <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                  </label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {availableProjects.map(proj => {
+                      const linked = newLinkedProjectIds.includes(proj.id)
+                      return (
+                        <button
+                          key={proj.id}
+                          onClick={() => setNewLinkedProjectIds(prev =>
+                            linked ? prev.filter(id => id !== proj.id) : [...prev, proj.id]
+                          )}
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '12px 14px', borderRadius: 12,
+                            border: linked ? '1.5px solid #3B7DFF' : '1px solid #E5E5EA',
+                            background: linked ? '#EFF6FF' : 'white',
+                            cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                          }}
+                        >
+                          <span style={{ fontSize: 14, color: linked ? '#3B7DFF' : '#1C1C1E', fontWeight: linked ? 500 : 400 }}>{proj.title}</span>
+                          {linked && (
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {newLinkedProjectIds.length > 0 && (
+                    <p style={{ fontSize: 12, color: '#3B7DFF', margin: '8px 0 0' }}>
+                      {newLinkedProjectIds.length} project{newLinkedProjectIds.length > 1 ? 's' : ''} will be linked to this goal
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Timeline */}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
+                  Timeline <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 5px' }}>Start</p>
+                    <input
+                      type="date"
+                      value={newStartDate}
+                      onChange={e => setNewStartDate(e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px 12px', borderRadius: 10,
+                        border: '1px solid #E5E5EA', fontSize: 14, color: newStartDate ? '#1C1C1E' : '#8E8E93',
+                        fontFamily: 'inherit', outline: 'none', background: '#F9F9F9', boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 5px' }}>End</p>
+                    <input
+                      type="date"
+                      value={newEndDate}
+                      onChange={e => setNewEndDate(e.target.value)}
+                      style={{
+                        width: '100%', padding: '10px 12px', borderRadius: 10,
+                        border: '1px solid #E5E5EA', fontSize: 14, color: newEndDate ? '#1C1C1E' : '#8E8E93',
+                        fontFamily: 'inherit', outline: 'none', background: '#F9F9F9', boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Priority */}
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>Priority</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(['high', 'medium', 'low'] as const).map(p => (
                     <button
@@ -536,8 +707,7 @@ export default function GoalsPage() {
                         background: newPriority === p ? `${PRIORITY_COLORS[p]}15` : 'white',
                         color: newPriority === p ? PRIORITY_COLORS[p] : '#8E8E93',
                         fontSize: 13, fontWeight: newPriority === p ? 600 : 400,
-                        cursor: 'pointer', fontFamily: 'inherit',
-                        textTransform: 'capitalize',
+                        cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize',
                       }}
                     >
                       {p}
@@ -552,7 +722,7 @@ export default function GoalsPage() {
                   Notes <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
                 </label>
                 <textarea
-                  placeholder="Add context or motivation..."
+                  placeholder="What's this goal about?"
                   value={newNotes}
                   onChange={e => setNewNotes(e.target.value)}
                   rows={3}
@@ -572,8 +742,7 @@ export default function GoalsPage() {
                 style={{
                   width: '100%', padding: '15px 0', borderRadius: 14,
                   background: !newTitle.trim() || creatingGoal ? '#D1D1D6' : '#3B7DFF',
-                  border: 'none', color: 'white',
-                  fontSize: 16, fontWeight: 600,
+                  border: 'none', color: 'white', fontSize: 16, fontWeight: 600,
                   cursor: !newTitle.trim() || creatingGoal ? 'default' : 'pointer',
                   fontFamily: 'inherit',
                 }}

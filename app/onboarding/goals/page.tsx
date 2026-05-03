@@ -150,7 +150,7 @@ export default function OnboardingGoalsPage() {
       {/* Bottom Actions */}
       <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
         <button
-          onClick={() => router.push('/onboarding/energy')}
+          onClick={() => router.push('/onboarding/work-schedule')}
           style={{
             flex: 1,
             padding: '16px',

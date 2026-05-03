@@ -98,6 +98,16 @@ function DailyPlanContent() {
           showToast(`${goalName} is now ${newProgress}% complete`)
         }
       }
+    } else if (task.project_id && userId) {
+      // Task linked to a project but not directly to a goal — propagate through the project
+      const { data: proj } = await supabase
+        .from('projects')
+        .select('linked_goal_id')
+        .eq('id', task.project_id)
+        .single()
+      if (proj?.linked_goal_id) {
+        await recalcGoalProgressFromTasks(proj.linked_goal_id, userId)
+      }
     }
   }
 

@@ -2,7 +2,7 @@
 // All Supabase table operations go here. Pages import from this module.
 
 import { supabase } from '@/lib/supabase'
-import { toDateStr, addDays, timeToMinutes } from '@/lib/planData'
+import { toDateStr, addDays, getMonday, timeToMinutes } from '@/lib/planData'
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -166,9 +166,6 @@ export async function recalcGoalProgressFromTasks(goalId: string, userId: string
 
   if (!goal) return null
 
-  const milestones: { completed: boolean }[] = goal.milestones || []
-  if (milestones.length > 0) return goal.progress as number
-
   const tasks: { completed: boolean }[] = allTasks || []
   if (tasks.length === 0) return goal.progress as number
 
@@ -313,10 +310,15 @@ export async function toggleProjectTask(
     .single()
 
   if (project?.linked_goal_id) {
-    await supabase
-      .from('goals')
-      .update({ progress: newProgress })
-      .eq('id', project.linked_goal_id)
+    const { data: goalTasks } = await supabase
+      .from('tasks')
+      .select('completed')
+      .eq('goal_id', project.linked_goal_id)
+    const gt: { completed: boolean }[] = goalTasks || []
+    const goalProgress = gt.length > 0
+      ? Math.round((gt.filter(t => t.completed).length / gt.length) * 100)
+      : newProgress
+    await supabase.from('goals').update({ progress: goalProgress }).eq('id', project.linked_goal_id)
   }
 
   return newProgress
@@ -525,7 +527,10 @@ export async function getFriendGoals(friendId: string): Promise<Array<{
 
 export async function createGoal(
   userId: string,
-  goal: { text: string; category: string; status: string; priority: number; progress: number; notes?: string | null }
+  goal: {
+    text: string; category: string; status: string; priority: number; progress: number
+    notes?: string | null; milestones?: unknown; steps?: string[] | null; quarter?: string | null
+  }
 ): Promise<{ id: string; text: string; category: string; status: string; priority: number; progress: number; quarter?: string | null; refined_goal?: string | null } | null> {
   const { data, error } = await supabase
     .from('goals')
@@ -540,6 +545,50 @@ export async function cancelFriendRequest(requestId: string): Promise<boolean> {
   const { error } = await supabase.from('friendships').delete().eq('id', requestId)
   if (error) { console.error('cancelFriendRequest:', error.message); return false }
   return true
+}
+
+// ─── Weekly Reflections ────────────────────────────────────────────────────────
+
+export interface DBReflection {
+  week_of:         string
+  wins:            string
+  challenges:      string
+  learnings:       string
+  next_week_focus: string
+  week_score:      number
+}
+
+export async function saveReflectionToDB(userId: string, r: DBReflection): Promise<boolean> {
+  const { error } = await supabase
+    .from('weekly_reflections')
+    .upsert({ ...r, user_id: userId }, { onConflict: 'user_id,week_of' })
+  if (error) { console.error('saveReflectionToDB:', error.message); return false }
+  return true
+}
+
+export async function getReflectionForWeek(userId: string, weekOf: string): Promise<DBReflection | null> {
+  const { data } = await supabase
+    .from('weekly_reflections')
+    .select('week_of, wins, challenges, learnings, next_week_focus, week_score')
+    .eq('user_id', userId)
+    .eq('week_of', weekOf)
+    .single()
+  return data as DBReflection | null
+}
+
+export async function getWeekStreakFromDB(userId: string): Promise<number> {
+  const { data } = await supabase
+    .from('weekly_reflections')
+    .select('week_of')
+    .eq('user_id', userId)
+  const weekSet = new Set((data || []).map((r: { week_of: string }) => r.week_of))
+  let streak    = 0
+  let cursor    = addDays(getMonday(new Date()), -7)
+  while (streak < 52) {
+    if (weekSet.has(toDateStr(cursor))) { streak++; cursor = addDays(cursor, -7) }
+    else break
+  }
+  return streak
 }
 
 // ─── Work Schedule Helpers ────────────────────────────────────────────────────
@@ -580,7 +629,7 @@ export function findBestSlot(
   task: { energyType: string; category: string; duration: number },
   date: Date,
   energyBlocks: Record<string, string>,
-  existingTasks: DBTask[],
+  existingTasks: { scheduled_time: string }[],
   workSchedule: WorkSchedule
 ): string | null {
   const slots = Object.entries(energyBlocks).sort(([a], [b]) => a.localeCompare(b))

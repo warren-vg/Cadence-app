@@ -1,6 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { saveEnergyBlocks } from '@/lib/db'
 
 const BLOCK_TYPES = [
   { id: 'deep', label: 'Deep Work', color: '#3B7DFF', icon: '⚡' },
@@ -20,6 +22,24 @@ export default function OnboardingEnergyPage() {
   const router = useRouter()
   const [selectedType, setSelectedType] = useState('deep')
   const [assignments, setAssignments] = useState<Record<string, string>>({})
+  const [isOnboarded, setIsOnboarded] = useState(false)
+
+  useEffect(() => {
+    const load = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('energy_blocks, onboarding_complete')
+        .eq('id', user.id)
+        .single()
+      if (profile?.onboarding_complete) setIsOnboarded(true)
+      if (profile?.energy_blocks && Object.keys(profile.energy_blocks).length > 0) {
+        setAssignments(profile.energy_blocks)
+      }
+    }
+    load()
+  }, [])
 
   const toggleSlot = (slot: string) => {
     setAssignments(prev => {
@@ -39,9 +59,11 @@ export default function OnboardingEnergyPage() {
     return { bg: block?.color || 'white', color: 'white', border: block?.color || '#D1D1D6' }
   }
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     sessionStorage.setItem('onboarding_energy', JSON.stringify(assignments))
-    router.push('/onboarding/priorities')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) await saveEnergyBlocks(user.id, assignments)
+    router.push(isOnboarded ? '/dashboard/settings' : '/onboarding/priorities')
   }
 
   return (
