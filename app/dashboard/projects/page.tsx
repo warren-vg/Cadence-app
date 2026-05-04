@@ -201,7 +201,21 @@ export default function ProjectsPage() {
             style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '24px 20px 40px' }}
             onClick={e => e.stopPropagation()}
           >
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 4px' }}>New Project</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>New Project</h2>
+              <button
+                onClick={() => setShowNew(false)}
+                style={{
+                  background: '#F2F2F7', border: 'none', borderRadius: '50%',
+                  width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
             <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 20px' }}>Create a new project to track your work</p>
 
             <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Project Title</p>

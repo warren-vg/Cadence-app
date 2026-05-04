@@ -125,6 +125,7 @@ export default function SettingsPage() {
   const router = useRouter()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [name, setName] = useState('')
+  const [savedName, setSavedName] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -150,6 +151,7 @@ export default function SettingsPage() {
 
       setProfile({ id: user.id, username: data?.username || '', email: user.email || '', avatar_url: data?.avatar_url || null })
       setName(data?.username || '')
+      setSavedName(data?.username || '')
       setNotifications((data?.notifications as NotificationPrefs | null) ?? DEFAULT_NOTIFS)
       setLoading(false)
     }
@@ -162,6 +164,8 @@ export default function SettingsPage() {
     try {
       await supabase.from('profiles').update({ username: name.trim(), notifications }).eq('id', profile.id)
       saveTheme(theme)
+      setName(name.trim())
+      setSavedName(name.trim())
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch { /* ignore */ } finally {
@@ -305,20 +309,27 @@ export default function SettingsPage() {
             <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px' }}>Email</p>
             <p style={{ fontSize: 15, color: '#3C3C43', margin: 0 }}>{profile?.email}</p>
           </div>
-          <div style={{ padding: '14px 0' }}>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              style={{
-                width: '100%', background: saved ? '#34C759' : '#3B7DFF',
-                border: 'none', borderRadius: 10, padding: '12px',
-                color: 'white', fontSize: 15, fontWeight: 600,
-                cursor: saving ? 'default' : 'pointer',
-                fontFamily: 'inherit', transition: 'background 0.3s',
-              }}
-            >
-              {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Changes'}
-            </button>
+          <div style={{
+            overflow: 'hidden',
+            maxHeight: name !== savedName ? '62px' : '0',
+            opacity: name !== savedName ? 1 : 0,
+            transition: 'max-height 0.25s ease, opacity 0.2s ease',
+          }}>
+            <div style={{ padding: '14px 0 2px' }}>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                style={{
+                  width: '100%', background: saved ? '#34C759' : '#3B7DFF',
+                  border: 'none', borderRadius: 10, padding: '12px',
+                  color: 'white', fontSize: 15, fontWeight: 600,
+                  cursor: saving ? 'default' : 'pointer',
+                  fontFamily: 'inherit', transition: 'background 0.3s',
+                }}
+              >
+                {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </div>
       </Card>
