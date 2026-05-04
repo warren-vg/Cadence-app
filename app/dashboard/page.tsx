@@ -394,7 +394,7 @@ export default function DashboardPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <DonutChart planned={weekSummary.totalHours} total={40} />
+          <DonutChart planned={weekSummary.totalHours} total={weeklyCapacity} />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

@@ -1,15 +1,51 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { toDateStr, getMonday, getWeekSummary, addDays } from '@/lib/planData'
+import { toDateStr, getMonday, addDays } from '@/lib/planData'
 import { supabase } from '@/lib/supabase'
-import { saveReflectionToDB, getReflectionForWeek, getWeekStreakFromDB } from '@/lib/db'
+import { saveReflectionToDB, getReflectionForWeek, getWeekStreakFromDB, getTasksForWeek, type DBTask } from '@/lib/db'
 
-const AI_INSIGHTS = [
-  "You're most productive on Tue/Wed mornings — protect this time",
-  'Creative work is getting squeezed — consider blocking Friday afternoons',
-  'Your health goal has strong momentum — keep the streak going',
-]
+interface Goal {
+  id: string
+  text: string
+  category: string
+  status: string
+  progress: number
+}
+
+function computeInsights(goals: Goal[]): { wins: string[]; focus: string[] } {
+  const active = goals.filter(g => g.status === 'active')
+  if (!active.length) return { wins: ['Keep up the consistent effort!'], focus: ['Stay consistent across all goal areas'] }
+  const wins: string[]  = []
+  const focus: string[] = []
+  const sorted     = [...active].sort((a, b) => b.progress - a.progress)
+  const struggling = active.filter(g => g.progress < 40)
+  if (sorted[0] && sorted[0].progress >= 70) {
+    const t = sorted[0].text
+    wins.push(`${t.length > 42 ? t.slice(0, 42) + '…' : t} at ${sorted[0].progress}%`)
+  }
+  const avg = Math.round(active.reduce((s, g) => s + g.progress, 0) / active.length)
+  wins.push(`Overall average progress: ${avg}%`)
+  const completed = active.filter(g => g.progress >= 100)
+  if (completed.length > 0) wins.push(`${completed.length} goal(s) at 100%!`)
+  if (struggling[0]) {
+    const t = struggling[0].text
+    focus.push(`${t.length > 42 ? t.slice(0, 42) + '…' : t} needs attention (${struggling[0].progress}%)`)
+  }
+  const cats = [...new Set(active.map(g => g.category))]
+  if (cats.length > 1) {
+    const catAvgs = cats.map(cat => ({
+      cat,
+      avg: Math.round(active.filter(g => g.category === cat).reduce((s, g) => s + g.progress, 0) / active.filter(g => g.category === cat).length),
+    }))
+    const weakCat = catAvgs.sort((a, b) => a.avg - b.avg)[0]
+    if (weakCat.avg < 50) focus.push(`${weakCat.cat} goals need more time allocation`)
+  }
+  return {
+    wins:  wins.length  > 0 ? wins  : ['Keep up the consistent effort!'],
+    focus: focus.length > 0 ? focus : ['Stay consistent across all goal areas'],
+  }
+}
 
 export default function WeeklyReviewPage() {
   const router = useRouter()
@@ -22,6 +58,8 @@ export default function WeeklyReviewPage() {
   const [mounted, setMounted]       = useState(false)
   const [userId, setUserId]         = useState<string | null>(null)
   const [streak, setStreak]         = useState(0)
+  const [weekTasksList, setWeekTasksList] = useState<DBTask[]>([])
+  const [goals, setGoals]           = useState<Goal[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -29,12 +67,17 @@ export default function WeeklyReviewPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
       setUserId(user.id)
-      const weekOf = toDateStr(getMonday(new Date()))
-      const [existing, currentStreak] = await Promise.all([
+      const monday = getMonday(new Date())
+      const weekOf = toDateStr(monday)
+      const [existing, currentStreak, weekTasks, { data: goalsData }] = await Promise.all([
         getReflectionForWeek(user.id, weekOf),
         getWeekStreakFromDB(user.id),
+        getTasksForWeek(user.id, monday),
+        supabase.from('goals').select('id, text, category, status, progress').eq('user_id', user.id),
       ])
       setStreak(currentStreak)
+      setWeekTasksList(weekTasks)
+      setGoals((goalsData || []) as Goal[])
       if (existing) {
         setWins(existing.wins)
         setChallenges(existing.challenges)
@@ -47,14 +90,22 @@ export default function WeeklyReviewPage() {
 
   if (!mounted) return null
 
-  const today   = new Date()
-  const monday  = getMonday(today)
-  const sunday  = addDays(monday, 6)
-  const summary = getWeekSummary(monday)
+  const today  = new Date()
+  const monday = getMonday(today)
+  const sunday = addDays(monday, 6)
+
+  const summary = {
+    totalTasks:     weekTasksList.length,
+    completedTasks: weekTasksList.filter(t => t.completed).length,
+    totalHours:     parseFloat(weekTasksList.reduce((s, t) => s + t.duration, 0).toFixed(1)),
+  }
 
   const weekScore = summary.totalTasks > 0
     ? Math.round((summary.completedTasks / summary.totalTasks) * 100)
     : 0
+
+  const insights = computeInsights(goals)
+  const allInsights = [...insights.wins, ...insights.focus]
 
   const handleSave = async () => {
     if (!userId) return
@@ -204,7 +255,7 @@ export default function WeeklyReviewPage() {
           </div>
         ))}
 
-        {/* AI Insights */}
+        {/* Goal-derived Insights */}
         {showInsights && (
           <div style={{
             background: '#EFF6FF', borderRadius: 14, padding: '16px',
@@ -216,8 +267,8 @@ export default function WeeklyReviewPage() {
               </svg>
               <p style={{ fontSize: 14, fontWeight: 700, color: '#1D4ED8', margin: 0 }}>Weekly Insights</p>
             </div>
-            {AI_INSIGHTS.map((ins, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: i < AI_INSIGHTS.length - 1 ? 8 : 0 }}>
+            {allInsights.map((ins, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: i < allInsights.length - 1 ? 8 : 0 }}>
                 <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#3B7DFF', marginTop: 7, flexShrink: 0 }} />
                 <span style={{ fontSize: 13, color: '#1D4ED8', lineHeight: 1.5 }}>{ins}</span>
               </div>

@@ -63,9 +63,10 @@ function DailyPlanContent() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
-      const [tasksData, { data: goalsData }] = await Promise.all([
+      const [tasksData, { data: goalsData }, { data: profileData }] = await Promise.all([
         getTasksForDate(user.id, date),
         supabase.from('goals').select('id, text').eq('user_id', user.id).eq('status', 'active'),
+        supabase.from('profiles').select('daily_notes, low_energy_dates').eq('id', user.id).single(),
       ])
       const goalsArr = (goalsData || []) as {id: string; text: string}[]
       setGoals(goalsArr)
@@ -73,6 +74,10 @@ function DailyPlanContent() {
       goalsArr.forEach(g => { nameMap[g.id] = g.text })
       setGoalNames(nameMap)
       setTasks(tasksData)
+      const dailyNotes = (profileData?.daily_notes as Record<string, string> | null) || {}
+      setNotes(dailyNotes[date] || '')
+      const lowEnergyDates = (profileData?.low_energy_dates as string[] | null) || []
+      setLowEnergy(lowEnergyDates.includes(date))
       setLoading(false)
     }
     init()
@@ -197,6 +202,33 @@ function DailyPlanContent() {
     }
   }
 
+  const handleNotesBlur = async () => {
+    if (!userId) return
+    try {
+      const { data: current } = await supabase.from('profiles').select('daily_notes').eq('id', userId).single()
+      const existing = (current?.daily_notes as Record<string, string> | null) || {}
+      await supabase.from('profiles').update({ daily_notes: { ...existing, [date]: notes } }).eq('id', userId)
+    } catch (err) {
+      console.warn('Could not save daily notes — ensure daily_notes jsonb column exists in profiles', err)
+    }
+  }
+
+  const handleLowEnergyToggle = async () => {
+    const next = !lowEnergy
+    setLowEnergy(next)
+    if (!userId) return
+    try {
+      const { data: current } = await supabase.from('profiles').select('low_energy_dates').eq('id', userId).single()
+      const existing: string[] = (current?.low_energy_dates as string[] | null) || []
+      const updated = next
+        ? [...new Set([...existing, date])]
+        : existing.filter(d => d !== date)
+      await supabase.from('profiles').update({ low_energy_dates: updated }).eq('id', userId)
+    } catch (err) {
+      console.warn('Could not save low energy dates — ensure low_energy_dates text[] column exists in profiles', err)
+    }
+  }
+
   if (!mounted || loading) return null
 
   const sorted       = [...tasks].sort((a, b) => (a.scheduled_time || '').localeCompare(b.scheduled_time || ''))
@@ -240,7 +272,7 @@ function DailyPlanContent() {
             <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>{lowEnergy ? 'Light tasks only' : 'Full schedule active'}</p>
           </div>
           <button
-            onClick={() => setLowEnergy(v => !v)}
+            onClick={handleLowEnergyToggle}
             style={{ width: 50, height: 30, borderRadius: 15, background: lowEnergy ? '#34C759' : '#E5E5EA', border: 'none', cursor: 'pointer', position: 'relative', padding: 0 }}
           >
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'white', position: 'absolute', top: 2, left: lowEnergy ? 22 : 2, transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }} />
@@ -336,6 +368,7 @@ function DailyPlanContent() {
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
+            onBlur={handleNotesBlur}
             placeholder="Add notes about your day..."
             rows={3}
             style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 10, padding: '12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}

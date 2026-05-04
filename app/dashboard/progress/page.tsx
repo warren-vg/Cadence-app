@@ -40,39 +40,6 @@ interface CatData {
 
 type ModalType = 'momentum' | 'category' | 'time' | 'completion' | null
 
-// ─── Base / seed data ─────────────────────────────────────────────────────────
-
-const BASE_WEEKS: WeekData[] = [
-  { label: 'Week 1', short: 'W1', score: 65, completed: 8,  total: 12, hours: 18, rate: 67, efficiency: 67, career: 6, health: 5, finance: 4, creative: 3 },
-  { label: 'Week 2', short: 'W2', score: 72, completed: 10, total: 13, hours: 21, rate: 77, efficiency: 77, career: 8, health: 5, finance: 4, creative: 4 },
-  { label: 'Week 3', short: 'W3', score: 68, completed: 9,  total: 14, hours: 19, rate: 64, efficiency: 64, career: 7, health: 4, finance: 3, creative: 5 },
-  { label: 'Week 4', short: 'W4', score: 78, completed: 12, total: 15, hours: 24, rate: 80, efficiency: 80, career: 8, health: 6, finance: 4, creative: 6 },
-]
-
-// ─── Per-period data sets ─────────────────────────────────────────────────────
-
-const PERIOD_WEEKLY: Record<string, WeekData[]> = {
-  'This Week': [
-    { label: 'Mon', short: 'Mon', score: 55, completed: 3, total: 5, hours: 4,   rate: 60,  efficiency: 60,  career: 1.5, health: 1,   finance: 0.5, creative: 1   },
-    { label: 'Tue', short: 'Tue', score: 72, completed: 4, total: 5, hours: 5,   rate: 80,  efficiency: 80,  career: 2,   health: 1.5, finance: 0.5, creative: 1   },
-    { label: 'Wed', short: 'Wed', score: 65, completed: 3, total: 5, hours: 4.5, rate: 60,  efficiency: 60,  career: 2,   health: 1,   finance: 0.5, creative: 1   },
-    { label: 'Thu', short: 'Thu', score: 80, completed: 5, total: 5, hours: 5.5, rate: 100, efficiency: 100, career: 2.5, health: 1.5, finance: 0.5, creative: 1   },
-  ],
-  'This Month': BASE_WEEKS,
-  'This Quarter': [
-    { label: 'Month 1', short: 'M1', score: 62, completed: 30, total: 48, hours: 72, rate: 63, efficiency: 63, career: 24, health: 19, finance: 14, creative: 15 },
-    { label: 'Month 2', short: 'M2', score: 69, completed: 35, total: 51, hours: 80, rate: 69, efficiency: 69, career: 27, health: 22, finance: 15, creative: 16 },
-    { label: 'Month 3', short: 'M3', score: 74, completed: 38, total: 52, hours: 85, rate: 73, efficiency: 73, career: 29, health: 24, finance: 16, creative: 16 },
-    { label: 'Month 4', short: 'M4', score: 78, completed: 42, total: 54, hours: 90, rate: 78, efficiency: 78, career: 30, health: 25, finance: 17, creative: 18 },
-  ],
-  'This Year': [
-    { label: 'Q1', short: 'Q1', score: 58, completed: 95,  total: 160, hours: 280, rate: 59, efficiency: 59, career: 90,  health: 80, finance: 55, creative: 55 },
-    { label: 'Q2', short: 'Q2', score: 67, completed: 110, total: 165, hours: 310, rate: 67, efficiency: 67, career: 100, health: 85, finance: 60, creative: 65 },
-    { label: 'Q3', short: 'Q3', score: 64, completed: 105, total: 163, hours: 295, rate: 64, efficiency: 64, career: 95,  health: 82, finance: 58, creative: 60 },
-    { label: 'Q4', short: 'Q4', score: 75, completed: 125, total: 168, hours: 330, rate: 74, efficiency: 74, career: 110, health: 90, finance: 65, creative: 65 },
-  ],
-}
-
 // ─── Chart colors ─────────────────────────────────────────────────────────────
 
 const CAT_COLORS: Record<string, string> = {
@@ -706,11 +673,11 @@ export default function ProgressPage() {
 
   // Compute display data for the selected period
   const displayWeeks =
-    timePeriod === 'This Week'    ? (weeklyData.length    >= 2 ? weeklyData    : PERIOD_WEEKLY['This Week']) :
+    timePeriod === 'This Week'    ? weeklyData :
     timePeriod === 'This Month'   ? monthlyWeeks :
-    timePeriod === 'This Quarter' ? (quarterlyData.length >= 2 ? quarterlyData : PERIOD_WEEKLY['This Quarter']) :
-    timePeriod === 'This Year'    ? (yearlyData.length    >= 2 ? yearlyData    : PERIOD_WEEKLY['This Year']) :
-    BASE_WEEKS
+    timePeriod === 'This Quarter' ? quarterlyData :
+    timePeriod === 'This Year'    ? yearlyData :
+    []
 
   // Period-filtered category data from real tasks
   const periodStart =

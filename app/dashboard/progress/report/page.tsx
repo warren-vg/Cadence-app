@@ -2,7 +2,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { getAllTasks, getMonday, getTasksForWeek, addDays } from '@/lib/planData'
+import { getMonday, addDays, getMomentumScore } from '@/lib/planData'
+import { getTasksForWeek, getWeekStreakFromDB, getProjects, type DBTask } from '@/lib/db'
 
 interface Goal {
   id: string
@@ -12,37 +13,22 @@ interface Goal {
   progress: number
 }
 
-const BASE_CATS = [
-  { category: 'Career',   progress: 45 },
-  { category: 'Finance',  progress: 60 },
-  { category: 'Health',   progress: 70 },
-  { category: 'Creative', progress: 30 },
-]
-
-const BASE_STATS = {
-  activeGoals: 4,
-  avgProgress: 51,
-  momentumScore: 78,
-  tasksCompleted: 47,
-  weeklyAvgScore: 76,
-  goalsOnTrack: '3/4',
-  projectsActive: 3,
+interface Stats {
+  activeGoals: number
+  avgProgress: number
+  momentumScore: number
+  tasksCompleted: number
+  weeklyAvgScore: number
+  goalsOnTrack: string
+  projectsActive: number
 }
 
-const ACHIEVEMENTS = [
-  { title: 'Portfolio Website Launched', sub: 'First major milestone in consulting brand goal' },
-  { title: '4-Week Running Streak',      sub: 'Completed 12 runs this month' },
-  { title: '$9,000 Saved',               sub: '60% of emergency fund goal complete' },
-]
-
-const RECOMMENDATIONS = [
-  'Secure first consulting client',
-  'Maintain running consistency (3x/week minimum)',
-  'Increase weekly creative writing hours',
-  'Review and optimize monthly budget',
-]
-
 function BarChartSimple({ cats }: { cats: { category: string; progress: number }[] }) {
+  if (cats.length === 0) return (
+    <div style={{ textAlign: 'center', padding: '32px 0', color: '#8E8E93', fontSize: 13 }}>
+      No goal data yet
+    </div>
+  )
   const W = 300, H = 140, PL = 28, PR = 8, PT = 8, PB = 28
   const cw = W - PL - PR
   const ch = H - PT - PB
@@ -80,12 +66,13 @@ function BarChartSimple({ cats }: { cats: { category: string; progress: number }
 
 export default function ProgressReportPage() {
   const router = useRouter()
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [userName, setUserName] = useState('Alex')
-  const [cats, setCats] = useState(BASE_CATS)
-  const [stats, setStats] = useState(BASE_STATS)
-  const [mounted, setMounted] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [userName, setUserName]       = useState('')
+  const [cats, setCats]               = useState<{ category: string; progress: number }[]>([])
+  const [stats, setStats]             = useState<Stats>({ activeGoals: 0, avgProgress: 0, momentumScore: 0, tasksCompleted: 0, weeklyAvgScore: 0, goalsOnTrack: '0/0', projectsActive: 0 })
+  const [achievements, setAchievements]     = useState<{ title: string; sub: string }[]>([])
+  const [recommendations, setRecommendations] = useState<string[]>([])
+  const [mounted, setMounted]         = useState(false)
+  const [loading, setLoading]         = useState(true)
 
   useEffect(() => {
     setMounted(true)
@@ -93,47 +80,99 @@ export default function ProgressReportPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const [{ data: profileData }, { data: goalsData }] = await Promise.all([
-        supabase.from('profiles').select('username').eq('id', user.id).single(),
+      const today  = new Date()
+      const monday = getMonday(today)
+
+      const [
+        { data: profileData },
+        { data: goalsData },
+        projects,
+        streak,
+      ] = await Promise.all([
+        supabase.from('profiles').select('username, weekly_capacity').eq('id', user.id).single(),
         supabase.from('goals').select('id,text,category,status,progress').eq('user_id', user.id),
+        getProjects(user.id),
+        getWeekStreakFromDB(user.id),
       ])
 
-      const name = profileData?.username?.split(' ')[0] || 'Alex'
+      const name = profileData?.username?.split(' ')[0] || 'You'
+      const weeklyCapacity: number = profileData?.weekly_capacity ?? 40
       setUserName(name)
 
-      const goalList: Goal[] = goalsData || []
-      setGoals(goalList)
-
+      const goalList: Goal[] = (goalsData || []) as Goal[]
       const activeGoals = goalList.filter(g => g.status === 'active')
-      if (activeGoals.length > 0) {
-        const avgProgress = Math.round(activeGoals.reduce((s, g) => s + (g.progress || 0), 0) / activeGoals.length)
-        const catGroups = ['Career', 'Finance', 'Health', 'Creative'].map(cat => {
+
+      // Fetch last 4 weeks of tasks
+      const weekTaskBuckets: DBTask[][] = await Promise.all(
+        [0, 1, 2, 3].map(i => getTasksForWeek(user.id, addDays(monday, -i * 7)))
+      )
+      const allRecentTasks = weekTaskBuckets.flat()
+      const currentWeekTasks = weekTaskBuckets[0]
+
+      // Stats
+      const avgProgress = activeGoals.length > 0
+        ? Math.round(activeGoals.reduce((s, g) => s + (g.progress || 0), 0) / activeGoals.length)
+        : 0
+
+      const tasksCompleted = allRecentTasks.filter(t => t.completed).length
+
+      const weeklyRates = weekTaskBuckets
+        .map(wt => wt.length > 0 ? Math.round((wt.filter(t => t.completed).length / wt.length) * 100) : null)
+        .filter((r): r is number => r !== null)
+      const weeklyAvgScore = weeklyRates.length > 0
+        ? Math.round(weeklyRates.reduce((s, r) => s + r, 0) / weeklyRates.length)
+        : 0
+
+      const momentumScore = getMomentumScore(activeGoals, currentWeekTasks, streak, weeklyCapacity)
+
+      const goalsOnTrack = activeGoals.filter(g => (g.progress || 0) >= 50).length
+      const projectsActive = projects.filter(p => p.status !== 'archived' && p.status !== 'completed').length
+
+      setStats({
+        activeGoals:   activeGoals.length,
+        avgProgress,
+        momentumScore,
+        tasksCompleted,
+        weeklyAvgScore,
+        goalsOnTrack:  `${goalsOnTrack}/${activeGoals.length}`,
+        projectsActive,
+      })
+
+      // Category chart
+      const knownCats = ['Career', 'Finance', 'Health', 'Creative']
+      const catData = knownCats
+        .map(cat => {
           const matching = activeGoals.filter(g => g.category === cat)
-          const progress = matching.length > 0
-            ? Math.round(matching.reduce((s, g) => s + (g.progress || 0), 0) / matching.length)
-            : BASE_CATS.find(c => c.category === cat)!.progress
-          return { category: cat, progress }
+          if (matching.length === 0) return null
+          return {
+            category: cat,
+            progress: Math.round(matching.reduce((s, g) => s + (g.progress || 0), 0) / matching.length),
+          }
         })
-        setCats(catGroups)
+        .filter((c): c is { category: string; progress: number } => c !== null)
+      setCats(catData)
 
-        const today = new Date()
-        const monday = getMonday(today)
-        let totalCompleted = 0
-        for (let i = 0; i < 4; i++) {
-          const weekMonday = addDays(monday, -i * 7)
-          const weekTasks = getTasksForWeek(weekMonday)
-          totalCompleted += weekTasks.filter(t => t.completed).length
-        }
-
-        const goalsOnTrack = activeGoals.filter(g => (g.progress || 0) >= 50).length
-        setStats(prev => ({
-          ...prev,
-          activeGoals: activeGoals.length,
-          avgProgress,
-          tasksCompleted: totalCompleted || prev.tasksCompleted,
-          goalsOnTrack: `${goalsOnTrack}/${activeGoals.length}`,
+      // Achievements: goals at >= 80% progress, sorted descending
+      const achieved = [...activeGoals]
+        .filter(g => (g.progress || 0) >= 80)
+        .sort((a, b) => b.progress - a.progress)
+        .map(g => ({
+          title: g.text.length > 48 ? g.text.slice(0, 48) + '…' : g.text,
+          sub:   `${g.category} · ${g.progress}% complete`,
         }))
-      }
+      setAchievements(achieved)
+
+      // Recommendations: goals under 50%, sorted ascending
+      const recs = [...activeGoals]
+        .filter(g => (g.progress || 0) < 50)
+        .sort((a, b) => a.progress - b.progress)
+        .slice(0, 4)
+        .map(g => {
+          const label = g.text.length > 44 ? g.text.slice(0, 44) + '…' : g.text
+          return `Increase focus on: ${label}`
+        })
+      setRecommendations(recs)
+
       setLoading(false)
     }
     load()
@@ -197,9 +236,9 @@ export default function ProgressReportPage() {
           <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.2)', marginBottom: 18 }} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
             {[
-              { label: 'Active Goals',    value: stats.activeGoals },
-              { label: 'Avg Progress',    value: `${stats.avgProgress}%` },
-              { label: 'Momentum Score',  value: stats.momentumScore },
+              { label: 'Active Goals',   value: stats.activeGoals },
+              { label: 'Avg Progress',   value: `${stats.avgProgress}%` },
+              { label: 'Momentum Score', value: stats.momentumScore },
             ].map(s => (
               <div key={s.label}>
                 <p style={{ fontSize: 26, fontWeight: 800, margin: '0 0 2px', lineHeight: 1 }}>{s.value}</p>
@@ -218,19 +257,23 @@ export default function ProgressReportPage() {
         {/* Key Achievements */}
         <div style={{ background: 'white', borderRadius: 20, padding: '18px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Key Achievements</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {ACHIEVEMENTS.map((a, i) => (
-              <div key={i} style={{ background: '#F0FDF4', borderRadius: 12, padding: '12px 14px' }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16A34A', marginTop: 4, flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontSize: 14, fontWeight: 700, color: '#1C1C1E', margin: '0 0 2px' }}>{a.title}</p>
-                    <p style={{ fontSize: 12, color: '#16A34A', margin: 0 }}>{a.sub}</p>
+          {achievements.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>Goals reaching 80%+ will appear here.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {achievements.map((a, i) => (
+                <div key={i} style={{ background: '#F0FDF4', borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#16A34A', marginTop: 4, flexShrink: 0 }} />
+                    <div>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: '#1C1C1E', margin: '0 0 2px' }}>{a.title}</p>
+                      <p style={{ fontSize: 12, color: '#16A34A', margin: 0 }}>{a.sub}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Monthly Stats */}
@@ -239,7 +282,7 @@ export default function ProgressReportPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             {[
               { label: 'Tasks Completed',  value: stats.tasksCompleted },
-              { label: 'Weekly Avg Score', value: stats.weeklyAvgScore },
+              { label: 'Weekly Avg Score', value: `${stats.weeklyAvgScore}%` },
               { label: 'Goals on Track',   value: stats.goalsOnTrack },
               { label: 'Projects Active',  value: stats.projectsActive },
             ].map(s => (
@@ -258,12 +301,16 @@ export default function ProgressReportPage() {
           border: '1px solid #DBEAFE',
         }}>
           <p style={{ fontSize: 15, fontWeight: 700, color: '#1D4ED8', margin: '0 0 12px' }}>Recommended Focus for Next Month</p>
-          {RECOMMENDATIONS.map((r, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, marginBottom: i < RECOMMENDATIONS.length - 1 ? 8 : 0 }}>
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#3B7DFF', marginTop: 5, flexShrink: 0 }} />
-              <span style={{ fontSize: 13, color: '#1D4ED8', lineHeight: 1.5 }}>{r}</span>
-            </div>
-          ))}
+          {recommendations.length === 0 ? (
+            <p style={{ fontSize: 13, color: '#1D4ED8', margin: 0 }}>All active goals are on track — great work!</p>
+          ) : (
+            recommendations.map((r, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: i < recommendations.length - 1 ? 8 : 0 }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#3B7DFF', marginTop: 5, flexShrink: 0 }} />
+                <span style={{ fontSize: 13, color: '#1D4ED8', lineHeight: 1.5 }}>{r}</span>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Export / Share buttons */}
