@@ -85,7 +85,6 @@ const CAT_COLORS: Record<string, string> = {
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
 function buildWeeklyDataFromTasks(tasks: DBTask[]): WeekData[] {
-  if (!tasks.length) return BASE_WEEKS
   const today = new Date()
   const weeks: WeekData[] = []
   for (let w = 3; w >= 0; w--) {
@@ -102,7 +101,7 @@ function buildWeeklyDataFromTasks(tasks: DBTask[]): WeekData[] {
     const weekNum = 4 - w
     weeks.push({ label: `Week ${weekNum}`, short: `W${weekNum}`, score: rate, completed, total, hours, rate, efficiency: rate, career: byCat('career'), health: byCat('health'), finance: byCat('finance'), creative: byCat('creative') })
   }
-  return weeks.some(w => w.total > 0) ? weeks : BASE_WEEKS
+  return weeks
 }
 
 function buildDailyDataFromTasks(tasks: DBTask[]): WeekData[] {
@@ -654,7 +653,7 @@ export default function ProgressPage() {
   const [loading, setLoading]             = useState(true)
   const [mounted, setMounted]             = useState(false)
   const [weeklyData, setWeeklyData]       = useState<WeekData[]>([])
-  const [monthlyWeeks, setMonthlyWeeks]   = useState<WeekData[]>(BASE_WEEKS)
+  const [monthlyWeeks, setMonthlyWeeks]   = useState<WeekData[]>([])
   const [quarterlyData, setQuarterlyData] = useState<WeekData[]>([])
   const [yearlyData, setYearlyData]       = useState<WeekData[]>([])
   const [weekStreak, setWeekStreak]       = useState(0)
@@ -708,7 +707,7 @@ export default function ProgressPage() {
   // Compute display data for the selected period
   const displayWeeks =
     timePeriod === 'This Week'    ? (weeklyData.length    >= 2 ? weeklyData    : PERIOD_WEEKLY['This Week']) :
-    timePeriod === 'This Month'   ? (monthlyWeeks.length  >= 2 ? monthlyWeeks  : PERIOD_WEEKLY['This Month']) :
+    timePeriod === 'This Month'   ? monthlyWeeks :
     timePeriod === 'This Quarter' ? (quarterlyData.length >= 2 ? quarterlyData : PERIOD_WEEKLY['This Quarter']) :
     timePeriod === 'This Year'    ? (yearlyData.length    >= 2 ? yearlyData    : PERIOD_WEEKLY['This Year']) :
     BASE_WEEKS
