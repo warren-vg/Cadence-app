@@ -170,7 +170,7 @@ export default function DashboardPage() {
 
   const firstName = profile?.username?.split(' ')[0] || 'there'
   const capacityPct = weekSummary.totalHours > 0
-    ? Math.min(100, Math.round((weekSummary.totalHours / 40) * 100))
+    ? Math.min(100, Math.round((weekSummary.totalHours / weeklyCapacity) * 100))
     : 0
 
   return (

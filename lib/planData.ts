@@ -358,9 +358,11 @@ export function getMomentumScore(
            / CONSTANTS.STREAK_MAX_FOR_NORMALIZATION * 100
 
   const capPct = getCapacityUsedPct(goals, weeklyCapacityHours)
-  const C4     = capPct <= 100
-    ? 100
-    : Math.max(0, 100 - (capPct - 100) * 2)
+  const C4     = activeGoals.length === 0
+    ? 0
+    : capPct <= 100
+      ? 100
+      : Math.max(0, 100 - (capPct - 100) * 2)
 
   return Math.round(
     CONSTANTS.MOMENTUM_WEIGHT_TASK_COMPLETION * C1 +

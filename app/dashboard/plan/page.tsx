@@ -2,17 +2,18 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
-  toDateStr, getMonday, addDays, getTasksForDate, getTasksForWeek,
-  getDayFocusCategories, getCatStyle, formatTime,
-  type PlanTask,
+  toDateStr, getMonday, addDays, getCatStyle, formatTime,
 } from '@/lib/planData'
+import {
+  getTasksForDate, getTasksForWeek,
+  type DBTask,
+} from '@/lib/db'
 import { supabase } from '@/lib/supabase'
 
 type ViewMode = 'Daily' | 'Weekly' | 'Monthly'
 
-const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const DAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const DAY_FULL  = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+const MONTHS    = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 interface GoalRow {
   id: string
@@ -25,47 +26,56 @@ interface GoalRow {
 
 export default function PlanPage() {
   const router = useRouter()
-  const [view, setView] = useState<ViewMode>('Weekly')
-  const [weekOffset, setWeekOffset] = useState(0)
+  const [view, setView]               = useState<ViewMode>('Weekly')
+  const [weekOffset, setWeekOffset]   = useState(0)
   const [monthOffset, setMonthOffset] = useState(0)
-  const [dayOffset, setDayOffset] = useState(0)
-  const [tasks, setTasks] = useState<PlanTask[]>([])
-  const [goals, setGoals] = useState<GoalRow[]>([])
-  const [mounted, setMounted] = useState(false)
+  const [dayOffset, setDayOffset]     = useState(0)
+  const [tasks, setTasks]             = useState<DBTask[]>([])
+  const [goals, setGoals]             = useState<GoalRow[]>([])
+  const [mounted, setMounted]         = useState(false)
+  const [userId, setUserId]           = useState<string | null>(null)
 
+  // Load user + goals once
   useEffect(() => {
     setMounted(true)
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
+      setUserId(user.id)
       const { data } = await supabase.from('goals').select('*').eq('user_id', user.id).eq('status', 'active')
       setGoals(data || [])
     }
     load()
   }, [])
 
+  // Reload tasks whenever view/offset/userId changes
   useEffect(() => {
-    if (!mounted) return
-    const today = new Date()
+    if (!mounted || !userId) return
+    const today      = new Date()
     const targetDate = addDays(today, dayOffset)
-    const monday = getMonday(addDays(today, weekOffset * 7))
+    const monday     = getMonday(addDays(today, weekOffset * 7))
 
-    if (view === 'Daily') {
-      setTasks(getTasksForDate(toDateStr(targetDate)))
-    } else if (view === 'Weekly') {
-      setTasks(getTasksForWeek(monday))
+    const loadTasks = async () => {
+      if (view === 'Daily') {
+        const data = await getTasksForDate(userId, toDateStr(targetDate))
+        setTasks(data)
+      } else if (view === 'Weekly') {
+        const data = await getTasksForWeek(userId, monday)
+        setTasks(data)
+      }
     }
-  }, [mounted, view, weekOffset, dayOffset])
+    loadTasks()
+  }, [mounted, userId, view, weekOffset, dayOffset])
 
   if (!mounted) return null
 
-  const today = new Date()
-  const todayStr = toDateStr(today)
+  const today      = new Date()
+  const todayStr   = toDateStr(today)
 
   // ── Weekly view helpers ──
   const weekMonday = getMonday(addDays(today, weekOffset * 7))
   const weekSunday = addDays(weekMonday, 6)
-  const weekLabel = (() => {
+  const weekLabel  = (() => {
     const ms = MONTHS[weekMonday.getMonth()].slice(0, 3)
     const me = MONTHS[weekSunday.getMonth()].slice(0, 3)
     const ds = weekMonday.getDate()
@@ -73,14 +83,27 @@ export default function PlanPage() {
     return ms === me ? `${ms} ${ds} - ${de}` : `${ms} ${ds} - ${me} ${de}`
   })()
 
+  // Group week tasks by date for per-day display
+  const tasksByDate = tasks.reduce((acc, t) => {
+    (acc[t.date] = acc[t.date] || []).push(t)
+    return acc
+  }, {} as Record<string, DBTask[]>)
+
+  const getDayFocusCats = (dateStr: string): string[] => {
+    const dayTasks = tasksByDate[dateStr] || []
+    const counts   = new Map<string, number>()
+    dayTasks.forEach(t => counts.set(t.category, (counts.get(t.category) || 0) + 1))
+    return [...counts.entries()].sort(([, a], [, b]) => b - a).slice(0, 2).map(([c]) => c)
+  }
+
   // ── Daily view helpers ──
-  const targetDay = addDays(today, dayOffset)
+  const targetDay    = addDays(today, dayOffset)
   const targetDayStr = toDateStr(targetDay)
-  const dailyTasks = getTasksForDate(targetDayStr).sort((a, b) => a.scheduledTime.localeCompare(b.scheduledTime))
-  const dayLabel = targetDay.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  const dailyTasks   = tasks.slice().sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time))
+  const dayLabel     = targetDay.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
 
   // ── Monthly view helpers ──
-  const monthDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
+  const monthDate  = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
   const monthLabel = `${MONTHS[monthDate.getMonth()]} ${monthDate.getFullYear()}`
 
   return (
@@ -135,39 +158,29 @@ export default function PlanPage() {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {DAY_FULL.map((dayName, i) => {
-              const date = addDays(weekMonday, i)
+              const date    = addDays(weekMonday, i)
               const dateStr = toDateStr(date)
               const isToday = dateStr === todayStr
-              const dayTasks = getTasksForDate(dateStr)
-              const hours = parseFloat(dayTasks.reduce((s, t) => s + t.duration, 0).toFixed(1))
-              const focusCats = getDayFocusCategories(dateStr)
+              const dayTasks  = tasksByDate[dateStr] || []
+              const hours     = parseFloat(dayTasks.reduce((s, t) => s + t.duration, 0).toFixed(1))
+              const focusCats = getDayFocusCats(dateStr)
 
               return (
                 <button
                   key={i}
                   onClick={() => router.push(`/dashboard/plan/daily?date=${dateStr}`)}
                   style={{
-                    background: 'white',
-                    borderRadius: 16,
-                    padding: '16px 18px',
+                    background: 'white', borderRadius: 16, padding: '16px 18px',
                     border: isToday ? '2px solid #3B7DFF' : '0.5px solid #E5E5EA',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    textAlign: 'left',
-                    width: '100%',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   }}
                 >
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                       <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>{dayName}</span>
                       {isToday && (
-                        <span style={{
-                          fontSize: 11, fontWeight: 600, color: '#3B7DFF',
-                          background: '#EFF6FF', borderRadius: 20, padding: '2px 8px',
-                        }}>Today</span>
+                        <span style={{ fontSize: 11, fontWeight: 600, color: '#3B7DFF', background: '#EFF6FF', borderRadius: 20, padding: '2px 8px' }}>Today</span>
                       )}
                     </div>
                     {focusCats.length > 0 ? (
@@ -196,21 +209,13 @@ export default function PlanPage() {
           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
             <button
               onClick={() => router.push('/dashboard/plan/weekly')}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 14,
-                background: '#1C1C1E', border: 'none', color: 'white',
-                fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              }}
+              style={{ flex: 1, padding: '14px', borderRadius: 14, background: '#1C1C1E', border: 'none', color: 'white', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Edit Weekly Plan
             </button>
             <button
               onClick={() => router.push('/dashboard/plan/schedule')}
-              style={{
-                flex: 1, padding: '14px', borderRadius: 14,
-                background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E',
-                fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-              }}
+              style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Manage Schedule
             </button>
@@ -222,7 +227,7 @@ export default function PlanPage() {
       {view === 'Daily' && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Today's Schedule</h2>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Today&apos;s Schedule</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button onClick={() => setDayOffset(o => o - 1)} style={navBtnStyle}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
@@ -234,10 +239,7 @@ export default function PlanPage() {
             </div>
           </div>
 
-          <div style={{
-            background: 'white', borderRadius: 16, overflow: 'hidden',
-            border: '0.5px solid #E5E5EA', marginBottom: 16,
-          }}>
+          <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16 }}>
             {dailyTasks.length === 0 ? (
               <div style={{ padding: '40px 20px', textAlign: 'center', color: '#8E8E93' }}>
                 <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: '#3C3C43' }}>No tasks planned</p>
@@ -253,16 +255,12 @@ export default function PlanPage() {
                     display: 'flex', gap: 14, alignItems: 'flex-start',
                   }}>
                     <span style={{ fontSize: 13, color: '#8E8E93', minWidth: 44, marginTop: 2 }}>
-                      {formatTime(task.scheduledTime).replace(' ', '\n')}
+                      {formatTime(task.scheduled_time)}
                     </span>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: 15, fontWeight: 500, color: '#1C1C1E', margin: '0 0 5px' }}>{task.text}</p>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{
-                          fontSize: 11, fontWeight: 500,
-                          background: catStyle.bg, color: catStyle.color,
-                          padding: '2px 8px', borderRadius: 20,
-                        }}>{task.category}</span>
+                        <span style={{ fontSize: 11, fontWeight: 500, background: catStyle.bg, color: catStyle.color, padding: '2px 8px', borderRadius: 20 }}>{task.category}</span>
                         <span style={{ fontSize: 12, color: '#8E8E93' }}>{task.duration} {task.duration === 1 ? 'hour' : 'hours'}</span>
                       </div>
                     </div>
@@ -274,11 +272,7 @@ export default function PlanPage() {
 
           <button
             onClick={() => router.push(`/dashboard/plan/daily?date=${targetDayStr}`)}
-            style={{
-              width: '100%', padding: '14px', borderRadius: 14,
-              background: '#1C1C1E', border: 'none', color: 'white',
-              fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-            }}
+            style={{ width: '100%', padding: '14px', borderRadius: 14, background: '#1C1C1E', border: 'none', color: 'white', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             View Detailed Daily Plan
           </button>
@@ -309,24 +303,17 @@ export default function PlanPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {goals.map(goal => {
-                const catStyle = getCatStyle(goal.category)
-                const weeklyHrs = goal.estimated_weekly_hours || 4
-                const targetQ = goal.quarter || 'Q4'
-                const targetDate = quarterToDate(targetQ)
+                const catStyle     = getCatStyle(goal.category)
+                const weeklyHrs    = goal.estimated_weekly_hours || 4
+                const targetQ      = goal.quarter || 'Q4'
+                const targetDate   = quarterToDate(targetQ)
                 const monthTaskCount = Math.round(weeklyHrs * 4)
                 return (
-                  <div key={goal.id} style={{
-                    background: 'white', borderRadius: 16, padding: '18px',
-                    border: '0.5px solid #E5E5EA',
-                  }}>
+                  <div key={goal.id} style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                       <div style={{ flex: 1, paddingRight: 12 }}>
                         <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>{goal.text}</p>
-                        <span style={{
-                          fontSize: 12, fontWeight: 500,
-                          background: catStyle.bg, color: catStyle.color,
-                          padding: '2px 8px', borderRadius: 20,
-                        }}>{goal.category}</span>
+                        <span style={{ fontSize: 12, fontWeight: 500, background: catStyle.bg, color: catStyle.color, padding: '2px 8px', borderRadius: 20 }}>{goal.category}</span>
                       </div>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                         <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
@@ -336,8 +323,8 @@ export default function PlanPage() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
                       {[
                         { label: 'This Month', value: `${monthTaskCount}`, sub: 'tasks' },
-                        { label: 'Weekly Avg', value: `${weeklyHrs}h`, sub: 'per week' },
-                        { label: 'Progress', value: `${goal.progress || 0}%`, sub: 'complete' },
+                        { label: 'Weekly Avg',  value: `${weeklyHrs}h`,    sub: 'per week' },
+                        { label: 'Progress',    value: `${goal.progress || 0}%`, sub: 'complete' },
                       ].map(stat => (
                         <div key={stat.label} style={{ background: '#F8F8FC', borderRadius: 10, padding: '10px 8px' }}>
                           <p style={{ fontSize: 11, color: '#8E8E93', margin: '0 0 3px' }}>{stat.label}</p>
@@ -366,11 +353,7 @@ export default function PlanPage() {
 
           <button
             onClick={() => router.push('/dashboard/plan/quarterly')}
-            style={{
-              width: '100%', marginTop: 16, padding: '14px', borderRadius: 14,
-              background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E',
-              fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-            }}
+            style={{ width: '100%', marginTop: 16, padding: '14px', borderRadius: 14, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             View Quarterly Planner
           </button>
