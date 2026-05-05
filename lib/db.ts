@@ -19,6 +19,7 @@ export interface DBTask {
   completed_at?: string | null
   goal_id?: string | null
   project_id?: string | null
+  source?: 'manual' | 'auto'  // 'auto' = Build Week generated; 'manual' = user created
   created_at?: string
 }
 

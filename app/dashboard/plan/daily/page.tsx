@@ -134,6 +134,7 @@ function DailyPlanContent() {
       completed:      false,
       goal_id:        newGoalId,
       project_id:     null,
+      source:         'manual',
     })
     if (created) {
       if (taskDate === date) {
