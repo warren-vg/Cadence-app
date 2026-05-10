@@ -100,24 +100,26 @@ export interface HypeNudgeResult {
 // ─── Task CRUD ────────────────────────────────────────────────────────────────
 
 export async function getTasksForDate(userId: string, date: string): Promise<DBTask[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('tasks')
     .select('*')
     .eq('user_id', userId)
     .eq('date', date)
     .order('scheduled_time', { ascending: true })
+  if (error) { console.error('getTasksForDate:', error.message); return [] }
   return (data ?? []) as DBTask[]
 }
 
 export async function getTasksForWeek(userId: string, monday: Date): Promise<DBTask[]> {
   const start = toDateStr(monday)
   const end   = toDateStr(addDays(monday, 6))
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('tasks')
     .select('*')
     .eq('user_id', userId)
     .gte('date', start)
     .lte('date', end)
+  if (error) { console.error('getTasksForWeek:', error.message); return [] }
   return (data ?? []) as DBTask[]
 }
 
@@ -161,7 +163,7 @@ export async function recalcGoalProgressFromTasks(goalId: string, userId: string
 
   const { data: goal } = await supabase
     .from('goals')
-    .select('milestones, progress')
+    .select('progress')
     .eq('id', goalId)
     .single()
 
@@ -178,12 +180,13 @@ export async function recalcGoalProgressFromTasks(goalId: string, userId: string
 // ─── Schedule CRUD ────────────────────────────────────────────────────────────
 
 export async function getScheduleForDate(userId: string, dateStr: string): Promise<DBScheduleItem[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('schedule_items')
     .select('*')
     .eq('user_id', userId)
     .eq('date', dateStr)
     .order('start_time', { ascending: true })
+  if (error) { console.error('getScheduleForDate:', error.message); return [] }
   return (data ?? []) as DBScheduleItem[]
 }
 
@@ -218,17 +221,19 @@ export async function deleteScheduleItem(id: string): Promise<boolean> {
 // ─── Project CRUD ─────────────────────────────────────────────────────────────
 
 export async function getProjects(userId: string): Promise<DBProject[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('projects')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
+  if (error) { console.error('getProjects:', error.message); return [] }
   return (data ?? []) as DBProject[]
 }
 
 export async function getProjectById(id: string): Promise<DBProject | null> {
-  const { data } = await supabase.from('projects').select('*').eq('id', id).single()
-  return (data ?? null) as DBProject | null
+  const { data, error } = await supabase.from('projects').select('*').eq('id', id).single()
+  if (error) { console.error('getProjectById:', error.message); return null }
+  return data as DBProject
 }
 
 export async function createProject(
@@ -262,11 +267,12 @@ export async function deleteProject(id: string): Promise<boolean> {
 // ─── Project Tasks ────────────────────────────────────────────────────────────
 
 export async function getProjectTasks(projectId: string): Promise<DBProjectTask[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('project_tasks')
     .select('*')
     .eq('project_id', projectId)
     .order('order_index', { ascending: true })
+  if (error) { console.error('getProjectTasks:', error.message); return [] }
   return (data ?? []) as DBProjectTask[]
 }
 
@@ -290,19 +296,24 @@ export async function toggleProjectTask(
   projectId: string,
   currentCompleted: boolean
 ): Promise<number> {
-  await supabase.from('project_tasks').update({ completed: !currentCompleted }).eq('id', taskId)
+  const { error: toggleError } = await supabase
+    .from('project_tasks').update({ completed: !currentCompleted }).eq('id', taskId)
+  if (toggleError) { console.error('toggleProjectTask (toggle):', toggleError.message); return -1 }
 
-  const { data: allTasks } = await supabase
+  const { data: allTasks, error: tasksError } = await supabase
     .from('project_tasks')
     .select('completed')
     .eq('project_id', projectId)
+  if (tasksError) { console.error('toggleProjectTask (allTasks):', tasksError.message); return -1 }
 
   const tasks: { completed: boolean }[] = allTasks || []
   const newProgress = tasks.length > 0
     ? Math.round((tasks.filter(t => t.completed).length / tasks.length) * 100)
     : 0
 
-  await supabase.from('projects').update({ progress: newProgress }).eq('id', projectId)
+  const { error: progressError } = await supabase
+    .from('projects').update({ progress: newProgress }).eq('id', projectId)
+  if (progressError) { console.error('toggleProjectTask (progress):', progressError.message) }
 
   const { data: project } = await supabase
     .from('projects')
@@ -319,7 +330,9 @@ export async function toggleProjectTask(
     const goalProgress = gt.length > 0
       ? Math.round((gt.filter(t => t.completed).length / gt.length) * 100)
       : newProgress
-    await supabase.from('goals').update({ progress: goalProgress }).eq('id', project.linked_goal_id)
+    const { error: goalError } = await supabase
+      .from('goals').update({ progress: goalProgress }).eq('id', project.linked_goal_id)
+    if (goalError) { console.error('toggleProjectTask (goalProgress):', goalError.message) }
   }
 
   return newProgress
@@ -337,11 +350,12 @@ export async function savePriorityStack(userId: string, categories: string[]): P
 }
 
 export async function getPriorityStack(userId: string): Promise<string[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('priority_stack')
     .eq('id', userId)
     .single()
+  if (error) { console.error('getPriorityStack:', error.message); return [] }
   return (data?.priority_stack ?? []) as string[]
 }
 
@@ -360,11 +374,12 @@ export async function saveEnergyBlocks(
 }
 
 export async function getEnergyBlocks(userId: string): Promise<Record<string, string>> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('energy_blocks')
     .eq('id', userId)
     .single()
+  if (error) { console.error('getEnergyBlocks:', error.message); return {} }
   return (data?.energy_blocks ?? {}) as Record<string, string>
 }
 
@@ -490,14 +505,14 @@ export async function sendHypeOrNudge(
   targetId: string,
   actionType: 'hype' | 'nudge'
 ): Promise<HypeNudgeResult> {
-  const today = new Date().toISOString().split('T')[0]
+  const periodWeek = toDateStr(getMonday(new Date()))
   const { error } = await supabase
-    .from('friend_actions')
-    .insert({ actor_id: actorId, target_id: targetId, action_type: actionType, date: today })
+    .from('community_actions')
+    .insert({ actor_id: actorId, target_id: targetId, action_type: actionType, period_week: periodWeek })
 
   if (error) {
     if (error.code === '23505') {
-      return { success: false, onCooldown: true, error: `You already ${actionType === 'hype' ? 'hyped' : 'nudged'} this person today` }
+      return { success: false, onCooldown: true, error: `You already ${actionType === 'hype' ? 'hyped' : 'nudged'} this person this week` }
     }
     return { success: false, error: error.message }
   }
@@ -514,13 +529,14 @@ export async function sendHypeOrNudge(
 export async function getFriendGoals(friendId: string): Promise<Array<{
   id: string; text: string; category: string; progress: number; status: string
 }>> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('goals')
     .select('id, text, category, progress, status')
     .eq('user_id', friendId)
     .eq('status', 'active')
     .order('priority', { ascending: true })
     .limit(4)
+  if (error) { console.error('getFriendGoals:', error.message); return [] }
   return data ?? []
 }
 
@@ -568,20 +584,22 @@ export async function saveReflectionToDB(userId: string, r: DBReflection): Promi
 }
 
 export async function getReflectionForWeek(userId: string, weekOf: string): Promise<DBReflection | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('weekly_reflections')
     .select('week_of, wins, challenges, learnings, next_week_focus, week_score')
     .eq('user_id', userId)
     .eq('week_of', weekOf)
     .single()
-  return data as DBReflection | null
+  if (error && error.code !== 'PGRST116') { console.error('getReflectionForWeek:', error.message) }
+  return (data ?? null) as DBReflection | null
 }
 
 export async function getWeekStreakFromDB(userId: string): Promise<number> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('weekly_reflections')
     .select('week_of')
     .eq('user_id', userId)
+  if (error) { console.error('getWeekStreakFromDB:', error.message); return 0 }
   const weekSet = new Set((data || []).map((r: { week_of: string }) => r.week_of))
   let streak    = 0
   let cursor    = addDays(getMonday(new Date()), -7)
