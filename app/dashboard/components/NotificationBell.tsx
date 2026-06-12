@@ -90,9 +90,7 @@ export default function NotificationBell({ floating = false }: { floating?: bool
   const [open, setOpen]               = useState(false)
   const [notifications, setNotifications] = useState<DBNotification[]>([])
 
-  // Floating mode: don't render on home (bell is inline in the header there)
-  if (floating && pathname === '/dashboard') return null
-
+  // All hooks must be declared before any conditional return (Rules of Hooks).
   const refreshCount = useCallback(async (uid: string) => {
     const count = await getUnreadCount(uid)
     setUnreadCount(count)
@@ -114,6 +112,9 @@ export default function NotificationBell({ floating = false }: { floating?: bool
     const id = setInterval(() => refreshCount(userId), 60000)
     return () => clearInterval(id)
   }, [userId, refreshCount])
+
+  // Floating mode: don't render on home (bell is inline in the header there)
+  if (floating && pathname === '/dashboard') return null
 
   const handleOpen = async () => {
     if (!userId) return
