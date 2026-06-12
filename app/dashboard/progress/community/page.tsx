@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
@@ -186,7 +186,7 @@ function FriendCard({ friend, goals, hyped, nudged, cooldownMsg, onHype, onNudge
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function CommunityPage() {
+function CommunityPageInner() {
   const router = useRouter()
   const [userId, setUserId]   = useState<string | null>(null)
   const [friends, setFriends] = useState<FriendProfile[]>([])
@@ -557,5 +557,13 @@ export default function CommunityPage() {
         />
       )}
     </div>
+  )
+}
+
+export default function CommunityPage() {
+  return (
+    <Suspense fallback={null}>
+      <CommunityPageInner />
+    </Suspense>
   )
 }
