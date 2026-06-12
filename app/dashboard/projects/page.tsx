@@ -6,6 +6,7 @@ import {
   getProjects, createProject,
   type DBProject,
 } from '@/lib/db'
+import EmptyState from '@/app/dashboard/components/EmptyState'
 
 type TabKey = 'campaign' | 'study' | 'creative' | 'opportunity' | 'business' | 'archived'
 
@@ -70,15 +71,18 @@ export default function ProjectsPage() {
     if (!newTitle.trim() || !userId) return
     setCreating(true)
     const created = await createProject(userId, {
-      title:          newTitle.trim(),
-      type:           newType,
-      status:         'planning',
-      progress:       0,
-      timeline:       newTimeline.trim() || null,
-      notes:          newNotes.trim() || null,
-      linked_goal_id: newLinkedGoalId,
+      title:    newTitle.trim(),
+      type:     newType,
+      status:   'planning',
+      progress: 0,
+      timeline: newTimeline.trim() || null,
+      notes:    newNotes.trim() || null,
     })
     if (created) {
+      // Link the selected goal to this project via goals.project_id
+      if (newLinkedGoalId) {
+        await supabase.from('goals').update({ project_id: created.id }).eq('id', newLinkedGoalId)
+      }
       setProjects(prev => [created, ...prev])
       setShowNew(false)
       setNewTitle('')
@@ -136,12 +140,14 @@ export default function ProjectsPage() {
       {/* Project List */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: '#8E8E93' }}>
-            <p style={{ fontSize: 15, margin: '0 0 4px', color: '#3C3C43' }}>No projects here yet</p>
-            <p style={{ fontSize: 13, margin: 0 }}>
-              {activeTab === 'archived' ? 'Archived projects will appear here.' : 'Tap + to create a new project.'}
-            </p>
-          </div>
+          <EmptyState
+            icon="🗂️"
+            iconBg="#EFF6FF"
+            title={activeTab === 'archived' ? 'No archived projects' : 'No projects yet'}
+            body={activeTab === 'archived' ? 'Archived projects will appear here.' : 'Create a project to organize your work and link it to a goal.'}
+            ctaLabel={activeTab === 'archived' ? 'View Active Projects' : '+ New Project'}
+            onCta={activeTab === 'archived' ? () => {} : () => setShowNew(true)}
+          />
         ) : (
           filtered.map(p => {
             const s = STATUS_COLORS[p.status]

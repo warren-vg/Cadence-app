@@ -14,6 +14,7 @@ export const CONSTANTS = {
   CAPACITY_WARNING_PCT:            80,
   CAPACITY_ALERT_PCT:              100,
   TOP_PRIORITIES_LIMIT:            3,
+  PROGRESS_STRUGGLING_THRESHOLD:   40,
 } as const
 
 // ─── Date utilities ───────────────────────────────────────────────────────────
@@ -141,32 +142,6 @@ export function getMomentumScore(
     CONSTANTS.MOMENTUM_WEIGHT_STREAK          * C3 +
     CONSTANTS.MOMENTUM_WEIGHT_CAPACITY        * C4
   )
-}
-
-// ─── GOAL PROGRESS (milestone-based) ─────────────────────────────────────────
-
-interface MilestoneForProgress {
-  completed: boolean
-  weight?:   number
-}
-
-/**
- * Calculates goal progress from milestones.
- * If no milestones exist, returns the manual progress value.
- * Each milestone weight defaults to 1 if not set.
- */
-export function calcGoalProgress(
-  milestones: MilestoneForProgress[],
-  manualProgress = 0
-): number {
-  if (!milestones || milestones.length === 0) return manualProgress
-
-  const totalWeight     = milestones.reduce((s, m) => s + (m.weight ?? 1), 0)
-  const completedWeight = milestones
-    .filter(m => m.completed)
-    .reduce((s, m) => s + (m.weight ?? 1), 0)
-
-  return Math.round((completedWeight / totalWeight) * 100)
 }
 
 // ─── PROJECTED COMPLETION DATE ────────────────────────────────────────────────

@@ -88,8 +88,16 @@ export function inferEnergyType(goalCategory: string): string {
   return map[goalCategory] || 'light'
 }
 
+function getDefaultSlot(category: string, workSchedule: WorkSchedule, index: number): string {
+  const [startH] = (workSchedule.workStartTime ?? '09:00').split(':').map(Number)
+  const careerSlots = [startH, startH + 2, startH + 4, startH + 1]
+    .map(h => `${String(Math.min(h, 17)).padStart(2, '0')}:00`)
+  const offWorkSlots = ['18:00', '07:00', '19:00', '20:00']
+  return (category === 'Career' ? careerSlots : offWorkSlots)[index % 4]
+}
+
 export function generateTasksForGoal(
-  goal: { id: string; text: string; category: string },
+  goal: { id: string; text: string; category: string; project_id?: string | null },
   energyBlocks: Record<string, string>,
   workSchedule: WorkSchedule,
   startDate: Date = new Date(),
@@ -133,13 +141,16 @@ export function generateTasksForGoal(
     results.push({
       text,
       date:           dateStr,
-      scheduled_time: slot || '18:00',
+      scheduled_time: slot || getDefaultSlot(goal.category, workSchedule, i),
       duration:       template.duration,
       category:       goal.category,
-      priority:       i === 0 ? 'high' : 'medium',
+      priority:       i === 0 ? 'high'
+                    : (i === templates.length - 1 && template.energyType === 'light') ? 'low'
+                    : 'medium',
       completed:      false,
       goal_id:        goal.id,
-      project_id:     null,
+      milestone_id:   null,
+      project_id:     goal.project_id ?? null,
     })
   }
 

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { toDateStr, getMonday, formatTime, getCatStyle } from '@/lib/planData'
 import {
   getTasksForDate, getTasksForWeek, toggleTask as dbToggleTask,
+  recalcGoalProgressFromTasks,
   type DBTask,
 } from '@/lib/db'
 
@@ -489,11 +490,19 @@ export default function MentorPage() {
       setScore(momentumScore)
       setInsight(generateInsight(fetchedGoals, todayData, momentumScore))
 
-      const firstName = name.split(' ')[0] || 'there'
+      const firstName  = name.split(' ')[0] || 'there'
+      const activeGoals  = fetchedGoals.filter(g => g.status === 'active')
+      const doneToday    = todayData.filter(t => t.completed).length
+      const avgProgress  = activeGoals.length > 0
+        ? Math.round(activeGoals.reduce((s, g) => s + (g.progress || 0), 0) / activeGoals.length)
+        : 0
+      const openingContent = activeGoals.length > 0
+        ? `Hi ${firstName}! Here's where you stand:\n\n• ${activeGoals.length} active goal${activeGoals.length !== 1 ? 's' : ''} · ${avgProgress}% avg progress\n• ${todayData.length} task${todayData.length !== 1 ? 's' : ''} today · ${doneToday} completed\n• Momentum: ${momentumScore}/100\n\n${generateInsight(fetchedGoals, todayData, momentumScore)}\n\nAsk me about your goals, today's schedule, timelines, or anything you need to think through.`
+        : `Hi ${firstName}! I'm your Cadence mentor — I'm connected to your goals, schedule, and progress. You don't have any active goals yet. Head to the Goals tab to set some up and I'll help you build a plan around them. What's on your mind?`
       setMessages([{
         id: 'init',
         role: 'assistant',
-        content: `Hi ${firstName}! I'm your AI mentor. I can help you with questions about your goals, schedule, progress, and timeline. What would you like to know?`,
+        content: openingContent,
       }])
 
       setLoading(false)
@@ -525,11 +534,25 @@ export default function MentorPage() {
       setTodayTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: true } : t))
       setWeekTasks(prev => prev.map(t => t.id === taskId ? { ...t, completed: true } : t))
       await dbToggleTask(taskId, false)
+      // Recalc goal progress from actual task completion so it stays consistent
+      // with the daily plan toggle path
+      const task = [...todayTasks, ...weekTasks].find(t => t.id === taskId)
+      if (task?.goal_id && userId) {
+        const newProgress = await recalcGoalProgressFromTasks(task.goal_id, userId)
+        if (newProgress !== null) {
+          setGoals(prev => prev.map(g => g.id === task.goal_id ? { ...g, progress: newProgress } : g))
+        }
+      }
       refreshTasks()
     } else if (action.type === 'update_goal_progress') {
       const { goalId, progress } = action.payload as { goalId: string; progress: number }
-      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, progress } : g))
-      await supabase.from('goals').update({ progress }).eq('id', goalId)
+      // Prefer task-based recalc; fall back to AI value only when goal has no tasks
+      const taskBasedProgress = userId ? await recalcGoalProgressFromTasks(goalId, userId) : null
+      const finalProgress = taskBasedProgress ?? progress
+      setGoals(prev => prev.map(g => g.id === goalId ? { ...g, progress: finalProgress } : g))
+      if (taskBasedProgress === null) {
+        await supabase.from('goals').update({ progress }).eq('id', goalId)
+      }
     } else if (action.type === 'update_goal_status') {
       const { goalId, status } = action.payload as { goalId: string; status: string }
       setGoals(prev => prev.map(g => g.id === goalId ? { ...g, status } : g))
@@ -854,7 +877,7 @@ export default function MentorPage() {
         </div>
 
         {/* Input area */}
-        <div style={{ padding: '12px 14px 16px', borderTop: '0.5px solid #F2F2F7' }}>
+        <div data-tour="mentor-input" style={{ padding: '12px 14px 16px', borderTop: '0.5px solid #F2F2F7' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
             <div style={{
               flex: 1, display: 'flex', alignItems: 'center',

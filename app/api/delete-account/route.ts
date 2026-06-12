@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     admin.from('schedule_items').delete().eq('user_id', userId),
     admin.from('quarterly_reviews').delete().eq('user_id', userId),
     admin.from('opportunity_evaluations').delete().eq('user_id', userId),
-    admin.from('friend_actions').delete().or(`actor_id.eq.${userId},target_id.eq.${userId}`),
+    admin.from('community_actions').delete().or(`actor_id.eq.${userId},target_id.eq.${userId}`),
     admin.from('friendships').delete().or(`user_id.eq.${userId},friend_id.eq.${userId}`),
   ])
 

@@ -1,9 +1,11 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { toDateStr, getMonday, addDays } from '@/lib/planData'
+import { toDateStr, getMonday, addDays, CONSTANTS } from '@/lib/planData'
 import { supabase } from '@/lib/supabase'
 import { saveReflectionToDB, getReflectionForWeek, getWeekStreakFromDB, getTasksForWeek, type DBTask } from '@/lib/db'
+import { evaluateRewards } from '@/lib/rewards'
+import { useRewards } from '@/app/dashboard/components/RewardContext'
 
 interface Goal {
   id: string
@@ -13,13 +15,19 @@ interface Goal {
   progress: number
 }
 
+type CapacityDay = { hours: number; time_of_day: string }
+type CapacitySchedule = Record<string, CapacityDay>
+
+const DAY_JS_TO_KEY = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+const DAY_LABELS    = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
 function computeInsights(goals: Goal[]): { wins: string[]; focus: string[] } {
   const active = goals.filter(g => g.status === 'active')
   if (!active.length) return { wins: ['Keep up the consistent effort!'], focus: ['Stay consistent across all goal areas'] }
   const wins: string[]  = []
   const focus: string[] = []
   const sorted     = [...active].sort((a, b) => b.progress - a.progress)
-  const struggling = active.filter(g => g.progress < 40)
+  const struggling = active.filter(g => g.progress < CONSTANTS.PROGRESS_STRUGGLING_THRESHOLD)
   if (sorted[0] && sorted[0].progress >= 70) {
     const t = sorted[0].text
     wins.push(`${t.length > 42 ? t.slice(0, 42) + '…' : t} at ${sorted[0].progress}%`)
@@ -49,6 +57,7 @@ function computeInsights(goals: Goal[]): { wins: string[]; focus: string[] } {
 
 export default function WeeklyReviewPage() {
   const router = useRouter()
+  const { queueRewards } = useRewards()
   const [wins, setWins]             = useState('')
   const [challenges, setChallenges] = useState('')
   const [learnings, setLearnings]   = useState('')
@@ -60,6 +69,7 @@ export default function WeeklyReviewPage() {
   const [streak, setStreak]         = useState(0)
   const [weekTasksList, setWeekTasksList] = useState<DBTask[]>([])
   const [goals, setGoals]           = useState<Goal[]>([])
+  const [capacitySchedule, setCapacitySchedule] = useState<CapacitySchedule | null>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -69,15 +79,19 @@ export default function WeeklyReviewPage() {
       setUserId(user.id)
       const monday = getMonday(new Date())
       const weekOf = toDateStr(monday)
-      const [existing, currentStreak, weekTasks, { data: goalsData }] = await Promise.all([
+      const [existing, currentStreak, weekTasks, { data: goalsData }, { data: profileData }] = await Promise.all([
         getReflectionForWeek(user.id, weekOf),
         getWeekStreakFromDB(user.id),
         getTasksForWeek(user.id, monday),
         supabase.from('goals').select('id, text, category, status, progress').eq('user_id', user.id),
+        supabase.from('profiles').select('capacity_schedule').eq('id', user.id).single(),
       ])
       setStreak(currentStreak)
       setWeekTasksList(weekTasks)
       setGoals((goalsData || []) as Goal[])
+      if (profileData?.capacity_schedule) {
+        setCapacitySchedule(profileData.capacity_schedule as CapacitySchedule)
+      }
       if (existing) {
         setWins(existing.wins)
         setChallenges(existing.challenges)
@@ -107,6 +121,22 @@ export default function WeeklyReviewPage() {
   const insights = computeInsights(goals)
   const allInsights = [...insights.wins, ...insights.focus]
 
+  const perDayAdherence = capacitySchedule
+    ? Array.from({ length: 7 }, (_, i) => {
+        const d       = addDays(monday, i)
+        const dateStr = toDateStr(d)
+        const key     = DAY_JS_TO_KEY[d.getDay()]
+        const planned = capacitySchedule[key]?.hours ?? 0
+        const actual  = parseFloat(
+          weekTasksList
+            .filter(t => t.date === dateStr && t.completed)
+            .reduce((s, t) => s + t.duration, 0)
+            .toFixed(1)
+        )
+        return { label: DAY_LABELS[i], planned, actual }
+      })
+    : null
+
   const handleSave = async () => {
     if (!userId) return
     const weekOf = toDateStr(monday)
@@ -121,6 +151,12 @@ export default function WeeklyReviewPage() {
     const newStreak = await getWeekStreakFromDB(userId)
     setStreak(newStreak)
     setSubmitted(true)
+
+    // Reward evaluation — non-blocking, fires after streak count includes this submission
+    evaluateRewards(userId, {
+      trigger: 'reflection_submitted',
+      ctx: { weekOf, streak: newStreak },
+    }).then(earned => { if (earned.length > 0) queueRewards(earned) })
   }
 
   const handleBuildNext = () => {
@@ -226,6 +262,35 @@ export default function WeeklyReviewPage() {
             </div>
           </div>
         </div>
+
+        {/* Per-day Capacity Adherence */}
+        {perDayAdherence && (
+          <div style={{
+            background: 'white', borderRadius: 14, padding: '16px',
+            border: '0.5px solid #E5E5EA', marginBottom: 14,
+          }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: '0 0 12px' }}>Capacity Adherence</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {perDayAdherence.map(d => {
+                const over     = d.planned > 0 && d.actual > d.planned
+                const pct      = d.planned > 0 ? Math.min(100, Math.round((d.actual / d.planned) * 100)) : 0
+                const barColor = over ? '#EA580C' : '#16A34A'
+                const valColor = d.planned > 0 ? (over ? '#EA580C' : '#16A34A') : '#8E8E93'
+                return (
+                  <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#3C3C43', width: 28, flexShrink: 0 }}>{d.label}</span>
+                    <div style={{ flex: 1, background: '#F2F2F7', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                      <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 4, transition: 'width 0.3s ease' }} />
+                    </div>
+                    <span style={{ fontSize: 12, color: valColor, width: 52, textAlign: 'right', flexShrink: 0 }}>
+                      {d.planned > 0 ? `${d.actual}/${d.planned}h` : '—'}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Reflection Forms */}
         {[

@@ -2,6 +2,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
+import { generateTasksForGoal } from '@/lib/goalTemplates'
+import { DEFAULT_WORK_SCHEDULE, type WorkSchedule } from '@/lib/db'
+import { CONSTANTS } from '@/lib/planData'
 
 interface Goal {
   id: string
@@ -10,6 +13,14 @@ interface Goal {
   status: string
   progress: number
   quarter?: string | null
+}
+
+// D6: structured pivot action (replaces plain text array)
+interface PivotAction {
+  goalId:   string
+  goalText: string
+  action:   'pause' | 'focus'
+  reason:   string
 }
 
 type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4'
@@ -38,98 +49,98 @@ function getCurrentQuarter(): Quarter {
   return 'Q4'
 }
 
-// ─── Rules-based generators ───────────────────────────────────────────────────
-
 function calcQuarterlyScore(qGoals: Goal[]): number {
   if (qGoals.length === 0) return 0
   return Math.round(qGoals.reduce((s, g) => s + g.progress, 0) / qGoals.length)
 }
 
-function generatePivotRecommendations(qGoals: Goal[]): string[] {
-  const pivots: string[] = []
-
-  const struggling = qGoals.filter(g => g.progress < 30 && g.status === 'active')
-  struggling.slice(0, 2).forEach(g => {
-    const title = g.text.length > 40 ? g.text.slice(0, 40) + '…' : g.text
-    pivots.push(`Break "${title}" into smaller milestones — at ${g.progress}%, needs a clearer path forward`)
+// D6: produce structured pivot actions instead of text strings
+function buildPivotActions(qGoals: Goal[]): PivotAction[] {
+  const actions: PivotAction[] = []
+  qGoals.filter(g => g.progress < 30 && g.status === 'active').slice(0, 2).forEach(g => {
+    actions.push({ goalId: g.id, goalText: g.text, action: 'pause', reason: `Only ${g.progress}% complete — pausing to avoid spreading effort too thin` })
   })
-
-  const nearDone = qGoals.filter(g => g.progress >= 80 && g.progress < 100)
-  nearDone.slice(0, 1).forEach(g => {
-    const title = g.text.length > 40 ? g.text.slice(0, 40) + '…' : g.text
-    pivots.push(`Final push on "${title}" — at ${g.progress}%, this is closeable next quarter`)
+  qGoals.filter(g => g.progress >= 80 && g.progress < 100).slice(0, 2).forEach(g => {
+    actions.push({ goalId: g.id, goalText: g.text, action: 'focus', reason: `At ${g.progress}% — generate fresh tasks to close this out` })
   })
-
-  const catMap: Record<string, number[]> = {}
-  qGoals.forEach(g => {
-    if (!catMap[g.category]) catMap[g.category] = []
-    catMap[g.category].push(g.progress)
-  })
-  const catAvgs = Object.entries(catMap)
-    .map(([cat, progs]) => ({ cat, avg: Math.round(progs.reduce((s, p) => s + p, 0) / progs.length) }))
-    .sort((a, b) => a.avg - b.avg)
-  if (catAvgs.length > 0 && catAvgs[0].avg < 50) {
-    pivots.push(`Schedule dedicated blocks for ${catAvgs[0].cat} goals — lowest category average at ${catAvgs[0].avg}%`)
-  }
-
-  if (pivots.length === 0) {
-    pivots.push('Maintain your momentum — consistent progress across all areas this quarter')
-    pivots.push('Review your top goal and raise the bar: push for 100% completion next quarter')
-  }
-
-  return pivots.slice(0, 3)
+  return actions
 }
 
 function generateNextQuarterTheme(qGoals: Goal[], nq: Quarter): { theme: string; focus: string } {
   const score = calcQuarterlyScore(qGoals)
   const catMap: Record<string, number[]> = {}
-  qGoals.forEach(g => {
-    if (!catMap[g.category]) catMap[g.category] = []
-    catMap[g.category].push(g.progress)
-  })
+  qGoals.forEach(g => { if (!catMap[g.category]) catMap[g.category] = []; catMap[g.category].push(g.progress) })
   const catAvgs = Object.entries(catMap)
     .map(([cat, progs]) => ({ cat, avg: Math.round(progs.reduce((s, p) => s + p, 0) / progs.length) }))
     .sort((a, b) => b.avg - a.avg)
   const strongCat = catAvgs[0]?.cat
   const weakCat   = catAvgs[catAvgs.length - 1]?.cat
 
-  if (score >= 70) {
-    return {
-      theme: 'Scale & Accelerate',
-      focus: strongCat
-        ? `Build on ${strongCat} momentum${weakCat && weakCat !== strongCat ? `, while strengthening ${weakCat}` : ''}`
-        : `Leverage strong execution for ${QUARTER_DATES[nq].months}`,
-    }
-  } else if (score >= 40) {
-    return {
-      theme: 'Focus & Execute',
-      focus: weakCat
-        ? `Double down on ${weakCat} goals and build consistent execution habits`
-        : 'Tighten your focus and eliminate low-priority distractions',
-    }
-  } else {
-    return {
-      theme: 'Reset & Build',
-      focus: 'Simplify your goal list, rebuild foundational habits, and set realistic weekly targets',
-    }
+  if (score >= 70) return { theme: 'Scale & Accelerate', focus: strongCat ? `Build on ${strongCat} momentum${weakCat && weakCat !== strongCat ? `, while strengthening ${weakCat}` : ''}` : `Leverage strong execution for ${QUARTER_DATES[nq].months}` }
+  if (score >= CONSTANTS.PROGRESS_STRUGGLING_THRESHOLD) return { theme: 'Focus & Execute',   focus: weakCat ? `Double down on ${weakCat} goals and build consistent execution habits` : 'Tighten your focus and eliminate low-priority distractions' }
+  return              { theme: 'Reset & Build',          focus: 'Simplify your goal list, rebuild foundational habits, and set realistic weekly targets' }
+}
+
+// D5: generate wins and challenges text from goal data
+function generateWinsText(qGoals: Goal[]): string {
+  const completed = qGoals.filter(g => g.progress >= 100)
+  const nearDone  = qGoals.filter(g => g.progress >= 70 && g.progress < 100)
+  const lines: string[] = []
+  if (completed.length > 0) {
+    lines.push(`Completed goals (${completed.length}):`)
+    completed.slice(0, 3).forEach(g => lines.push(`• ${g.text}`))
   }
+  if (nearDone.length > 0) {
+    lines.push(`Near completion:`)
+    nearDone.slice(0, 2).forEach(g => lines.push(`• ${g.text} (${g.progress}%)`))
+  }
+  if (lines.length === 0) lines.push('Maintained progress across goals this quarter.')
+  return lines.join('\n')
+}
+
+function generateChallengesText(qGoals: Goal[]): string {
+  const struggling = qGoals.filter(g => g.progress < 30 && g.status === 'active')
+  const catMap: Record<string, number[]> = {}
+  qGoals.forEach(g => { if (!catMap[g.category]) catMap[g.category] = []; catMap[g.category].push(g.progress) })
+  const catAvgs = Object.entries(catMap)
+    .map(([cat, progs]) => ({ cat, avg: Math.round(progs.reduce((s, p) => s + p, 0) / progs.length) }))
+    .sort((a, b) => a.avg - b.avg)
+
+  const lines: string[] = []
+  if (struggling.length > 0) {
+    lines.push(`Goals that need attention:`)
+    struggling.slice(0, 2).forEach(g => lines.push(`• ${g.text} (${g.progress}%)`))
+  }
+  if (catAvgs.length > 0 && catAvgs[0].avg < 50) {
+    lines.push(`Lowest-progress category: ${catAvgs[0].cat} (${catAvgs[0].avg}% avg)`)
+  }
+  if (lines.length === 0) lines.push('No major blockers identified — review weekly habits for improvement areas.')
+  return lines.join('\n')
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function QuarterlyReviewPage() {
-  const router = useRouter()
-  const [activeQ]  = useState<Quarter>(getCurrentQuarter())
+  const router    = useRouter()
+  const [activeQ] = useState<Quarter>(getCurrentQuarter())
   const [userId, setUserId]   = useState<string | null>(null)
   const [goals, setGoals]     = useState<Goal[]>([])
   const [loading, setLoading] = useState(true)
-  const [workedWell, setWorkedWell]   = useState('')
-  const [needsChange, setNeedsChange] = useState('')
-  const [generated, setGenerated]     = useState(false)
-  const [generating, setGenerating]   = useState(false)
-  const [accepted, setAccepted]       = useState(false)
-  const [pivots, setPivots]           = useState<string[]>([])
-  const [nextTheme, setNextTheme]     = useState<{ theme: string; focus: string } | null>(null)
+
+  // D5: reflection fields — pre-filled by Generate Check-In if empty
+  const [wins, setWins]               = useState('')
+  const [challenges, setChallenges]   = useState('')
+
+  const [generated, setGenerated]   = useState(false)
+  const [generating, setGenerating] = useState(false)
+
+  // D6: structured pivot actions + confirmation modal
+  const [pivotActions, setPivotActions]         = useState<PivotAction[]>([])
+  const [showPivotModal, setShowPivotModal]     = useState(false)
+  const [applyingPivot, setApplyingPivot]       = useState(false)
+  const [pivotApplied, setPivotApplied]         = useState(false)
+
+  const [nextTheme, setNextTheme] = useState<{ theme: string; focus: string } | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -137,62 +148,108 @@ export default function QuarterlyReviewPage() {
       if (!user) { router.push('/login'); return }
       setUserId(user.id)
       const { data } = await supabase
-        .from('goals')
-        .select('id, text, category, status, progress, quarter')
-        .eq('user_id', user.id)
-        .order('priority', { ascending: true })
+        .from('goals').select('id, text, category, status, progress, quarter')
+        .eq('user_id', user.id).order('priority', { ascending: true })
       setGoals(data || [])
       setLoading(false)
     }
     load()
   }, [])
 
-  const qGoals     = goals.filter(g => g.quarter === QUARTER_DATES[activeQ].label || g.status === 'active')
-  const completed  = qGoals.filter(g => g.progress >= 100).length
+  const qGoals      = goals.filter(g => g.quarter === QUARTER_DATES[activeQ].label || g.status === 'active')
+  const completed   = qGoals.filter(g => g.progress >= 100).length
   const avgProgress = calcQuarterlyScore(qGoals)
-  const momentum   = avgProgress >= 70 ? 'High' : avgProgress >= 40 ? 'Medium' : 'Low'
-  const nq         = NEXT_QUARTER[activeQ]
+  const momentum    = avgProgress >= 70 ? 'High' : avgProgress >= CONSTANTS.PROGRESS_STRUGGLING_THRESHOLD ? 'Medium' : 'Low'
+  const nq          = NEXT_QUARTER[activeQ]
 
+  // D5: generate check-in — pre-fills empty fields, never overwrites user input
   const handleGenerate = () => {
     setGenerating(true)
     setTimeout(() => {
-      setPivots(generatePivotRecommendations(qGoals))
+      if (!wins.trim())       setWins(generateWinsText(qGoals))
+      if (!challenges.trim()) setChallenges(generateChallengesText(qGoals))
+      setPivotActions(buildPivotActions(qGoals))
       setNextTheme(generateNextQuarterTheme(qGoals, nq))
       setGenerating(false)
       setGenerated(true)
-    }, 1400)
+    }, 1200)
   }
 
-  const handleAccept = async () => {
-    if (!userId) return
-    setAccepted(true)
+  // D6: apply pivot — update goal statuses, regenerate tasks, log to pivots table
+  const handleApplyPivot = async () => {
+    if (!userId || applyingPivot) return
+    setApplyingPivot(true)
 
+    const { data: profileData } = await supabase
+      .from('profiles').select('energy_blocks, work_schedule').eq('id', userId).single()
+    const energyBlocks  = (profileData?.energy_blocks as Record<string, string>) || {}
+    const workSchedule  = (profileData?.work_schedule as WorkSchedule) || DEFAULT_WORK_SCHEDULE
+
+    const goalsToSave: { id: string; action: 'pause' | 'focus'; text: string }[] = []
+
+    for (const action of pivotActions) {
+      if (action.action === 'pause') {
+        await supabase.from('goals').update({ status: 'paused' }).eq('id', action.goalId)
+        setGoals(prev => prev.map(g => g.id === action.goalId ? { ...g, status: 'paused' } : g))
+      } else if (action.action === 'focus') {
+        const goal = goals.find(g => g.id === action.goalId)
+        if (goal) {
+          const newTasks = generateTasksForGoal(goal, energyBlocks, workSchedule, new Date())
+          if (newTasks.length > 0) {
+            await supabase.from('tasks').insert(newTasks.map(t => ({ ...t, user_id: userId, source: 'auto' as const })))
+          }
+        }
+      }
+      goalsToSave.push({ id: action.goalId, action: action.action, text: action.goalText })
+    }
+
+    // Log pivot to pivots table
+    await supabase.from('pivots').insert({
+      user_id:         userId,
+      quarter_label:   QUARTER_DATES[activeQ].label,
+      pivot_summary:   nextTheme?.focus || null,
+      goals_paused:    goalsToSave.filter(g => g.action === 'pause'),
+      goals_activated: goalsToSave.filter(g => g.action === 'focus'),
+    })
+
+    // Save the review with correct column names (D5/D6 fix)
     await supabase.from('quarterly_reviews').upsert({
       user_id:            userId,
-      quarter:            QUARTER_DATES[activeQ].label,
-      year:               new Date().getFullYear(),
-      worked_well:        workedWell,
-      needs_change:       needsChange,
+      quarter_label:      QUARTER_DATES[activeQ].label,
+      wins,
+      challenges,
       performance_score:  avgProgress,
       goals_completed:    completed,
       goals_total:        qGoals.length,
-      avg_progress:       avgProgress,
-      ai_pivots:          pivots,
-      next_quarter_theme: nextTheme ? { theme: nextTheme.theme, focus: nextTheme.focus } : null,
-      submitted_at:       new Date().toISOString(),
-    }, { onConflict: 'user_id,quarter,year' }).then(({ error }) => {
-      if (error) console.warn('quarterly_reviews upsert:', error.message)
-    })
+      ai_pivots:          pivotActions,
+      next_quarter_theme: nextTheme,
+      updated_at:         new Date().toISOString(),
+    }, { onConflict: 'user_id,quarter_label' })
 
+    setApplyingPivot(false)
+    setPivotApplied(true)
+    setShowPivotModal(false)
     setTimeout(() => router.push('/dashboard/plan/quarterly'), 1200)
   }
 
+  // Save review without pivot (Keep Current Plan)
+  const handleSaveReview = async () => {
+    if (!userId) return
+    await supabase.from('quarterly_reviews').upsert({
+      user_id:           userId,
+      quarter_label:     QUARTER_DATES[activeQ].label,
+      wins,
+      challenges,
+      performance_score: avgProgress,
+      goals_completed:   completed,
+      goals_total:       qGoals.length,
+      updated_at:        new Date().toISOString(),
+    }, { onConflict: 'user_id,quarter_label' })
+    router.push('/dashboard/plan/quarterly')
+  }
+
   if (loading) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading...</div>
-      </div>
-    )
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ color: '#8E8E93', fontSize: 15 }}>Loading…</div></div>
   }
 
   return (
@@ -200,31 +257,22 @@ export default function QuarterlyReviewPage() {
 
       {/* Header */}
       <div style={{ padding: '56px 16px 16px', background: 'white', borderBottom: '0.5px solid #E5E5EA' }}>
-        <button
-          onClick={() => router.back()}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4, color: '#3B7DFF', fontSize: 14, fontFamily: 'inherit' }}
-        >
+        <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4, color: '#3B7DFF', fontSize: 14, fontFamily: 'inherit' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           Home
         </button>
         <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Quarterly Review</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>
-          {QUARTER_DATES[activeQ].label} — Time to reflect and pivot
-        </p>
+        <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>{QUARTER_DATES[activeQ].label} — Time to reflect and pivot</p>
       </div>
 
       <div style={{ padding: '16px' }}>
 
-        {/* Quarter Performance Banner */}
+        {/* Performance Banner */}
         <div style={{ background: 'linear-gradient(135deg, #6B21A8 0%, #9B59B6 100%)', borderRadius: 20, padding: '20px', marginBottom: 14, color: 'white' }}>
           <p style={{ fontSize: 13, opacity: 0.8, margin: '0 0 4px' }}>Quarter Performance</p>
           <p style={{ fontSize: 48, fontWeight: 800, margin: '0 0 14px', lineHeight: 1 }}>{avgProgress}%</p>
           <div style={{ display: 'flex', gap: 20 }}>
-            {[
-              { label: 'Goals Complete', value: `${completed}/${qGoals.length}` },
-              { label: 'Avg Progress',   value: `${avgProgress}%` },
-              { label: 'Momentum',       value: momentum },
-            ].map(s => (
+            {[{ label: 'Goals Complete', value: `${completed}/${qGoals.length}` }, { label: 'Avg Progress', value: `${avgProgress}%` }, { label: 'Momentum', value: momentum }].map(s => (
               <div key={s.label}>
                 <p style={{ fontSize: 15, fontWeight: 700, margin: '0 0 1px' }}>{s.value}</p>
                 <p style={{ fontSize: 11, opacity: 0.7, margin: 0 }}>{s.label}</p>
@@ -243,12 +291,8 @@ export default function QuarterlyReviewPage() {
               {qGoals.slice(0, 5).map(goal => (
                 <div key={goal.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                    <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>
-                      {goal.text}
-                    </p>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: getCatColor(goal.category), flexShrink: 0 }}>
-                      {goal.progress}%
-                    </span>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{goal.text}</p>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: getCatColor(goal.category), flexShrink: 0 }}>{goal.progress}%</span>
                   </div>
                   <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${goal.progress}%`, background: getCatColor(goal.category), borderRadius: 4, transition: 'width 0.5s' }} />
@@ -259,15 +303,14 @@ export default function QuarterlyReviewPage() {
           )}
         </div>
 
-        {/* Reflection */}
+        {/* D5: Reflection — pre-filled by Generate Check-In if fields are empty */}
         <div style={{ background: 'white', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
           <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Reflection</h3>
           <div style={{ marginBottom: 12 }}>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', margin: '0 0 6px' }}>What worked well this quarter?</p>
             <textarea
-              value={workedWell}
-              onChange={e => setWorkedWell(e.target.value)}
-              placeholder="Key wins and successful strategies..."
+              value={wins} onChange={e => setWins(e.target.value)}
+              placeholder="Key wins and successful strategies…"
               rows={3}
               style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', background: '#F9F9FB', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
             />
@@ -275,73 +318,57 @@ export default function QuarterlyReviewPage() {
           <div>
             <p style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', margin: '0 0 6px' }}>What needs to change?</p>
             <textarea
-              value={needsChange}
-              onChange={e => setNeedsChange(e.target.value)}
-              placeholder="Adjustments and pivots to consider..."
+              value={challenges} onChange={e => setChallenges(e.target.value)}
+              placeholder="Adjustments and pivots to consider…"
               rows={3}
               style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', background: '#F9F9FB', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
         </div>
 
-        {/* Generate Check-In */}
+        {/* D5: Generate Check-In button */}
         {!generated && (
           <button
-            onClick={handleGenerate}
-            disabled={generating}
-            style={{
-              width: '100%', padding: '15px', borderRadius: 14,
-              background: generating ? '#9B8FFF' : 'linear-gradient(135deg, #6B21A8 0%, #9B59B6 100%)',
-              border: 'none', color: 'white', fontSize: 15, fontWeight: 700,
-              cursor: generating ? 'default' : 'pointer', fontFamily: 'inherit',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              marginBottom: 14,
-            }}
+            onClick={handleGenerate} disabled={generating}
+            style={{ width: '100%', padding: '15px', borderRadius: 14, background: generating ? '#9B8FFF' : 'linear-gradient(135deg, #6B21A8 0%, #9B59B6 100%)', border: 'none', color: 'white', fontSize: 15, fontWeight: 700, cursor: generating ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 14 }}
           >
             {generating ? (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}>
-                  <path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0" />
-                </svg>
-                Analyzing your quarter…
-              </>
+              <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}><path d="M21 12a9 9 0 11-18 0 9 9 0 0118 0"/></svg>Analyzing your quarter…</>
             ) : (
-              <>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                Generate Check-In
-              </>
+              <><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>Generate Check-In</>
             )}
           </button>
         )}
 
-        {/* Generated Results */}
+        {/* D5/D6: Generated results */}
         {generated && nextTheme && (
           <>
-            {/* Recommended Pivots */}
-            <div style={{ background: 'white', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Recommended Pivots</h3>
+            {/* D6: Recommended Pivots (structured) */}
+            {pivotActions.length > 0 && (
+              <div style={{ background: 'white', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Recommended Pivots</h3>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {pivotActions.map((a, i) => (
+                    <div key={i} style={{ background: a.action === 'pause' ? '#FEF2F2' : '#F0FDF4', borderRadius: 10, padding: '12px 14px', border: `1px solid ${a.action === 'pause' ? '#FECACA' : '#86EFAC'}` }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 600, background: a.action === 'pause' ? '#FEE2E2' : '#DCFCE7', color: a.action === 'pause' ? '#991B1B' : '#166534', padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                          {a.action === 'pause' ? 'Pause' : 'Focus'}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: '0 0 3px' }}>{a.goalText.length > 55 ? a.goalText.slice(0, 55) + '…' : a.goalText}</p>
+                      <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>{a.reason}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {pivots.map((p, i) => {
-                  const colonIdx = p.indexOf(' —')
-                  return (
-                    <li key={i} style={{ fontSize: 13, color: '#3C3C43', lineHeight: 1.5 }}>
-                      {colonIdx > 0 ? (
-                        <><span style={{ fontWeight: 600 }}>{p.slice(0, colonIdx)}</span>{p.slice(colonIdx)}</>
-                      ) : p}
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
+            )}
 
-            {/* New Quarter Theme */}
+            {/* Next Quarter Theme */}
             <div style={{ background: 'linear-gradient(135deg, #6B21A8 0%, #9B59B6 100%)', borderRadius: 18, padding: '18px 20px', marginBottom: 14, color: 'white' }}>
-              <p style={{ fontSize: 11, opacity: 0.8, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                {QUARTER_DATES[nq].label} Theme
-              </p>
+              <p style={{ fontSize: 11, opacity: 0.8, margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: 0.5 }}>{QUARTER_DATES[nq].label} Theme</p>
               <p style={{ fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>{nextTheme.theme}</p>
               <p style={{ fontSize: 13, opacity: 0.85, margin: 0 }}>{nextTheme.focus}</p>
             </div>
@@ -349,33 +376,61 @@ export default function QuarterlyReviewPage() {
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
               <button
-                onClick={() => router.push('/dashboard/plan/quarterly')}
+                onClick={handleSaveReview}
                 style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid #E5E5EA', background: 'white', fontSize: 14, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Keep Current Plan
               </button>
-              <button
-                onClick={handleAccept}
-                disabled={accepted}
-                style={{ flex: 1, padding: '13px', borderRadius: 12, background: accepted ? '#34C759' : '#3B7DFF', border: 'none', fontSize: 14, fontWeight: 700, color: 'white', cursor: accepted ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'background 0.3s' }}
-              >
-                {accepted ? 'Applied ✓' : 'Accept Pivot'}
-              </button>
+              {/* D6: Accept Pivot opens confirmation modal */}
+              {pivotActions.length > 0 && (
+                <button
+                  onClick={() => setShowPivotModal(true)}
+                  disabled={pivotApplied}
+                  style={{ flex: 1, padding: '13px', borderRadius: 12, background: pivotApplied ? '#34C759' : '#3B7DFF', border: 'none', fontSize: 14, fontWeight: 700, color: 'white', cursor: pivotApplied ? 'default' : 'pointer', fontFamily: 'inherit', transition: 'background 0.3s' }}
+                >
+                  {pivotApplied ? 'Applied ✓' : 'Accept Pivot'}
+                </button>
+              )}
             </div>
-
-            <button
-              onClick={() => router.push('/dashboard/plan/quarterly')}
-              style={{ width: '100%', padding: '13px', borderRadius: 12, background: '#F2F2F7', border: 'none', fontSize: 14, fontWeight: 600, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Rebuild Next 60 Days
-            </button>
           </>
         )}
       </div>
 
-      <style>{`
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}</style>
+      {/* D6: Accept Pivot confirmation modal */}
+      {showPivotModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '20px' }} onClick={() => setShowPivotModal(false)}>
+          <div style={{ background: 'white', borderRadius: 20, width: '100%', maxWidth: 420, padding: '24px 20px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>Apply Pivot?</h2>
+            <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 20px' }}>These changes will be applied to your goals and tasks:</p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+              {pivotActions.map((a, i) => (
+                <div key={i} style={{ background: '#F8F8FC', borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, background: a.action === 'pause' ? '#FEE2E2' : '#DCFCE7', color: a.action === 'pause' ? '#991B1B' : '#166534', padding: '2px 8px', borderRadius: 20 }}>
+                      {a.action === 'pause' ? '⏸ Pause goal' : '🎯 Generate tasks'}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: '0 0 2px' }}>{a.goalText.length > 55 ? a.goalText.slice(0, 55) + '…' : a.goalText}</p>
+                  <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>{a.reason}</p>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button onClick={() => setShowPivotModal(false)} style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid #E5E5EA', background: 'white', fontSize: 14, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+              <button
+                onClick={handleApplyPivot} disabled={applyingPivot}
+                style={{ flex: 1, padding: '13px', borderRadius: 12, background: applyingPivot ? '#9B9B9B' : '#3B7DFF', border: 'none', fontSize: 14, fontWeight: 700, color: 'white', cursor: applyingPivot ? 'default' : 'pointer', fontFamily: 'inherit' }}
+              >
+                {applyingPivot ? 'Applying…' : 'Confirm Pivot'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

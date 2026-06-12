@@ -67,7 +67,7 @@ const handleAccept = async () => {
           user_id: user.id,
           text: g.text,
           category: g.category,
-          status: i < 4 ? 'active' : 'parking',
+          status: i < 4 ? 'active' : 'parked',
           priority: i,
           progress: 0,
         })))
@@ -100,7 +100,7 @@ const handleAccept = async () => {
       if (tasks.length > 0) {
         const { error: tasksError } = await supabase
           .from('tasks')
-          .insert(tasks.map(t => ({ ...t, user_id: user.id })))
+          .insert(tasks.map(t => ({ ...t, user_id: user.id, source: 'auto' })))
         if (tasksError) console.error('Tasks insert error:', tasksError.message)
       }
     }
@@ -129,11 +129,11 @@ const handleAccept = async () => {
 
       {/* Progress Bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        {[1, 2, 3, 4, 5].map(step => (
-          <div key={step} style={{ flex: 1, height: 4, borderRadius: 2, background: step <= 4 ? '#3B7DFF' : '#D1D1D6' }} />
+        {[1, 2, 3, 4, 5, 6].map(step => (
+          <div key={step} style={{ flex: 1, height: 4, borderRadius: 2, background: step <= 5 ? '#3B7DFF' : '#D1D1D6' }} />
         ))}
       </div>
-      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 4 of 5</p>
+      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 5 of 6</p>
 
       {/* Heading */}
       <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', marginBottom: 8 }}>

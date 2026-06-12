@@ -2,8 +2,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { getMonday, addDays, toDateStr } from '@/lib/planData'
+import { getMonday, addDays, toDateStr, CONSTANTS } from '@/lib/planData'
 import { getWeekStreakFromDB, type DBTask } from '@/lib/db'
+import EmptyState from '@/app/dashboard/components/EmptyState'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,7 +52,15 @@ const CAT_COLORS: Record<string, string> = {
 
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
-function buildWeeklyDataFromTasks(tasks: DBTask[]): WeekData[] {
+function getISOWeekNumber(date: Date): number {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7)
+  const jan4 = new Date(d.getFullYear(), 0, 4)
+  return 1 + Math.round(((d.getTime() - jan4.getTime()) / 86400000 - 3 + (jan4.getDay() + 6) % 7) / 7)
+}
+
+function buildWeeklyDataFromTasks(tasks: DBTask[], reflByWeek: Record<string, number> = {}): WeekData[] {
   const today = new Date()
   const weeks: WeekData[] = []
   for (let w = 3; w >= 0; w--) {
@@ -65,8 +74,9 @@ function buildWeeklyDataFromTasks(tasks: DBTask[]): WeekData[] {
     const rate      = total > 0 ? Math.round((completed / total) * 100) : 0
     const byCat     = (cat: string) =>
       parseFloat(wt.filter(t => t.category.toLowerCase() === cat).reduce((s, t) => s + t.duration, 0).toFixed(1))
-    const weekNum = 4 - w
-    weeks.push({ label: `Week ${weekNum}`, short: `W${weekNum}`, score: rate, completed, total, hours, rate, efficiency: rate, career: byCat('career'), health: byCat('health'), finance: byCat('finance'), creative: byCat('creative') })
+    const isoWeek   = getISOWeekNumber(monday)
+    const score     = reflByWeek[weekStart] ?? rate
+    weeks.push({ label: `Week ${isoWeek}`, short: `W${isoWeek}`, score, completed, total, hours, rate, efficiency: rate, career: byCat('career'), health: byCat('health'), finance: byCat('finance'), creative: byCat('creative') })
   }
   return weeks
 }
@@ -157,7 +167,7 @@ function computeInsights(goals: Goal[]): { wins: string[]; focus: string[] } {
   const wins: string[]  = []
   const focus: string[] = []
   const sorted     = [...active].sort((a, b) => b.progress - a.progress)
-  const struggling = active.filter(g => g.progress < 40)
+  const struggling = active.filter(g => g.progress < CONSTANTS.PROGRESS_STRUGGLING_THRESHOLD)
   if (sorted[0] && sorted[0].progress >= 70) {
     const t = sorted[0].text
     wins.push(`${t.length > 42 ? t.slice(0, 42) + '…' : t} at ${sorted[0].progress}%`)
@@ -638,21 +648,24 @@ export default function ProgressPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const today     = new Date()
-      const yearStart = toDateStr(new Date(today.getFullYear(), 0, 1))
+      const today        = new Date()
+      const yearStart    = toDateStr(new Date(today.getFullYear(), 0, 1))
+      const fourWeeksAgo = toDateStr(addDays(getMonday(today), -21))
 
-      const [{ data: goalData }, { data: taskData }, streakVal] = await Promise.all([
+      const [{ data: goalData }, { data: taskData }, streakVal, { data: reflData }] = await Promise.all([
         supabase.from('goals').select('id,text,category,status,progress').eq('user_id', user.id),
         supabase.from('tasks').select('*').eq('user_id', user.id).gte('date', yearStart).order('date', { ascending: true }),
         getWeekStreakFromDB(user.id),
+        supabase.from('weekly_reflections').select('week_of, week_score').eq('user_id', user.id).gte('week_of', fourWeeksAgo),
       ])
 
-      const goalList = (goalData || []) as Goal[]
-      const taskList = (taskData || []) as DBTask[]
+      const goalList   = (goalData || []) as Goal[]
+      const taskList   = (taskData || []) as DBTask[]
+      const reflByWeek = Object.fromEntries(((reflData || []) as { week_of: string; week_score: number }[]).map(r => [r.week_of, r.week_score]))
       setGoals(goalList)
       setAllTasks(taskList)
       setWeeklyData(buildDailyDataFromTasks(taskList))
-      setMonthlyWeeks(buildWeeklyDataFromTasks(taskList))
+      setMonthlyWeeks(buildWeeklyDataFromTasks(taskList, reflByWeek))
       setQuarterlyData(buildQuarterlyDataFromTasks(taskList))
       setYearlyData(buildYearlyDataFromTasks(taskList))
       setWeekStreak(streakVal)
@@ -828,7 +841,7 @@ export default function ProgressPage() {
       </div>
 
       {/* ── Momentum Score ───────────────────────────────────────────────── */}
-      <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div data-tour="progress-momentum-chart" style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Momentum Score</h2>
           <button onClick={() => setActiveModal('momentum')} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
@@ -1024,10 +1037,14 @@ export default function ProgressPage() {
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {activeGoals.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px 0', color: '#8E8E93' }}>
-              <p style={{ fontSize: 15, margin: '0 0 8px' }}>No active goals yet</p>
-              <button onClick={() => router.push('/dashboard/goals')} style={{ fontSize: 13, fontWeight: 600, color: '#3B7DFF', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>Set your first goal →</button>
-            </div>
+            <EmptyState
+              icon="📈"
+              iconBg="#EFF6FF"
+              title="No active goals yet"
+              body="Set your first goal to start tracking progress and momentum here."
+              ctaLabel="Set a Goal"
+              onCta={() => router.push('/dashboard/goals')}
+            />
           ) : activeGoals.slice(0, 5).map(goal => (
             <button key={goal.id} onClick={() => router.push(`/dashboard/goals/${goal.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'inherit', width: '100%' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>

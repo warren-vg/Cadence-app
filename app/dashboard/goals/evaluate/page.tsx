@@ -13,6 +13,7 @@ import {
   getUsedCapacity,
   CONSTANTS,
 } from '@/lib/planData'
+import { createGoal } from '@/lib/db'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -123,12 +124,11 @@ export default function GoalEvaluatorPage() {
       if (!user) { router.push('/login'); return }
 
       const hoursValue = parseFloat(weeklyHours)
-      const validHours = !isNaN(hoursValue) && hoursValue >= 0.5 && hoursValue <= 40
+      const validHours = !isNaN(hoursValue) && hoursValue >= 0.5 && hoursValue <= CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS
         ? hoursValue
         : CONSTANTS.DEFAULT_HOURS_PER_GOAL_FALLBACK
 
-      await supabase.from('goals').insert({
-        user_id:                user.id,
+      const created = await createGoal(user.id, {
         text:                   goalText.trim(),
         category,
         quarter:                timeline,
@@ -137,6 +137,7 @@ export default function GoalEvaluatorPage() {
         priority:               999,
         progress:               0,
       })
+      if (!created) throw new Error('createGoal returned null')
 
       router.push('/dashboard/goals')
     } catch (err) {
@@ -415,7 +416,7 @@ export default function GoalEvaluatorPage() {
               </p>
               <input
                 type="number"
-                min={0.5} max={40} step={0.5}
+                min={0.5} max={CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS} step={0.5}
                 value={weeklyHours}
                 onChange={e => setWeeklyHours(e.target.value)}
                 style={{

@@ -3,12 +3,14 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   toDateStr, getMonday, addDays, getCatStyle, formatTime,
+  getProjectedCompletionDate, CONSTANTS,
 } from '@/lib/planData'
 import {
   getTasksForDate, getTasksForWeek,
   type DBTask,
 } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
+import EmptyState from '@/app/dashboard/components/EmptyState'
 
 type ViewMode = 'Daily' | 'Weekly' | 'Monthly'
 
@@ -239,14 +241,19 @@ export default function PlanPage() {
             </div>
           </div>
 
+          {dailyTasks.length === 0 ? (
+            <EmptyState
+              icon="📅"
+              iconBg="#EFF6FF"
+              title="No tasks planned"
+              body="Build your plan from the Weekly tab to populate today's schedule."
+              ctaLabel="Go to Weekly Planner"
+              onCta={() => router.push('/dashboard/plan/weekly')}
+            />
+          ) : (
+          <>
           <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16 }}>
-            {dailyTasks.length === 0 ? (
-              <div style={{ padding: '40px 20px', textAlign: 'center', color: '#8E8E93' }}>
-                <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: '#3C3C43' }}>No tasks planned</p>
-                <p style={{ fontSize: 13, margin: 0 }}>Build your plan from the Weekly tab.</p>
-              </div>
-            ) : (
-              dailyTasks.map((task, i) => {
+            {dailyTasks.map((task, i) => {
                 const catStyle = getCatStyle(task.category)
                 return (
                   <div key={task.id} style={{
@@ -267,7 +274,7 @@ export default function PlanPage() {
                   </div>
                 )
               })
-            )}
+            }
           </div>
 
           <button
@@ -276,6 +283,8 @@ export default function PlanPage() {
           >
             View Detailed Daily Plan
           </button>
+          </>
+          )}
         </>
       )}
 
@@ -304,9 +313,10 @@ export default function PlanPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {goals.map(goal => {
                 const catStyle     = getCatStyle(goal.category)
-                const weeklyHrs    = goal.estimated_weekly_hours || 4
-                const targetQ      = goal.quarter || 'Q4'
-                const targetDate   = quarterToDate(targetQ)
+                const weeklyHrs    = goal.estimated_weekly_hours || CONSTANTS.DEFAULT_HOURS_PER_GOAL_FALLBACK
+                const rawDate      = getProjectedCompletionDate(goal.quarter)
+                const targetDate   = rawDate === 'Not set' ? 'Not set'
+                  : new Date(rawDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 const monthTaskCount = Math.round(weeklyHrs * 4)
                 return (
                   <div key={goal.id} style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA' }}>
@@ -363,14 +373,6 @@ export default function PlanPage() {
   )
 }
 
-function quarterToDate(q: string): string {
-  const year = new Date().getFullYear()
-  if (q === 'Q1') return `Mar 31, ${year}`
-  if (q === 'Q2') return `Jun 30, ${year}`
-  if (q === 'Q3') return `Sep 30, ${year}`
-  if (q === 'Q4') return `Dec 31, ${year}`
-  return `Dec 31, ${q}`
-}
 
 const navBtnStyle: React.CSSProperties = {
   background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 8,

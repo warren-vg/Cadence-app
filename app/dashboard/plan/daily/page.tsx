@@ -6,9 +6,13 @@ import {
   toDateStr, getCatStyle, formatTime,
 } from '@/lib/planData'
 import {
-  getTasksForDate, toggleTask, createTask, recalcGoalProgressFromTasks,
-  type DBTask,
+  getTasksForDate, toggleTask, createTask, createRecurringTask,
+  stopRecurrence, recalcGoalProgressFromTasks,
+  type DBTask, type RecurrenceRule,
 } from '@/lib/db'
+import EmptyState from '@/app/dashboard/components/EmptyState'
+import { evaluateRewards } from '@/lib/rewards'
+import { useRewards } from '@/app/dashboard/components/RewardContext'
 
 const PRIORITY_DOT: Record<string, string> = {
   high:   '#FF3B30',
@@ -21,6 +25,7 @@ const CATEGORIES = ['Career', 'Finance', 'Health', 'Relationships', 'Business', 
 function DailyPlanContent() {
   const router   = useRouter()
   const params   = useSearchParams()
+  const { queueRewards } = useRewards()
   const [tasks, setTasks]           = useState<DBTask[]>([])
   const [notes, setNotes]           = useState('')
   const [lowEnergy, setLowEnergy]   = useState(false)
@@ -41,8 +46,23 @@ function DailyPlanContent() {
   const [goals, setGoals]                 = useState<{id: string; text: string}[]>([])
   const [goalNames, setGoalNames]         = useState<Record<string, string>>({})
 
-  // Toast
+  // Day capacity (from profiles.capacity_schedule)
+  const [dayCapacity, setDayCapacity]     = useState(0)
+  const [dayTimeOfDay, setDayTimeOfDay]   = useState('')
+
+  // Toast / deferred
+  const [showDeferred, setShowDeferred] = useState(false)
   const [toast, setToast] = useState<{ message: string; visible: boolean }>({ message: '', visible: false })
+
+  // Recurrence accordion (Add Task modal)
+  const [recurEnabled, setRecurEnabled] = useState(false)
+  const [recurFreq, setRecurFreq]       = useState<'daily' | 'weekly'>('weekly')
+  const [recurDays, setRecurDays]       = useState<number[]>([])
+  const [recurEndsOn, setRecurEndsOn]   = useState('')
+
+  // Recurring task management modal
+  const [recurModalTask, setRecurModalTask] = useState<DBTask | null>(null)
+  const [stoppingRecur, setStoppingRecur]   = useState(false)
 
   const dateParam = params.get('date')
   const date      = dateParam || toDateStr(new Date())
@@ -66,7 +86,7 @@ function DailyPlanContent() {
       const [tasksData, { data: goalsData }, { data: profileData }] = await Promise.all([
         getTasksForDate(user.id, date),
         supabase.from('goals').select('id, text').eq('user_id', user.id).eq('status', 'active'),
-        supabase.from('profiles').select('daily_notes, low_energy_dates').eq('id', user.id).single(),
+        supabase.from('profiles').select('daily_notes, low_energy_dates, capacity_schedule').eq('id', user.id).single(),
       ])
       const goalsArr = (goalsData || []) as {id: string; text: string}[]
       setGoals(goalsArr)
@@ -78,6 +98,15 @@ function DailyPlanContent() {
       setNotes(dailyNotes[date] || '')
       const lowEnergyDates = (profileData?.low_energy_dates as string[] | null) || []
       setLowEnergy(lowEnergyDates.includes(date))
+      if (profileData?.capacity_schedule) {
+        const DOW_KEY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
+        const cs = profileData.capacity_schedule as Record<string, { hours: number; time_of_day: string }>
+        const dayData = cs[DOW_KEY[new Date(date + 'T12:00:00').getDay()]]
+        if (dayData) {
+          setDayCapacity(dayData.hours)
+          setDayTimeOfDay(dayData.time_of_day)
+        }
+      }
       setLoading(false)
     }
     init()
@@ -93,8 +122,10 @@ function DailyPlanContent() {
       return
     }
 
+    let goalProgress: number | null = null
     if (task.goal_id && userId) {
       const newProgress = await recalcGoalProgressFromTasks(task.goal_id, userId)
+      goalProgress = newProgress
       if (newProgress !== null && !task.completed) {
         const goalName = task.text.length > 30 ? task.text.slice(0, 30) + '…' : task.text
         if (newProgress === 100) {
@@ -104,16 +135,38 @@ function DailyPlanContent() {
         }
       }
     } else if (task.project_id && userId) {
-      // Task linked to a project but not directly to a goal — propagate through the project
-      const { data: proj } = await supabase
-        .from('projects')
-        .select('linked_goal_id')
-        .eq('id', task.project_id)
-        .single()
-      if (proj?.linked_goal_id) {
-        await recalcGoalProgressFromTasks(proj.linked_goal_id, userId)
+      const { data: linkedGoals } = await supabase
+        .from('goals')
+        .select('id')
+        .eq('project_id', task.project_id)
+      if (linkedGoals) {
+        await Promise.all(linkedGoals.map((g: { id: string }) => recalcGoalProgressFromTasks(g.id, userId)))
       }
     }
+
+    // Reward evaluation — non-blocking, fires only on completion (not un-completion)
+    if (!task.completed && userId) {
+      const goalTitle = task.goal_id ? (goalNames[task.goal_id] ?? null) : null
+      evaluateRewards(userId, {
+        trigger: 'task_completed',
+        ctx: {
+          taskId:        task.id,
+          taskDate:      task.date,
+          taskCreatedAt: task.created_at ?? new Date().toISOString(),
+          taskCategory:  task.category,
+          goalId:        task.goal_id ?? null,
+          goalTitle,
+          goalProgress,
+        },
+      }).then(earned => { if (earned.length > 0) queueRewards(earned) })
+    }
+  }
+
+  const closeAddModal = () => {
+    setShowAddModal(false)
+    setNewTitle(''); setNewCategory('Career'); setNewTime('09:00')
+    setNewEndTime('10:00'); setNewDate(''); setNewGoalId(null); setNewPriority('medium')
+    setRecurEnabled(false); setRecurFreq('weekly'); setRecurDays([]); setRecurEndsOn('')
   }
 
   const handleAddTask = async () => {
@@ -124,33 +177,50 @@ function DailyPlanContent() {
     const [eh, em] = newEndTime.split(':').map(Number)
     const diffMins = (eh * 60 + em) - (sh * 60 + sm)
     const duration = diffMins > 0 ? Math.round((diffMins / 60) * 4) / 4 : 1
-    const created = await createTask(userId, {
+
+    const baseTask = {
       text:           newTitle.trim(),
-      date:           taskDate,
       scheduled_time: newTime,
       duration,
       category:       newCategory,
       priority:       newPriority,
       completed:      false,
       goal_id:        newGoalId,
-      project_id:     null,
-      source:         'manual',
-    })
-    if (created) {
-      if (taskDate === date) {
+      project_id:     null as null,
+      source:         'manual' as const,
+    }
+
+    if (recurEnabled) {
+      const rule: RecurrenceRule = {
+        frequency:    recurFreq,
+        days_of_week: recurFreq === 'weekly' ? recurDays : undefined,
+        ends_on:      recurEndsOn || null,
+      }
+      const created = await createRecurringTask(userId, baseTask, rule)
+      if (created) {
         const updated = await getTasksForDate(userId, date)
         setTasks(updated)
+        showToast(`"${newTitle.trim()}" set to repeat`)
       }
-      showToast(`"${newTitle.trim()}" added to your schedule`)
+    } else {
+      const created = await createTask(userId, { ...baseTask, date: taskDate })
+      if (created) {
+        if (taskDate === date) {
+          const updated = await getTasksForDate(userId, date)
+          setTasks(updated)
+          const newTotal = parseFloat(updated.reduce((s, t) => s + t.duration, 0).toFixed(1))
+          if (dayCapacity > 0 && newTotal > dayCapacity) {
+            showToast(`Added · over today's ${dayCapacity}h capacity`)
+          } else {
+            showToast(`"${newTitle.trim()}" added to your schedule`)
+          }
+        } else {
+          showToast(`"${newTitle.trim()}" added to your schedule`)
+        }
+      }
     }
-    setShowAddModal(false)
-    setNewTitle('')
-    setNewCategory('Career')
-    setNewTime('09:00')
-    setNewEndTime('10:00')
-    setNewDate('')
-    setNewGoalId(null)
-    setNewPriority('medium')
+
+    closeAddModal()
     setAddingTask(false)
   }
 
@@ -161,7 +231,7 @@ function DailyPlanContent() {
   }
 
   const handleSnooze = async (task: DBTask) => {
-    const newSnoozeTime = addMinutesToTime(task.scheduled_time || '09:00', 60)
+    const newSnoozeTime = addMinutesToTime(task.scheduled_time || '09:00', 15)
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, scheduled_time: newSnoozeTime } : t))
     const { error } = await supabase.from('tasks').update({ scheduled_time: newSnoozeTime }).eq('id', task.id)
     if (error) {
@@ -232,10 +302,13 @@ function DailyPlanContent() {
 
   if (!mounted || loading) return null
 
-  const sorted       = [...tasks].sort((a, b) => (a.scheduled_time || '').localeCompare(b.scheduled_time || ''))
-  const completed    = tasks.filter(t => t.completed).length
-  const total        = tasks.length
-  const dailyMinimum = tasks.find(t => t.priority === 'high') || tasks[0]
+  const sorted         = [...tasks].sort((a, b) => (a.scheduled_time || '').localeCompare(b.scheduled_time || ''))
+  const completed      = tasks.filter(t => t.completed).length
+  const total          = tasks.length
+  const dailyMinimum   = tasks.find(t => t.priority === 'high') || tasks[0]
+  const scheduledHours = parseFloat(tasks.reduce((s, t) => s + t.duration, 0).toFixed(1))
+  const overCapacity   = dayCapacity > 0 && scheduledHours > dayCapacity
+  const capacityPct    = dayCapacity > 0 ? Math.min(100, Math.round((scheduledHours / dayCapacity) * 100)) : 0
 
   return (
     <div style={{ padding: '0 0 16px' }}>
@@ -280,9 +353,39 @@ function DailyPlanContent() {
           </button>
         </div>
 
+        {/* Day Capacity Indicator */}
+        {dayCapacity > 0 && (
+          <div style={{
+            background: overCapacity ? '#FFF7ED' : '#F0FFF4',
+            borderRadius: 14,
+            padding: '14px 18px',
+            border: `1px solid ${overCapacity ? '#FED7AA' : '#BBF7D0'}`,
+            marginBottom: 14,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>Today&apos;s Capacity</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: overCapacity ? '#EA580C' : '#16A34A', margin: 0 }}>
+                {scheduledHours}h / {dayCapacity}h
+              </p>
+            </div>
+            <div style={{ background: overCapacity ? '#FED7AA' : '#BBF7D0', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', width: `${capacityPct}%`,
+                background: overCapacity ? '#EA580C' : '#16A34A',
+                borderRadius: 6, transition: 'width 0.4s ease',
+              }} />
+            </div>
+            {dayTimeOfDay && (
+              <p style={{ fontSize: 12, color: '#8E8E93', margin: '6px 0 0' }}>
+                Preferred: {dayTimeOfDay.charAt(0).toUpperCase() + dayTimeOfDay.slice(1)}
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Priority Legend */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
-          {[['high', 'High Priority'], ['medium', 'Medium Priority']].map(([p, label]) => (
+          {[['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].map(([p, label]) => (
             <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: PRIORITY_DOT[p] }} />
               <span style={{ fontSize: 12, color: '#3C3C43' }}>{label}</span>
@@ -291,64 +394,137 @@ function DailyPlanContent() {
         </div>
 
         {/* Task List */}
-        {tasks.length === 0 ? (
-          <div style={{ background: 'white', borderRadius: 16, padding: '40px 20px', textAlign: 'center', border: '0.5px solid #E5E5EA', marginBottom: 14, color: '#8E8E93' }}>
-            <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: '#3C3C43' }}>No tasks for this day</p>
-            <p style={{ fontSize: 13, margin: 0 }}>Tap &quot;+ Add Task Block&quot; below to add one.</p>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, marginBottom: 14 }}>
-            {sorted.map((task, i) => {
-              const show = !lowEnergy || task.priority === 'high' || task.priority === 'medium'
-              if (!show) return null
-              return (
-                <div key={task.id} style={{
-                  background: 'white',
-                  borderRadius: i === 0 ? '16px 16px 0 0' : i === sorted.length - 1 ? '0 0 16px 16px' : '0',
-                  padding: '16px 18px', border: '0.5px solid #E5E5EA',
-                  borderBottom: i < tasks.length - 1 ? 'none' : '0.5px solid #E5E5EA',
-                  display: 'flex', alignItems: 'flex-start', gap: 14,
-                }}>
+        {(() => {
+          // TODO(Phase 3): morning touchpoint should detect tasks deferred yesterday via Low Energy
+          // and prompt the user to roll them forward. Low Energy mode is view-only — no data mutation.
+          const activeTasks   = lowEnergy ? sorted.filter(t => t.priority === 'high') : sorted
+          const deferredTasks = lowEnergy ? sorted.filter(t => t.priority !== 'high') : []
+
+          const renderTaskRow = (task: DBTask, index: number, listLength: number) => (
+            <div key={task.id} style={{
+              background: 'white',
+              borderRadius: index === 0 ? '16px 16px 0 0' : index === listLength - 1 ? '0 0 16px 16px' : '0',
+              padding: '16px 18px', border: '0.5px solid #E5E5EA',
+              borderBottom: index < listLength - 1 ? 'none' : '0.5px solid #E5E5EA',
+              display: 'flex', alignItems: 'flex-start', gap: 14,
+            }}>
+              <button
+                onClick={() => handleToggle(task)}
+                style={{
+                  width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
+                  background: task.completed ? '#3B7DFF' : 'white',
+                  border: task.completed ? 'none' : '2px solid #D1D1D6',
+                  cursor: 'pointer', padding: 0, marginTop: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}
+              >
+                {task.completed && (
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                )}
+              </button>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                  <span style={{ fontSize: 13, color: '#8E8E93' }}>{formatTime(task.scheduled_time)}</span>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: PRIORITY_DOT[task.priority] ?? '#C7C7CC', flexShrink: 0 }} />
+                  {task.recurrence_template_id && (
+                    <button
+                      onClick={e => { e.stopPropagation(); setRecurModalTask(task) }}
+                      style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', lineHeight: 1 }}
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                        <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <p style={{ fontSize: 15, fontWeight: 500, color: task.completed ? '#8E8E93' : '#1C1C1E', textDecoration: task.completed ? 'line-through' : 'none', margin: '0 0 3px' }}>
+                  {task.text}
+                </p>
+                {task.goal_id && goalNames[task.goal_id] && (
+                  <p style={{ fontSize: 12, color: '#3B7DFF', margin: '1px 0 3px' }}>
+                    From: {goalNames[task.goal_id]}
+                  </p>
+                )}
+                <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>
+                  {task.duration} {task.duration === 1 ? 'hour' : 'hours'}
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                <button
+                  onClick={() => handleSwap(task)}
+                  disabled={index === sorted.length - 1}
+                  style={{
+                    ...actionBtnStyle,
+                    opacity: index === sorted.length - 1 ? 0.3 : 1,
+                    cursor:  index === sorted.length - 1 ? 'default' : 'pointer',
+                  }}
+                >
+                  Swap
+                </button>
+                <button onClick={() => handleSnooze(task)} style={actionBtnStyle}>Snooze</button>
+              </div>
+            </div>
+          )
+
+          if (tasks.length === 0) return (
+            <div data-tour="daily-plan-list">
+              <EmptyState
+                icon="📋"
+                iconBg="#EFF6FF"
+                title="No tasks for this day"
+                body="Tap &quot;+ Add Task Block&quot; below to schedule something."
+                ctaLabel="+ Add Task Block"
+                onCta={() => setShowAddModal(true)}
+              />
+            </div>
+          )
+
+          return (
+            <div data-tour="daily-plan-list" style={{ marginBottom: 14 }}>
+              {activeTasks.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                  {activeTasks.map((task, i) => renderTaskRow(task, i, activeTasks.length))}
+                </div>
+              )}
+              {activeTasks.length === 0 && lowEnergy && (
+                <div style={{ background: 'white', borderRadius: 16, padding: '24px 20px', textAlign: 'center', border: '0.5px solid #E5E5EA', color: '#8E8E93' }}>
+                  <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: '#3C3C43' }}>No high-priority tasks today</p>
+                  <p style={{ fontSize: 13, margin: 0 }}>Rest up — toggle off Low Energy Mode to see all tasks.</p>
+                </div>
+              )}
+              {deferredTasks.length > 0 && (
+                <div style={{ marginTop: activeTasks.length > 0 ? 10 : 0 }}>
                   <button
-                    onClick={() => handleToggle(task)}
+                    onClick={() => setShowDeferred(s => !s)}
                     style={{
-                      width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                      background: task.completed ? '#3B7DFF' : 'white',
-                      border: task.completed ? 'none' : '2px solid #D1D1D6',
-                      cursor: 'pointer', padding: 0, marginTop: 1,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: '100%', background: 'white', border: '0.5px solid #E5E5EA',
+                      borderRadius: showDeferred ? '16px 16px 0 0' : 16,
+                      padding: '14px 18px', cursor: 'pointer', fontFamily: 'inherit',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}
                   >
-                    {task.completed && (
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    )}
+                    <span style={{ fontSize: 14, fontWeight: 500, color: '#3C3C43' }}>
+                      {deferredTasks.length} deferred today
+                    </span>
+                    <svg
+                      width="16" height="16" viewBox="0 0 24 24" fill="none"
+                      stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round"
+                      style={{ transform: showDeferred ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
                   </button>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, color: '#8E8E93' }}>{formatTime(task.scheduled_time)}</span>
-                      <div style={{ width: 6, height: 6, borderRadius: '50%', background: PRIORITY_DOT[task.priority], flexShrink: 0 }} />
+                  {showDeferred && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                      {deferredTasks.map((task, i) => renderTaskRow(task, i, deferredTasks.length))}
                     </div>
-                    <p style={{ fontSize: 15, fontWeight: 500, color: task.completed ? '#8E8E93' : '#1C1C1E', textDecoration: task.completed ? 'line-through' : 'none', margin: '0 0 3px' }}>
-                      {task.text}
-                    </p>
-                    {task.goal_id && goalNames[task.goal_id] && (
-                      <p style={{ fontSize: 12, color: '#3B7DFF', margin: '1px 0 3px' }}>
-                        From: {goalNames[task.goal_id]}
-                      </p>
-                    )}
-                    <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>
-                      {task.duration} {task.duration === 1 ? 'hour' : 'hours'}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                    <button onClick={() => handleSwap(task)} style={actionBtnStyle}>Swap</button>
-                    <button onClick={() => handleSnooze(task)} style={actionBtnStyle}>Snooze</button>
-                  </div>
+                  )}
                 </div>
-              )
-            })}
-          </div>
-        )}
+              )}
+            </div>
+          )
+        })()}
 
         {/* Daily Minimum */}
         {dailyMinimum && (
@@ -406,7 +582,7 @@ function DailyPlanContent() {
       {showAddModal && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }}
-          onClick={() => setShowAddModal(false)}
+          onClick={closeAddModal}
         >
           <div
             style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', padding: '24px 20px 40px' }}
@@ -418,7 +594,7 @@ function DailyPlanContent() {
                 <p style={{ fontSize: 12, color: '#8E8E93', margin: '3px 0 0' }}>Add a new task block to your schedule</p>
               </div>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={closeAddModal}
                 style={{ background: '#F2F2F7', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -501,20 +677,20 @@ function DailyPlanContent() {
             })()}
 
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Link Goal <span style={{ fontWeight: 400 }}>(optional)</span></p>
+              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Goal <span style={{ fontWeight: 400, color: '#FF3B30' }}>*</span></p>
               <select
                 value={newGoalId || ''}
                 onChange={e => setNewGoalId(e.target.value || null)}
                 style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC', appearance: 'none' }}
               >
-                <option value="">No goal</option>
+                <option value="" disabled>Select a goal</option>
                 {goals.map(g => (
                   <option key={g.id} value={g.id}>{g.text.length > 45 ? g.text.slice(0, 45) + '…' : g.text}</option>
                 ))}
               </select>
             </div>
 
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 16 }}>
               <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 8 }}>Priority</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 {(['high', 'medium', 'low'] as const).map(p => (
@@ -534,17 +710,158 @@ function DailyPlanContent() {
               </div>
             </div>
 
+            {/* Recurrence accordion */}
+            <div style={{ marginBottom: 24 }}>
+              <button
+                onClick={() => setRecurEnabled(v => !v)}
+                style={{
+                  width: '100%', background: 'white', border: '0.5px solid #E5E5EA',
+                  borderRadius: recurEnabled ? '12px 12px 0 0' : 12,
+                  padding: '13px 16px', cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={recurEnabled ? '#3B7DFF' : '#8E8E93'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                    <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+                  </svg>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: recurEnabled ? '#3B7DFF' : '#1C1C1E' }}>Repeat</span>
+                </div>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round"
+                  style={{ transform: recurEnabled ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+
+              {recurEnabled && (
+                <div style={{ background: '#F8F8FC', border: '0.5px solid #E5E5EA', borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '16px' }}>
+                  <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 8 }}>Frequency</p>
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                    {(['daily', 'weekly'] as const).map(f => (
+                      <button key={f} onClick={() => setRecurFreq(f)} style={{
+                        flex: 1, padding: '10px 0', borderRadius: 10, border: 'none',
+                        fontSize: 13, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer',
+                        background: recurFreq === f ? '#3B7DFF' : '#F2F2F7',
+                        color:      recurFreq === f ? 'white'   : '#3C3C43',
+                      }}>
+                        {f === 'daily' ? 'Daily' : 'Weekly'}
+                      </button>
+                    ))}
+                  </div>
+
+                  {recurFreq === 'weekly' && (
+                    <>
+                      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 8 }}>Repeat on</p>
+                      <div style={{ display: 'flex', gap: 5, marginBottom: 16 }}>
+                        {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d, i) => (
+                          <button key={i} onClick={() => setRecurDays(prev =>
+                            prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i]
+                          )} style={{
+                            flex: 1, padding: '8px 0', borderRadius: 10, border: 'none',
+                            fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
+                            background: recurDays.includes(i) ? '#3B7DFF' : '#F2F2F7',
+                            color:      recurDays.includes(i) ? 'white'   : '#3C3C43',
+                          }}>{d}</button>
+                        ))}
+                      </div>
+                      {recurDays.length === 0 && (
+                        <p style={{ fontSize: 12, color: '#FF9500', margin: '-8px 0 16px' }}>Select at least one day</p>
+                      )}
+                    </>
+                  )}
+
+                  <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>
+                    End date <span style={{ fontWeight: 400, color: '#C7C7CC' }}>(optional)</span>
+                  </p>
+                  <input
+                    type="date"
+                    value={recurEndsOn}
+                    onChange={e => setRecurEndsOn(e.target.value)}
+                    style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {(() => {
+              const missingDays = recurEnabled && recurFreq === 'weekly' && recurDays.length === 0
+              const canSubmit   = !!(newTitle.trim() && newGoalId && !missingDays)
+              return (
+                <button
+                  onClick={handleAddTask}
+                  disabled={!canSubmit || addingTask}
+                  style={{
+                    width: '100%', padding: '15px', borderRadius: 14, border: 'none',
+                    background: canSubmit ? '#3B7DFF' : '#D1D1D6',
+                    color: 'white', fontSize: 15, fontWeight: 700,
+                    cursor: canSubmit ? 'pointer' : 'default',
+                    fontFamily: 'inherit', opacity: addingTask ? 0.6 : 1,
+                  }}
+                >
+                  {addingTask ? 'Adding…' : recurEnabled ? 'Add Repeating Block' : 'Add Block'}
+                </button>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Recurring task management modal */}
+      {recurModalTask && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }}
+          onClick={() => setRecurModalTask(null)}
+        >
+          <div
+            style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '20px 20px 40px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D1D6', margin: '0 auto 20px' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
+                <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
+              </svg>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Recurring Task</h2>
+            </div>
+            <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 24px', paddingLeft: 22 }}>{recurModalTask.text}</p>
+
             <button
-              onClick={handleAddTask}
-              disabled={!newTitle.trim() || addingTask}
+              onClick={async () => {
+                if (!recurModalTask.recurrence_template_id || !userId) return
+                setStoppingRecur(true)
+                const ok = await stopRecurrence(recurModalTask.recurrence_template_id)
+                if (ok) {
+                  // Delete all future instances (keep today's so user can complete it)
+                  const today = toDateStr(new Date())
+                  await supabase.from('tasks')
+                    .delete()
+                    .eq('recurrence_template_id', recurModalTask.recurrence_template_id)
+                    .gt('date', today)
+                  showToast('Recurrence stopped')
+                  const updated = await getTasksForDate(userId, date)
+                  setTasks(updated)
+                }
+                setRecurModalTask(null)
+                setStoppingRecur(false)
+              }}
+              disabled={stoppingRecur}
               style={{
-                width: '100%', padding: '15px', borderRadius: 14, border: 'none',
-                background: newTitle.trim() ? '#3B7DFF' : '#D1D1D6',
-                color: 'white', fontSize: 15, fontWeight: 700, cursor: newTitle.trim() ? 'pointer' : 'default',
-                fontFamily: 'inherit', opacity: addingTask ? 0.6 : 1,
+                width: '100%', padding: '14px', borderRadius: 12, border: '0.5px solid #FECACA',
+                background: '#FFF5F5', color: '#DC2626',
+                fontSize: 15, fontWeight: 600, cursor: stoppingRecur ? 'default' : 'pointer',
+                fontFamily: 'inherit', marginBottom: 10, opacity: stoppingRecur ? 0.6 : 1,
               }}
             >
-              {addingTask ? 'Adding…' : 'Add Block'}
+              {stoppingRecur ? 'Stopping…' : 'Stop repeating'}
+            </button>
+
+            <button
+              onClick={() => setRecurModalTask(null)}
+              style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 15, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+            >
+              Cancel
             </button>
           </div>
         </div>

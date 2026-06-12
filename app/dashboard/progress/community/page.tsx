@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
   getFriends, getPendingRequests, sendFriendRequest,
@@ -8,6 +8,8 @@ import {
   cancelFriendRequest,
   type FriendProfile, type PendingRequest,
 } from '@/lib/db'
+import QRCodeModal from './QRCodeModal'
+import FriendPreviewModal from './FriendPreviewModal'
 
 function timeAgo(iso: string): string {
   const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
@@ -199,6 +201,9 @@ export default function CommunityPage() {
   const [addError, setAddError]         = useState('')
   const [addSending, setAddSending]     = useState(false)
   const [confirmFriend, setConfirmFriend] = useState<FriendProfile | null>(null)
+  const [showQRModal, setShowQRModal]         = useState(false)
+  const [previewUsername, setPreviewUsername] = useState<string | null>(null)
+  const searchParams = useSearchParams()
 
   const loadAll = async (uid: string) => {
     const [friendsList, pendingList] = await Promise.all([
@@ -218,14 +223,39 @@ export default function CommunityPage() {
   }
 
   useEffect(() => {
+    const PENDING_KEY = 'cadence_pending_add_friend'
+    // Capture synchronously at mount — used in the async init below.
+    const addFromUrl = searchParams.get('add')
+    const addParam   = addFromUrl || localStorage.getItem(PENDING_KEY) || null
+
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
+
+      if (!user) {
+        // Stash the username so we restore the preview after the user logs in.
+        if (addParam) localStorage.setItem(PENDING_KEY, addParam)
+        router.push('/login')
+        return
+      }
+
+      // Consumed — clear the stash and clean the URL param.
+      localStorage.removeItem(PENDING_KEY)
+      if (addFromUrl) {
+        router.replace('/dashboard/progress/community', { scroll: false })
+      }
+
       setUserId(user.id)
       await loadAll(user.id)
       setLoading(false)
+
+      // Open the friend-request preview if we arrived via a QR deep-link.
+      if (addParam) setPreviewUsername(addParam)
     }
+
     init()
+    // searchParams / addFromUrl are captured synchronously above; the effect
+    // is intentionally mount-only so the preview opens exactly once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   if (loading) return null
@@ -309,6 +339,7 @@ export default function CommunityPage() {
             <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>Connect and grow together</p>
           </div>
           <button
+            data-tour="community-add-friend"
             onClick={() => setShowAddForm(true)}
             style={{
               display: 'flex', alignItems: 'center', gap: 7,
@@ -356,6 +387,29 @@ export default function CommunityPage() {
               </button>
             </div>
             {addError && <p style={{ fontSize: 12, color: 'rgba(255,200,200,1)', margin: '8px 0 0' }}>{addError}</p>}
+            {/* Frosted secondary actions */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+              <button
+                onClick={() => setShowQRModal(true)}
+                style={{
+                  flex: 1, padding: '10px', borderRadius: 10,
+                  background: 'rgba(255,255,255,0.18)',
+                  border: '1px solid rgba(255,255,255,0.28)',
+                  color: 'white', fontSize: 13, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                }}
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1"/>
+                  <rect x="14" y="14" width="3" height="3" rx="0.5"/><rect x="18" y="14" width="3" height="3" rx="0.5"/>
+                  <rect x="14" y="18" width="3" height="3" rx="0.5"/><rect x="18" y="18" width="3" height="3" rx="0.5"/>
+                </svg>
+                View My QR Code
+              </button>
+              {/* "Scan a Code" is hidden until Step 4 (in-app scanner) is built */}
+            </div>
           </div>
         )}
 
@@ -486,6 +540,21 @@ export default function CommunityPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* QR Code Modal */}
+      {showQRModal && userId && (
+        <QRCodeModal userId={userId} onClose={() => setShowQRModal(false)} />
+      )}
+
+      {/* Friend Request Preview — opened by ?add= deep-link or after-login restore */}
+      {previewUsername && userId && (
+        <FriendPreviewModal
+          targetUsername={previewUsername}
+          currentUserId={userId}
+          onClose={() => setPreviewUsername(null)}
+          onSent={() => { loadAll(userId); setPreviewUsername(null) }}
+        />
       )}
     </div>
   )

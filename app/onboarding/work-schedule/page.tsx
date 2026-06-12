@@ -92,7 +92,7 @@ export default function WorkSchedulePage() {
     if (user) {
       await supabase.from('profiles').update({ work_schedule: schedule }).eq('id', user.id)
     }
-    router.push(isOnboarded ? '/dashboard/settings' : '/onboarding/energy')
+    router.push(isOnboarded ? '/dashboard/settings' : '/onboarding/goals-capacity')
   }
 
   const noWork = employmentType === 'not-working'
@@ -110,11 +110,11 @@ export default function WorkSchedulePage() {
 
       {/* Progress Bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        {[1, 2, 3, 4, 5].map(step => (
+        {[1, 2, 3, 4, 5, 6].map(step => (
           <div key={step} style={{ flex: 1, height: 4, borderRadius: 2, background: step <= 2 ? '#3B7DFF' : '#D1D1D6' }} />
         ))}
       </div>
-      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 2 of 5</p>
+      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 2 of 6</p>
 
       <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', marginBottom: 8 }}>Your Work Schedule</h1>
       <p style={{ fontSize: 15, color: '#8E8E93', lineHeight: 1.5, marginBottom: 24 }}>
@@ -225,7 +225,7 @@ export default function WorkSchedulePage() {
       {/* Actions */}
       <div style={{ display: 'flex', gap: 12 }}>
         <button
-          onClick={() => { sessionStorage.removeItem('onboarding_work_schedule'); router.push('/onboarding/energy') }}
+          onClick={() => { sessionStorage.removeItem('onboarding_work_schedule'); router.push('/onboarding/goals-capacity') }}
           style={{ flex: 1, padding: '16px', background: 'white', border: '0.5px solid #D1D1D6', borderRadius: 16, fontSize: 16, fontWeight: 500, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
         >
           Skip for now

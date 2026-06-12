@@ -1,13 +1,15 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { toDateStr, getMonday, addDays, getCatStyle } from '@/lib/planData'
+import { toDateStr, getMonday, addDays, getCatStyle, CONSTANTS } from '@/lib/planData'
 import {
-  getTasksForWeek, createTask, findBestSlot,
+  getTasksForWeek, createTask, syncRecurringInstancesForWeek,
   DEFAULT_WORK_SCHEDULE,
   type DBTask, type WorkSchedule,
 } from '@/lib/db'
+import { generateTasksForGoal } from '@/lib/goalTemplates'
 import { supabase } from '@/lib/supabase'
+import EmptyState from '@/app/dashboard/components/EmptyState'
 
 interface GoalRow {
   id: string
@@ -16,21 +18,12 @@ interface GoalRow {
   progress: number
   priority: number
   estimated_weekly_hours?: number | null
+  project_id?: string | null
 }
 
-function categoryToEnergyType(category: string): string {
-  if (['Career', 'Finance', 'Business'].includes(category)) return 'deep'
-  if (['Health', 'Relationships', 'Community'].includes(category)) return 'social'
-  if (category === 'Creative') return 'creative'
-  if (category === 'Recovery') return 'recovery'
-  return 'deep'
-}
-
-function addMinutesToTime(time: string, minutes: number): string {
-  const [h, m] = time.split(':').map(Number)
-  const total = h * 60 + m + minutes
-  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
-}
+type CapacityDay = { hours: number; time_of_day: string }
+type CapacitySchedule = Record<string, CapacityDay>
+const DAY_JS_TO_KEY = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
 
 export default function WeeklyPlannerPage() {
   const router = useRouter()
@@ -40,9 +33,10 @@ export default function WeeklyPlannerPage() {
   const [addedGoalIds, setAddedGoalIds] = useState<Set<string>>(new Set())
   const [building, setBuilding]     = useState(false)
   const [userId, setUserId]         = useState<string | null>(null)
-  const [availableHours, setAvailableHours] = useState(40)
-  const [energyBlocks, setEnergyBlocks]     = useState<Record<string, string>>({})
-  const [workSchedule, setWorkSchedule]     = useState<WorkSchedule>(DEFAULT_WORK_SCHEDULE)
+  const [availableHours, setAvailableHours]     = useState<number>(CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS)
+  const [energyBlocks, setEnergyBlocks]         = useState<Record<string, string>>({})
+  const [workSchedule, setWorkSchedule]         = useState<WorkSchedule>(DEFAULT_WORK_SCHEDULE)
+  const [capacitySchedule, setCapacitySchedule] = useState<CapacitySchedule | null>(null)
 
   const today  = new Date()
   const monday = getMonday(today)
@@ -56,16 +50,22 @@ export default function WeeklyPlannerPage() {
 
       const [{ data: goalsData }, { data: profileData }, tasks] = await Promise.all([
         supabase.from('goals').select('*').eq('user_id', user.id).eq('status', 'active').order('priority', { ascending: true }),
-        supabase.from('profiles').select('weekly_capacity, energy_blocks, work_schedule').eq('id', user.id).single(),
+        supabase.from('profiles').select('weekly_capacity, energy_blocks, work_schedule, capacity_schedule').eq('id', user.id).single(),
         getTasksForWeek(user.id, monday),
       ])
 
       setGoals(goalsData || [])
       setWeekTasks(tasks)
       if (profileData) {
-        if (profileData.weekly_capacity) setAvailableHours(profileData.weekly_capacity)
-        if (profileData.energy_blocks)   setEnergyBlocks(profileData.energy_blocks)
-        if (profileData.work_schedule)   setWorkSchedule(profileData.work_schedule)
+        if (profileData.weekly_capacity)   setAvailableHours(profileData.weekly_capacity)
+        else if (profileData.capacity_schedule) {
+          const total = Object.values(profileData.capacity_schedule as CapacitySchedule)
+            .reduce((s, d) => s + d.hours, 0)
+          if (total > 0) setAvailableHours(total)
+        }
+        if (profileData.energy_blocks)    setEnergyBlocks(profileData.energy_blocks)
+        if (profileData.work_schedule)    setWorkSchedule(profileData.work_schedule)
+        if (profileData.capacity_schedule) setCapacitySchedule(profileData.capacity_schedule as CapacitySchedule)
       }
     }
     load()
@@ -78,7 +78,9 @@ export default function WeeklyPlannerPage() {
   const manualHours    = parseFloat(manualTasks.reduce((s, t) => s + t.duration, 0).toFixed(1))
   const remainingHours = parseFloat(Math.max(0, availableHours - plannedHours).toFixed(1))
   const progressPct    = Math.min(100, Math.round((plannedHours / availableHours) * 100))
-  const atCapacity     = remainingHours <= 0
+  const atCapacity       = remainingHours <= 0
+  const hasAutoTasks     = weekTasks.some(t => t.source === 'auto')
+  const hasManualTasks   = manualTasks.length > 0
   const hasExistingTasks = weekTasks.length > 0
 
   const weekLabel = (() => {
@@ -86,35 +88,19 @@ export default function WeeklyPlannerPage() {
     return `${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
   })()
 
-  const suggestedGoals = goals.slice(0, 3)
+  const suggestedTasks = goals.slice(0, 3).map(goal => {
+    const alreadyScheduled = weekTasks.map(t => ({ date: t.date, scheduled_time: t.scheduled_time }))
+    const first = generateTasksForGoal(goal, energyBlocks, workSchedule, today, alreadyScheduled)[0]
+    return { goal, task: first ?? null }
+  }).filter((s): s is { goal: GoalRow; task: NonNullable<typeof s.task> } => s.task !== null)
 
   const handleAddSuggested = async (goal: GoalRow) => {
     if (!userId || addedGoalIds.has(goal.id)) return
-    const todayStr = toDateStr(today)
-    const todayTasksSorted = weekTasks
-      .filter(t => t.date === todayStr)
-      .sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time))
-
-    let scheduledTime: string
-    if (todayTasksSorted.length > 0) {
-      const last = todayTasksSorted[todayTasksSorted.length - 1]
-      scheduledTime = addMinutesToTime(last.scheduled_time, last.duration * 60)
-    } else {
-      scheduledTime = '09:00'
-    }
-
-    const hoursPerSession = Math.max(1, Math.round((goal.estimated_weekly_hours || 4) / 5))
-    const created = await createTask(userId, {
-      text:           `Work on: ${goal.text.slice(0, 50)}${goal.text.length > 50 ? '…' : ''}`,
-      date:           todayStr,
-      scheduled_time: scheduledTime,
-      duration:       hoursPerSession,
-      category:       goal.category,
-      priority:       'medium',
-      completed:      false,
-      goal_id:        goal.id,
-      source:         'manual',
-    })
+    const alreadyScheduled = weekTasks.map(t => ({ date: t.date, scheduled_time: t.scheduled_time }))
+    const generated = generateTasksForGoal(goal, energyBlocks, workSchedule, today, alreadyScheduled)
+    const first = generated[0]
+    if (!first) return
+    const created = await createTask(userId, { ...first, source: 'manual' })
 
     if (created) {
       setWeekTasks(prev => [...prev, created])
@@ -124,6 +110,7 @@ export default function WeeklyPlannerPage() {
 
   const handleBuildWeek = async () => {
     if (!userId || goals.length === 0 || atCapacity) return
+    if (hasAutoTasks && !confirm('This will replace your auto-scheduled tasks for this week. Your manual tasks will be kept. Continue?')) return
     setBuilding(true)
 
     const weekStart = toDateStr(monday)
@@ -137,80 +124,67 @@ export default function WeeklyPlannerPage() {
       .gte('date', weekStart)
       .lte('date', weekEnd)
 
-    // Seed slot-finder with committed manual tasks so auto tasks don't double-book
-    const tasksPerDay: Record<string, Array<{ scheduled_time: string; duration: number }>> = {}
-    for (const mt of manualTasks) {
-      if (!tasksPerDay[mt.date]) tasksPerDay[mt.date] = []
-      tasksPerDay[mt.date].push({ scheduled_time: mt.scheduled_time, duration: mt.duration })
+    // Committed slots passed to generateTasksForGoal to prevent double-booking.
+    // Rebuilt per goal by spreading manual tasks + tasks queued so far.
+    const committed: { date: string; scheduled_time: string }[] = manualTasks.map(t => ({
+      date: t.date, scheduled_time: t.scheduled_time,
+    }))
+
+    let budgetRemaining = Math.max(0, availableHours - manualHours)
+    const toInsert: Omit<DBTask, 'id' | 'user_id' | 'completed_at' | 'created_at'>[] = []
+
+    // Per-day capacity budget: initialise from capacity_schedule, then subtract manual tasks
+    const dayBudgets: Record<string, number> = {}
+    if (capacitySchedule) {
+      for (let di = 0; di <= 6; di++) {
+        const d       = addDays(monday, di)
+        const dateStr = toDateStr(d)
+        const key     = DAY_JS_TO_KEY[d.getDay()]
+        dayBudgets[dateStr] = capacitySchedule[key]?.hours ?? Infinity
+      }
+      manualTasks.forEach(t => {
+        if (t.date && dayBudgets[t.date] !== undefined && isFinite(dayBudgets[t.date])) {
+          dayBudgets[t.date] = Math.max(0, dayBudgets[t.date] - t.duration)
+        }
+      })
     }
 
-    // Budget is only what's left after manual tasks
-    let budgetRemaining = Math.max(0, availableHours - manualHours)
+    for (const goal of goals) {
+      if (budgetRemaining < 0.5) break
 
-    const newTasks: DBTask[] = []
+      const generated = generateTasksForGoal(
+        goal,
+        energyBlocks,
+        workSchedule,
+        monday,
+        [...committed, ...toInsert.map(t => ({ date: t.date, scheduled_time: t.scheduled_time }))],
+      )
 
-    for (let gi = 0; gi < goals.length; gi++) {
-      if (budgetRemaining < 1) break
-
-      const goal         = goals[gi]
-      // Cap goal allocation to remaining budget — highest-priority goals are scheduled first
-      const hoursForGoal = Math.min(goal.estimated_weekly_hours || 4, budgetRemaining)
-      const sessions     = Math.min(5, Math.ceil(hoursForGoal / 2))
-      const hoursPerSession = Math.max(1, Math.round(hoursForGoal / sessions))
-      const energyType   = categoryToEnergyType(goal.category)
-
-      for (let si = 0; si < sessions; si++) {
-        if (budgetRemaining < 1) break
-
-        const sessionHours = Math.min(hoursPerSession, Math.floor(budgetRemaining))
-        if (sessionHours < 1) break
-
-        const dayOffset   = (gi + si) % 5
-        const date        = addDays(monday, dayOffset)
-        const dateStr     = toDateStr(date)
-        const dayExisting = tasksPerDay[dateStr] || []
-
-        let scheduledTime = findBestSlot(
-          { energyType, category: goal.category, duration: sessionHours },
-          date,
-          energyBlocks,
-          dayExisting,
-          workSchedule,
-        )
-
-        if (!scheduledTime) {
-          if (dayExisting.length > 0) {
-            const sorted = [...dayExisting].sort((a, b) => a.scheduled_time.localeCompare(b.scheduled_time))
-            const last   = sorted[sorted.length - 1]
-            scheduledTime = addMinutesToTime(last.scheduled_time, last.duration * 60)
-          } else {
-            scheduledTime = '09:00'
-          }
-        }
-
-        const created = await createTask(userId, {
-          text:           `Work on: ${goal.text.slice(0, 50)}${goal.text.length > 50 ? '…' : ''}`,
-          date:           dateStr,
-          scheduled_time: scheduledTime,
-          duration:       sessionHours,
-          category:       goal.category,
-          priority:       gi === 0 ? 'high' : 'medium',
-          completed:      false,
-          goal_id:        goal.id,
-          source:         'auto',
-        })
-
-        if (created) {
-          newTasks.push(created)
-          budgetRemaining -= sessionHours
-          if (!tasksPerDay[dateStr]) tasksPerDay[dateStr] = []
-          tasksPerDay[dateStr].push({ scheduled_time: scheduledTime, duration: sessionHours })
+      for (const t of generated) {
+        if (budgetRemaining < 0.5) break
+        if (t.date < weekStart || t.date > weekEnd) continue
+        // Skip days that have hit their per-day capacity cap
+        if (capacitySchedule && dayBudgets[t.date] !== undefined && dayBudgets[t.date] < 0.25) continue
+        toInsert.push({ ...t, source: 'auto' })
+        budgetRemaining -= t.duration
+        if (capacitySchedule && dayBudgets[t.date] !== undefined) {
+          dayBudgets[t.date] = Math.max(0, dayBudgets[t.date] - t.duration)
         }
       }
     }
 
-    // Merge manual tasks (preserved) with newly created auto tasks
-    setWeekTasks([...manualTasks, ...newTasks])
+    if (toInsert.length > 0) {
+      await supabase
+        .from('tasks')
+        .insert(toInsert.map(t => ({ ...t, user_id: userId })))
+    }
+
+    // Ensure recurring task instances exist for this week
+    await syncRecurringInstancesForWeek(userId, monday)
+
+    // Reload the full week so both auto and recurring tasks are reflected
+    const freshTasks = await getTasksForWeek(userId, monday)
+    setWeekTasks(freshTasks)
     setBuilding(false)
     router.push('/dashboard/plan')
   }
@@ -262,7 +236,7 @@ export default function WeeklyPlannerPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {goals.slice(0, 3).map(goal => {
                 const catStyle = getCatStyle(goal.category)
-                const hrs      = goal.estimated_weekly_hours || 4
+                const hrs      = goal.estimated_weekly_hours || CONSTANTS.DEFAULT_HOURS_PER_GOAL_FALLBACK
                 return (
                   <div key={goal.id} style={{ background: '#F8F8FC', borderRadius: 12, padding: '14px' }}>
                     <p style={{ fontSize: 15, fontWeight: 500, color: '#1C1C1E', margin: '0 0 6px' }}>{goal.text}</p>
@@ -278,38 +252,37 @@ export default function WeeklyPlannerPage() {
         </div>
 
         {/* Suggested Tasks */}
+        {goals.length === 0 ? (
+          <EmptyState
+            icon="🎯"
+            iconBg="#EFF6FF"
+            title="No active goals"
+            body="Add goals first to get personalized task suggestions for your week."
+            ctaLabel="Go to Goals"
+            onCta={() => router.push('/dashboard/goals')}
+          />
+        ) : (
         <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
           <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px' }}>Suggested Tasks</p>
-          {goals.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-              <p style={{ fontSize: 14, color: '#3C3C43', margin: '0 0 4px', fontWeight: 500 }}>No active goals</p>
-              <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 14px' }}>Add goals first to get task suggestions.</p>
-              <button
-                onClick={() => router.push('/dashboard/goals')}
-                style={{ background: '#3B7DFF', border: 'none', borderRadius: 10, color: 'white', fontSize: 14, fontWeight: 600, padding: '10px 20px', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
-                Add Goals
-              </button>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {suggestedGoals.map((goal, i) => {
-                const hrs      = Math.max(1, Math.round((goal.estimated_weekly_hours || 4) / 5))
-                const catStyle = getCatStyle(goal.category)
-                const added    = addedGoalIds.has(goal.id)
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {suggestedTasks.map(({ goal, task }, i) => {
+                const catStyle  = getCatStyle(goal.category)
+                const added     = addedGoalIds.has(goal.id)
+                const taskLabel = task.text.length > 48 ? task.text.slice(0, 48) + '…' : task.text
+                const durLabel  = task.duration < 1 ? `${Math.round(task.duration * 60)}m` : `${task.duration}h`
                 return (
                   <div key={goal.id} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '13px 0',
-                    borderBottom: i < suggestedGoals.length - 1 ? '0.5px solid #F2F2F7' : 'none',
+                    borderBottom: i < suggestedTasks.length - 1 ? '0.5px solid #F2F2F7' : 'none',
                   }}>
                     <div style={{ flex: 1, marginRight: 12 }}>
                       <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: '0 0 4px' }}>
-                        {goal.text.length > 48 ? goal.text.slice(0, 48) + '…' : goal.text}
+                        {taskLabel}
                       </p>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <span style={{ fontSize: 11, fontWeight: 500, background: catStyle.bg, color: catStyle.color, padding: '2px 7px', borderRadius: 20 }}>{goal.category}</span>
-                        <span style={{ fontSize: 12, color: '#8E8E93' }}>Est. {hrs}h</span>
+                        <span style={{ fontSize: 12, color: '#8E8E93' }}>{durLabel}</span>
                       </div>
                     </div>
                     <button
@@ -328,8 +301,8 @@ export default function WeeklyPlannerPage() {
                 )
               })}
             </div>
-          )}
         </div>
+        )}
 
         {/* Build Week */}
         {(() => {
@@ -338,7 +311,8 @@ export default function WeeklyPlannerPage() {
           const label     = building           ? 'Building…'
             : goals.length === 0               ? 'Add Goals to Build Week'
             : atCapacity                       ? 'Week is Full'
-            : hasExistingTasks                 ? 'Fill Remaining Week'
+            : hasAutoTasks                     ? 'Rebuild Week'
+            : hasManualTasks                   ? 'Fill Remaining Week'
             : 'Build Week'
           const helperText = atCapacity
             ? 'Reset Week to free up capacity before rebuilding.'
@@ -348,6 +322,7 @@ export default function WeeklyPlannerPage() {
           return (
             <>
               <button
+                data-tour="plan-build-week"
                 onClick={handleBuildWeek}
                 disabled={disabled}
                 style={{

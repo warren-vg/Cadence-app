@@ -1,11 +1,15 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { generateGoalDetails, type Milestone } from '../_utils/generate'
-import { getProjects, updateProject, DEFAULT_WORK_SCHEDULE, type DBProject } from '@/lib/db'
+import { generateGoalDetails } from '../_utils/generate'
+import {
+  getProjects, DEFAULT_WORK_SCHEDULE, recalcGoalProgressFromTasks,
+  type DBProject, type DBMilestone,
+  getMilestonesForGoal, createMilestone, toggleMilestoneCompleted, replaceMilestonesForGoal,
+} from '@/lib/db'
 import { generateTasksForGoal } from '@/lib/goalTemplates'
-import { calcGoalProgress } from '@/lib/planData'
+import { getCatStyle } from '@/lib/planData'
 
 interface Goal {
   id: string
@@ -19,24 +23,12 @@ interface Goal {
   metric?: string | null
   purpose?: string | null
   steps?: string[] | null
-  milestones?: Milestone[] | null
+  project_id?: string | null
 }
 
-const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
-  Career:           { bg: '#EFF6FF', color: '#3B7DFF' },
-  Finance:          { bg: '#F0FFF4', color: '#16A34A' },
-  Health:           { bg: '#FFF0F5', color: '#EC4899' },
-  Creative:         { bg: '#FFF7ED', color: '#EA580C' },
-  Travel:           { bg: '#F0F9FF', color: '#0284C7' },
-  Relationships:    { bg: '#FDF4FF', color: '#9333EA' },
-  Business:         { bg: '#FFFBEB', color: '#D97706' },
-  Community:        { bg: '#F0FDF4', color: '#15803D' },
-  'Personal Growth':{ bg: '#FDF4FF', color: '#9333EA' },
-  Education:        { bg: '#EFF6FF', color: '#3B7DFF' },
-}
-
-function getCatStyle(cat: string) {
-  return CATEGORY_COLORS[cat] || { bg: '#F2F2F7', color: '#8E8E93' }
+function currentQuarterLabel(): string {
+  const now = new Date()
+  return `Q${Math.ceil((now.getMonth() + 1) / 3)} ${now.getFullYear()}`
 }
 
 function statusLabel(status: string): string {
@@ -95,7 +87,7 @@ const actionBtnStyle: React.CSSProperties = {
 }
 
 function MilestoneRow({ milestone, onToggle }: {
-  milestone: Milestone
+  milestone: DBMilestone
   onToggle: (id: string) => void
 }) {
   return (
@@ -138,7 +130,7 @@ export default function GoalDetailPage() {
   const [metric, setMetric]         = useState('')
   const [purpose, setPurpose]       = useState('')
   const [steps, setSteps]           = useState<string[]>([])
-  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [milestones, setMilestones] = useState<DBMilestone[]>([])
 
   // Inline edit states
   const [editingRefined, setEditingRefined] = useState(false)
@@ -164,6 +156,11 @@ export default function GoalDetailPage() {
   const [deleting, setDeleting]     = useState(false)
   const [saving, setSaving]         = useState(false)
 
+  const refreshProgress = useCallback(async (uid: string) => {
+    const { data } = await supabase.from('goals').select('progress').eq('id', id).eq('user_id', uid).single()
+    if (data) setGoal(prev => prev ? { ...prev, progress: data.progress } : prev)
+  }, [id])
+
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -172,7 +169,6 @@ export default function GoalDetailPage() {
 
       const projs = await getProjects(user.id)
       setProjects(projs.filter(p => p.status !== 'archived'))
-      setLinkedProject(projs.find(p => p.linked_goal_id === id) || null)
 
       const { data, error } = await supabase
         .from('goals')
@@ -184,33 +180,42 @@ export default function GoalDetailPage() {
       if (error || !data) { router.push('/dashboard/goals'); return }
 
       setGoal(data)
+      setLinkedProject(projs.find(p => p.id === data.project_id) || null)
 
-      const quarter = data.quarter || 'Q4 2026'
+      const quarter = data.quarter || currentQuarterLabel()
+      const dbMilestones = await getMilestonesForGoal(id, user.id)
 
-      // Use stored details if they exist, otherwise generate
       if (data.refined_goal) {
         setRefinedGoal(data.refined_goal)
         setMetric(data.metric || '')
         setPurpose(data.purpose || '')
         setSteps(data.steps || [])
-        setMilestones(data.milestones || [])
+        setMilestones(dbMilestones)
       } else {
         const generated = generateGoalDetails(data.text, data.category, quarter, data.id)
         setRefinedGoal(generated.refinedGoal)
         setMetric(generated.metric)
         setPurpose(generated.purpose)
-        setSteps(generated.steps)
-        setMilestones(generated.milestones)
+        setSteps(data.steps && data.steps.length > 0 ? data.steps : generated.steps)
 
-        // Persist generated details (ignore column-not-found errors gracefully)
+        if (dbMilestones.length > 0) {
+          setMilestones(dbMilestones)
+        } else {
+          const ok = await replaceMilestonesForGoal(
+            user.id, id,
+            generated.milestones.map(m => ({ text: m.text, completed: m.completed }))
+          )
+          if (ok) setMilestones(await getMilestonesForGoal(id, user.id))
+        }
+
+        const stepsToSave = data.steps && data.steps.length > 0 ? data.steps : generated.steps
         supabase.from('goals').update({
           refined_goal: generated.refinedGoal,
-          metric: generated.metric,
-          purpose: generated.purpose,
-          steps: generated.steps,
-          milestones: generated.milestones,
-        }).eq('id', id).then(({ error }) => {
-          if (error) console.warn('Could not persist generated details:', error.message)
+          metric:       generated.metric,
+          purpose:      generated.purpose,
+          steps:        stepsToSave,
+        }).eq('id', id).then(({ error: e }) => {
+          if (e) console.warn('Could not persist generated details:', e.message)
         })
       }
 
@@ -219,24 +224,25 @@ export default function GoalDetailPage() {
     load()
   }, [id])
 
+  useEffect(() => {
+    if (!userId) return
+    const onVisible = () => { if (document.visibilityState === 'visible') refreshProgress(userId) }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [userId, refreshProgress])
+
   const persist = async (updates: Record<string, unknown>) => {
     const { error } = await supabase.from('goals').update(updates).eq('id', id)
     if (error) console.warn('Persist error:', error.message)
   }
 
   const toggleMilestone = async (milestoneId: string) => {
-    const updated = milestones.map(m =>
-      m.id === milestoneId ? { ...m, completed: !m.completed } : m
-    )
-    setMilestones(updated)
-
-    const newProgress = calcGoalProgress(updated, goal?.progress ?? 0)
-    setGoal(prev => prev ? { ...prev, progress: newProgress } : prev)
-
-    await persist({
-      milestones: updated,
-      progress:   newProgress,
-    })
+    const target = milestones.find(m => m.id === milestoneId)
+    if (!target) return
+    const newCompleted = !target.completed
+    setMilestones(prev => prev.map(m => m.id === milestoneId ? { ...m, completed: newCompleted } : m))
+    await toggleMilestoneCompleted(milestoneId, newCompleted)
+    // Progress is driven by tasks, not milestones — no goal progress update here
   }
 
   const saveRefined = async () => {
@@ -264,6 +270,32 @@ export default function GoalDetailPage() {
     await persist({ steps: parsed })
   }
 
+  const regenerateRefined = async () => {
+    if (!goal) return
+    const q = goal.quarter || currentQuarterLabel()
+    const gen = generateGoalDetails(goal.text, goal.category, q, id)
+    setRefinedGoal(gen.refinedGoal)
+    setMetric(gen.metric)
+    setPurpose(gen.purpose)
+    await persist({ refined_goal: gen.refinedGoal, metric: gen.metric, purpose: gen.purpose })
+  }
+
+  const regenerateMilestones = async () => {
+    if (!goal || !userId) return
+    const q = goal.quarter || currentQuarterLabel()
+    const gen = generateGoalDetails(goal.text, goal.category, q, id)
+    const ok = await replaceMilestonesForGoal(userId, id, gen.milestones.map(m => ({ text: m.text, completed: false })))
+    if (ok) setMilestones(await getMilestonesForGoal(id, userId))
+  }
+
+  const regenerateSteps = async () => {
+    if (!goal) return
+    const q = goal.quarter || currentQuarterLabel()
+    const gen = generateGoalDetails(goal.text, goal.category, q, id)
+    setSteps(gen.steps)
+    await persist({ steps: gen.steps })
+  }
+
   const updateStatus = async (newStatus: string) => {
     const prevStatus = goal?.status
     setGoal(prev => prev ? { ...prev, status: newStatus } : prev)
@@ -278,9 +310,10 @@ export default function GoalDetailPage() {
           .single()
         const energyBlocks  = (profile?.energy_blocks  as Record<string, string>) || {}
         const workSchedule  = profile?.work_schedule || DEFAULT_WORK_SCHEDULE
-        const generated     = generateTasksForGoal(goal, energyBlocks, workSchedule, new Date())
+        const generated = generateTasksForGoal(goal, energyBlocks, workSchedule, new Date())
         if (generated.length > 0) {
-          await supabase.from('tasks').insert(generated.map(t => ({ ...t, user_id: userId })))
+          await supabase.from('tasks').insert(generated.map(t => ({ ...t, user_id: userId, source: 'auto' })))
+          await recalcGoalProgressFromTasks(goal.id, userId)
         }
       } catch (e) {
         console.warn('Task generation failed:', e)
@@ -304,7 +337,7 @@ export default function GoalDetailPage() {
 
   const catStyle = getCatStyle(goal.category)
   const sStyle   = statusColors(goal.status)
-  const quarter  = goal.quarter || 'Q4 2026'
+  const quarter  = goal.quarter || currentQuarterLabel()
 
   return (
     <div style={{ padding: '56px 16px 40px' }}>
@@ -366,7 +399,7 @@ export default function GoalDetailPage() {
           <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Refined Goal</span>
           <SectionActions
             onEdit={() => { setEditRefinedVal(refinedGoal); setEditingRefined(true) }}
-            onRegenerate={() => router.push(`/dashboard/goals/${id}/refine`)}
+            onRegenerate={regenerateRefined}
           />
         </div>
 
@@ -451,31 +484,24 @@ export default function GoalDetailPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Milestones</span>
           <SectionActions
-            onAdd={() => {
+            onAdd={async () => {
               const text = prompt('New milestone:')
-              if (!text?.trim()) return
-              const newM = { id: `${id}-m${Date.now()}`, text: text.trim(), completed: false }
-              const updated = [...milestones, newM]
-              setMilestones(updated)
-              const newProgress = calcGoalProgress(updated, goal?.progress ?? 0)
-              setGoal(prev => prev ? { ...prev, progress: newProgress } : prev)
-              persist({ milestones: updated, progress: newProgress })
+              if (!text?.trim() || !userId) return
+              const created = await createMilestone(userId, id, text.trim())
+              if (created) setMilestones(prev => [...prev, created])
             }}
-            onEdit={() => {
+            onEdit={async () => {
               const text = milestones.map(m => m.text).join('\n')
               const updated = prompt('Edit milestones (one per line):', text)
-              if (updated === null) return
-              const newMilestones = updated.split('\n').filter(Boolean).map((t, i) => ({
-                id:        milestones[i]?.id || `${id}-m${Date.now()}-${i}`,
+              if (updated === null || !userId) return
+              const newMilestonesData = updated.split('\n').filter(Boolean).map((t, i) => ({
                 text:      t.trim(),
                 completed: milestones[i]?.completed ?? false,
               }))
-              setMilestones(newMilestones)
-              const newProgress = calcGoalProgress(newMilestones, goal?.progress ?? 0)
-              setGoal(prev => prev ? { ...prev, progress: newProgress } : prev)
-              persist({ milestones: newMilestones, progress: newProgress })
+              const ok = await replaceMilestonesForGoal(userId, id, newMilestonesData)
+              if (ok) setMilestones(await getMilestonesForGoal(id, userId))
             }}
-            onRegenerate={() => router.push(`/dashboard/goals/${id}/refine`)}
+            onRegenerate={regenerateMilestones}
           />
         </div>
         {milestones.length === 0 ? (
@@ -503,7 +529,7 @@ export default function GoalDetailPage() {
               setEditStepsVal(steps.map((s, i) => `${i + 1}. ${s}`).join('\n'))
               setEditingSteps(true)
             }}
-            onRegenerate={() => router.push(`/dashboard/goals/${id}/refine`)}
+            onRegenerate={regenerateSteps}
           />
         </div>
 
@@ -553,7 +579,7 @@ export default function GoalDetailPage() {
             <button
               onClick={() => {
                 setEditCategory(goal.category)
-                setEditQuarter(goal.quarter || 'Q2 2026')
+                setEditQuarter(goal.quarter || currentQuarterLabel())
                 setEditProjectId(linkedProject?.id || '')
                 setEditingDetails(true)
               }}
@@ -634,17 +660,13 @@ export default function GoalDetailPage() {
                   setGoal(prev => prev ? { ...prev, category: editCategory, quarter: editQuarter } : prev)
                   await persist({ category: editCategory, quarter: editQuarter })
 
-                  // Handle project linking via Supabase
-                  if (linkedProject && linkedProject.id !== editProjectId) {
-                    await updateProject(linkedProject.id, { linked_goal_id: null })
-                    setLinkedProject(null)
-                  }
-                  if (editProjectId && editProjectId !== linkedProject?.id) {
-                    await updateProject(editProjectId, { linked_goal_id: id })
-                    setLinkedProject(projects.find(p => p.id === editProjectId) || null)
-                  } else if (!editProjectId && linkedProject) {
-                    await updateProject(linkedProject.id, { linked_goal_id: null })
-                    setLinkedProject(null)
+                  // Update this goal's project link via goals.project_id
+                  const newProjectId = editProjectId || null
+                  const currentProjectId = goal?.project_id ?? null
+                  if (newProjectId !== currentProjectId) {
+                    await supabase.from('goals').update({ project_id: newProjectId }).eq('id', id)
+                    setGoal(prev => prev ? { ...prev, project_id: newProjectId } : prev)
+                    setLinkedProject(newProjectId ? (projects.find(p => p.id === newProjectId) || null) : null)
                   }
 
                   setSaving(false)
@@ -700,7 +722,7 @@ export default function GoalDetailPage() {
         <div style={{ display: 'flex', gap: 8 }}>
           {(goal.status === 'active') && (
             <button
-              onClick={() => updateStatus('parking')}
+              onClick={() => updateStatus('parked')}
               style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 10, fontSize: 13, fontWeight: 500, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { getMonday, addDays, getMomentumScore } from '@/lib/planData'
+import { getMonday, addDays, getMomentumScore, CONSTANTS } from '@/lib/planData'
 import { getTasksForWeek, getWeekStreakFromDB, getProjects, type DBTask } from '@/lib/db'
 
 interface Goal {
@@ -96,7 +96,7 @@ export default function ProgressReportPage() {
       ])
 
       const name = profileData?.username?.split(' ')[0] || 'You'
-      const weeklyCapacity: number = profileData?.weekly_capacity ?? 40
+      const weeklyCapacity: number = profileData?.weekly_capacity ?? CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS
       setUserName(name)
 
       const goalList: Goal[] = (goalsData || []) as Goal[]

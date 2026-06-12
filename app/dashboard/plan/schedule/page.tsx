@@ -24,7 +24,7 @@ interface EditState {
   id: string
   title: string
   start_time: string
-  duration: number
+  duration_minutes: number
   category: string
   is_flexible: boolean
 }
@@ -63,31 +63,31 @@ export default function ScheduleManagerPage() {
 
   if (loading) return null
 
-  const totalMinutes = items.reduce((s, i) => s + i.duration, 0)
+  const totalMinutes = items.reduce((s, i) => s + i.duration_minutes, 0)
   const flexCount    = items.filter(i => i.is_flexible).length
 
   const startEdit = (item: DBScheduleItem) => {
     setEditId(item.id)
-    setEdit({ id: item.id, title: item.title, start_time: item.start_time, duration: item.duration, category: item.category, is_flexible: item.is_flexible })
+    setEdit({ id: item.id, title: item.title, start_time: item.start_time, duration_minutes: item.duration_minutes, category: item.category, is_flexible: item.is_flexible })
   }
 
   const saveEdit = async () => {
     if (!edit || !userId) return
 
     await updateScheduleItem(edit.id, {
-      title:       edit.title,
-      start_time:  edit.start_time,
-      duration:    edit.duration,
-      category:    edit.category,
-      is_flexible: edit.is_flexible,
+      title:            edit.title,
+      start_time:       edit.start_time,
+      duration_minutes: edit.duration_minutes,
+      category:         edit.category,
+      is_flexible:      edit.is_flexible,
     })
 
     // Cascade flexible items that follow the edited block
     const dayItems = items
-      .map(i => i.id === edit.id ? { ...i, start_time: edit.start_time, duration: edit.duration, is_flexible: edit.is_flexible } : i)
+      .map(i => i.id === edit.id ? { ...i, start_time: edit.start_time, duration_minutes: edit.duration_minutes, is_flexible: edit.is_flexible } : i)
       .sort((a, b) => a.start_time.localeCompare(b.start_time))
 
-    let prevEnd  = addMinutes(edit.start_time, edit.duration)
+    let prevEnd  = addMinutes(edit.start_time, edit.duration_minutes)
     let hitEdited = false
     const cascades: { id: string; start_time: string }[] = []
 
@@ -95,9 +95,9 @@ export default function ScheduleManagerPage() {
       if (item.id === edit.id) { hitEdited = true; continue }
       if (hitEdited && item.is_flexible) {
         cascades.push({ id: item.id, start_time: prevEnd })
-        prevEnd = addMinutes(prevEnd, item.duration)
+        prevEnd = addMinutes(prevEnd, item.duration_minutes)
       } else if (hitEdited) {
-        prevEnd = addMinutes(item.start_time, item.duration)
+        prevEnd = addMinutes(item.start_time, item.duration_minutes)
       }
     }
 
@@ -184,8 +184,8 @@ export default function ScheduleManagerPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
             {items.map(item => {
               const catStyle    = CAT_COLORS[item.category] || CAT_COLORS.work
-              const endTime     = addMinutes(item.start_time, item.duration)
-              const durationHrs = item.duration / 60
+              const endTime     = addMinutes(item.start_time, item.duration_minutes)
+              const durationHrs = item.duration_minutes / 60
 
               if (editId === item.id && edit) {
                 return (
@@ -216,8 +216,8 @@ export default function ScheduleManagerPage() {
                         <label style={{ fontSize: 12, color: '#8E8E93', display: 'block', marginBottom: 4 }}>Duration (min)</label>
                         <input
                           type="number"
-                          value={edit.duration}
-                          onChange={e => setEdit(v => v ? { ...v, duration: parseInt(e.target.value) || 30 } : v)}
+                          value={edit.duration_minutes}
+                          onChange={e => setEdit(v => v ? { ...v, duration_minutes: parseInt(e.target.value) || 30 } : v)}
                           style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
                         />
                       </div>

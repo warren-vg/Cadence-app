@@ -98,7 +98,7 @@ export default function ProjectDetailPage() {
 
   const [project, setProject]     = useState<DBProject | null>(null)
   const [tasks, setTasks]         = useState<DBProjectTask[]>([])
-  const [linkedGoal, setLinkedGoal] = useState<Goal | null>(null)
+  const [linkedGoals, setLinkedGoals] = useState<Goal[]>([])
   const [userId, setUserId]       = useState<string | null>(null)
   const [loading, setLoading]     = useState(true)
 
@@ -132,14 +132,13 @@ export default function ProjectDetailPage() {
       setProject(p)
       setTasks(t)
 
-      if (p.linked_goal_id) {
-        const { data } = await supabase
-          .from('goals')
-          .select('id, text, category, progress, status')
-          .eq('id', p.linked_goal_id)
-          .single()
-        if (data) setLinkedGoal(data)
-      }
+      // Find all goals linked to this project (goals.project_id → projects.id)
+      const { data: linkedGoalsData } = await supabase
+        .from('goals')
+        .select('id, text, category, progress, status')
+        .eq('project_id', id)
+        .order('created_at', { ascending: true })
+      setLinkedGoals((linkedGoalsData ?? []) as Goal[])
       setLoading(false)
     }
     load()
@@ -257,39 +256,50 @@ export default function ProjectDetailPage() {
       <div style={{ background: 'white', borderRadius: 16, padding: '18px 20px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Goals</span>
-          {linkedGoal && (
-            <span style={{ fontSize: 12, color: '#8E8E93' }}>{linkedGoal.progress >= 100 ? '1/1' : '0/1'} complete</span>
+          {linkedGoals.length > 0 && (
+            <span style={{ fontSize: 12, color: '#8E8E93' }}>
+              {linkedGoals.filter(g => g.progress >= 100).length}/{linkedGoals.length} complete
+            </span>
           )}
         </div>
-        {!linkedGoal ? (
+        {linkedGoals.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '12px 0', color: '#8E8E93' }}>
             <p style={{ fontSize: 14, margin: '0 0 4px' }}>No goals linked yet.</p>
             <p style={{ fontSize: 12, margin: 0 }}>Open a goal and set its Project in the Details section.</p>
           </div>
         ) : (
-          <button
-            onClick={() => router.push(`/dashboard/goals/${linkedGoal.id}`)}
-            style={{ display: 'flex', alignItems: 'flex-start', gap: 10, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', width: '100%', fontFamily: 'inherit' }}
-          >
-            {(() => {
-              const cs = getCatStyle(linkedGoal.category)
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {linkedGoals.map((goal, i) => {
+              const cs = getCatStyle(goal.category)
               return (
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                    <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>
-                      {linkedGoal.text}
-                    </p>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: cs.color, flexShrink: 0 }}>{linkedGoal.progress}%</span>
+                <button
+                  key={goal.id}
+                  onClick={() => router.push(`/dashboard/goals/${goal.id}`)}
+                  style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10, background: 'none', border: 'none',
+                    cursor: 'pointer', padding: 0, textAlign: 'left', width: '100%', fontFamily: 'inherit',
+                    paddingTop: i > 0 ? 12 : 0,
+                    paddingBottom: i < linkedGoals.length - 1 ? 12 : 0,
+                    borderBottom: i < linkedGoals.length - 1 ? '0.5px solid #F2F2F7' : 'none',
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>
+                        {goal.text}
+                      </p>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: cs.color, flexShrink: 0 }}>{goal.progress}%</span>
+                    </div>
+                    <div style={{ background: '#F2F2F7', borderRadius: 4, height: 5, overflow: 'hidden', marginBottom: 5 }}>
+                      <div style={{ height: '100%', width: `${goal.progress}%`, background: cs.color, borderRadius: 4 }} />
+                    </div>
+                    <span style={{ fontSize: 11, color: cs.color, background: cs.bg, padding: '2px 7px', borderRadius: 20 }}>{goal.category}</span>
                   </div>
-                  <div style={{ background: '#F2F2F7', borderRadius: 4, height: 5, overflow: 'hidden', marginBottom: 5 }}>
-                    <div style={{ height: '100%', width: `${linkedGoal.progress}%`, background: cs.color, borderRadius: 4 }} />
-                  </div>
-                  <span style={{ fontSize: 11, color: cs.color, background: cs.bg, padding: '2px 7px', borderRadius: 20 }}>{linkedGoal.category}</span>
-                </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="2.5" strokeLinecap="round" style={{ marginTop: 2, flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
+                </button>
               )
-            })()}
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="2.5" strokeLinecap="round" style={{ marginTop: 2, flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
-          </button>
+            })}
+          </div>
         )}
       </div>
 

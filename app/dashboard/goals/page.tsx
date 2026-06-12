@@ -1,9 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { createGoal } from '@/lib/db'
-import { type Milestone } from './_utils/generate'
+import { createGoal, replaceMilestonesForGoal, DEFAULT_WORK_SCHEDULE } from '@/lib/db'
+import { generateTasksForGoal } from '@/lib/goalTemplates'
+import EmptyState from '@/app/dashboard/components/EmptyState'
 
 type TabType = 'inbox' | 'active' | 'parked' | 'archived'
 
@@ -222,27 +223,31 @@ export default function GoalsPage() {
   const [newNotes, setNewNotes]                   = useState('')
   const [newMilestones, setNewMilestones]         = useState<string[]>([''])
   const [newSteps, setNewSteps]                   = useState<string[]>([''])
-  const [newLinkedProjectIds, setNewLinkedProjectIds] = useState<string[]>([])
+  const [newLinkedProjectId, setNewLinkedProjectId]   = useState<string | null>(null)
   const [newStartDate, setNewStartDate]           = useState('')
   const [newEndDate, setNewEndDate]               = useState('')
   const [availableProjects, setAvailableProjects] = useState<{id: string; title: string}[]>([])
   const [creatingGoal, setCreatingGoal]           = useState(false)
 
+  const loadGoals = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/login'); return }
+    setUserId(user.id)
+    const [{ data: goalsData }, { data: projData }] = await Promise.all([
+      supabase.from('goals').select('*').eq('user_id', user.id).order('priority', { ascending: true }),
+      supabase.from('projects').select('id, title').eq('user_id', user.id).neq('status', 'archived'),
+    ])
+    setGoals(goalsData || [])
+    setAvailableProjects(projData || [])
+    setLoading(false)
+  }, [router])
+
   useEffect(() => {
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
-      setUserId(user.id)
-      const [{ data: goalsData }, { data: projData }] = await Promise.all([
-        supabase.from('goals').select('*').eq('user_id', user.id).order('priority', { ascending: true }),
-        supabase.from('projects').select('id, title').eq('user_id', user.id).neq('status', 'archived'),
-      ])
-      setGoals(goalsData || [])
-      setAvailableProjects(projData || [])
-      setLoading(false)
-    }
-    load()
-  }, [])
+    loadGoals()
+    const onVisible = () => { if (document.visibilityState === 'visible') loadGoals() }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [loadGoals])
 
   const updateStatus = async (id: string, newStatus: string) => {
     setGoals(prev => prev.map(g => g.id === id ? { ...g, status: newStatus } : g))
@@ -252,11 +257,9 @@ export default function GoalsPage() {
   const handleCreateGoal = async () => {
     if (!newTitle.trim() || !userId) return
     setCreatingGoal(true)
-    const priorityNum = newPriority === 'high' ? 1 : newPriority === 'medium' ? 5 : 10
-    const milestones: Milestone[] = newMilestones
-      .filter(m => m.trim())
-      .map(m => ({ id: crypto.randomUUID(), text: m.trim(), completed: false }))
-    const steps = newSteps.filter(s => s.trim()).map(s => s.trim())
+    const priorityNum   = newPriority === 'high' ? 1 : newPriority === 'medium' ? 5 : 10
+    const milestoneTexts = newMilestones.filter(m => m.trim()).map(m => m.trim())
+    const steps          = newSteps.filter(s => s.trim()).map(s => s.trim())
     let quarter: string | null = null
     if (newStartDate || newEndDate) {
       const fmt = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
@@ -265,37 +268,58 @@ export default function GoalsPage() {
         : newStartDate ? `From ${fmt(newStartDate)}` : `Until ${fmt(newEndDate)}`
     }
     const created = await createGoal(userId, {
-      text:       newTitle.trim(),
-      category:   newCategory,
-      status:     'active',
-      priority:   priorityNum,
-      progress:   0,
-      notes:      newNotes.trim() || null,
-      milestones: milestones.length > 0 ? milestones : null,
-      steps:      steps.length > 0 ? steps : null,
+      text:     newTitle.trim(),
+      category: newCategory,
+      status:   'active',
+      priority: priorityNum,
+      progress: 0,
+      notes:    newNotes.trim() || null,
+      steps:    steps.length > 0 ? steps : null,
       quarter,
     })
     if (created) {
-      if (newLinkedProjectIds.length > 0) {
-        await Promise.all(
-          newLinkedProjectIds.map(pid =>
-            supabase.from('projects').update({ linked_goal_id: created.id }).eq('id', pid)
-          )
+      if (milestoneTexts.length > 0) {
+        const ok = await replaceMilestonesForGoal(userId, created.id, milestoneTexts.map(text => ({ text, completed: false })))
+        if (!ok) console.error('createGoal: milestone insert failed')
+      }
+      if (newLinkedProjectId) {
+        await supabase.from('goals').update({ project_id: newLinkedProjectId }).eq('id', created.id)
+      }
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('energy_blocks, work_schedule')
+          .eq('id', userId)
+          .single()
+        const energyBlocks = (profile?.energy_blocks as Record<string, string>) || {}
+        const workSchedule = profile?.work_schedule || DEFAULT_WORK_SCHEDULE
+        const seedTasks = generateTasksForGoal(
+          { ...created, project_id: newLinkedProjectId },
+          energyBlocks,
+          workSchedule,
+          new Date(),
         )
+        if (seedTasks.length > 0) {
+          await supabase.from('tasks').insert(
+            seedTasks.map(t => ({ ...t, user_id: userId, source: 'auto' as const }))
+          )
+        }
+      } catch (e) {
+        console.warn('Seed task generation failed:', e)
       }
       setGoals(prev => [...prev, created as Goal])
       setActiveTab('active')
     }
     setShowNewGoal(false)
     setNewTitle(''); setNewCategory('Career'); setNewPriority('medium'); setNewNotes('')
-    setNewMilestones(['']); setNewSteps(['']); setNewLinkedProjectIds([])
+    setNewMilestones(['']); setNewSteps(['']); setNewLinkedProjectId(null)
     setNewStartDate(''); setNewEndDate('')
     setCreatingGoal(false)
   }
 
   const openNewGoal = () => {
     setNewTitle(''); setNewCategory('Career'); setNewPriority('medium'); setNewNotes('')
-    setNewMilestones(['']); setNewSteps(['']); setNewLinkedProjectIds([])
+    setNewMilestones(['']); setNewSteps(['']); setNewLinkedProjectId(null)
     setNewStartDate(''); setNewEndDate('')
     setShowNewGoal(true)
   }
@@ -415,24 +439,28 @@ export default function GoalsPage() {
       {/* Goals list */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {filteredGoals.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 20px', color: '#8E8E93' }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 12px', display: 'block' }}>
-              <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" fill="#D1D1D6" />
-            </svg>
-            <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 6px', color: '#3C3C43' }}>
-              No {activeTab} goals
-            </p>
-            {activeTab === 'active' && (
-              <p style={{ fontSize: 13, margin: 0 }}>
-                Tap + or use the evaluator to add a goal.
-              </p>
-            )}
-            {activeTab === 'inbox' && (
-              <p style={{ fontSize: 13, margin: 0 }}>
-                Goals evaluated and added will appear here.
-              </p>
-            )}
-          </div>
+          <EmptyState
+            icon={
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
+              </svg>
+            }
+            iconBg="#EFF6FF"
+            title={
+              activeTab === 'active' ? 'No active goals yet' :
+              activeTab === 'inbox'  ? 'Your inbox is clear' :
+              activeTab === 'parked' ? 'Nothing parked' :
+              'Nothing archived'
+            }
+            body={
+              activeTab === 'active' ? 'Goals are the foundation of your Cadence. Add one to start building real momentum.' :
+              activeTab === 'inbox'  ? 'Goals you evaluate and save will appear here before you activate them.' :
+              activeTab === 'parked' ? 'Paused goals live here. Resume them whenever the time is right.' :
+              'Goals you\'ve archived will appear here.'
+            }
+            ctaLabel={activeTab === 'active' || activeTab === 'inbox' ? 'Add a Goal' : 'View Active Goals'}
+            onCta={() => activeTab === 'active' || activeTab === 'inbox' ? openNewGoal() : setActiveTab('active')}
+          />
         ) : (
           filteredGoals.map(goal => (
             <GoalCard
@@ -448,6 +476,7 @@ export default function GoalsPage() {
 
       {/* FAB */}
       <button
+        data-tour="goals-fab"
         onClick={openNewGoal}
         style={{
           position: 'fixed', bottom: 80, right: 20,
@@ -621,17 +650,15 @@ export default function GoalsPage() {
               {availableProjects.length > 0 && (
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
-                    Linked Projects <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                    Linked Project <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {availableProjects.map(proj => {
-                      const linked = newLinkedProjectIds.includes(proj.id)
+                      const linked = newLinkedProjectId === proj.id
                       return (
                         <button
                           key={proj.id}
-                          onClick={() => setNewLinkedProjectIds(prev =>
-                            linked ? prev.filter(id => id !== proj.id) : [...prev, proj.id]
-                          )}
+                          onClick={() => setNewLinkedProjectId(linked ? null : proj.id)}
                           style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '12px 14px', borderRadius: 12,
@@ -650,9 +677,9 @@ export default function GoalsPage() {
                       )
                     })}
                   </div>
-                  {newLinkedProjectIds.length > 0 && (
+                  {newLinkedProjectId && (
                     <p style={{ fontSize: 12, color: '#3B7DFF', margin: '8px 0 0' }}>
-                      {newLinkedProjectIds.length} project{newLinkedProjectIds.length > 1 ? 's' : ''} will be linked to this goal
+                      1 project will be linked to this goal
                     </p>
                   )}
                 </div>

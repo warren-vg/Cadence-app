@@ -7,6 +7,7 @@ import {
   type OpportunityInputs,
   type OpportunityResult,
 } from '@/lib/opportunityScore'
+import { createProject } from '@/lib/db'
 
 // ─── Slider component ─────────────────────────────────────────────────────────
 
@@ -98,11 +99,11 @@ export default function OpportunityFilterPage() {
         })
 
         if (decision === 'accept') {
-          await supabase.from('projects').insert({
-            user_id: user.id,
-            title:   title.trim() || 'New Opportunity',
-            type:    'opportunity',
-            status:  'planning',
+          await createProject(user.id, {
+            title:    title.trim() || 'New Opportunity',
+            type:     'opportunity',
+            status:   'planning',
+            progress: 0,
           })
         }
       }

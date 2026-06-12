@@ -2,11 +2,16 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { toDateStr, getMonday, formatTime, getMomentumScore } from '@/lib/planData'
+import { toDateStr, getMonday, formatTime, getMomentumScore, CONSTANTS } from '@/lib/planData'
 import {
   getTasksForDate, getTasksForWeek, toggleTask as dbToggleTask,
-  getWeekStreakFromDB, type DBTask,
+  getWeekStreakFromDB, getFirstRunCompleted, type DBTask,
 } from '@/lib/db'
+import { evaluateRewards } from '@/lib/rewards'
+import { useRewards } from './components/RewardContext'
+import NotificationBell from './components/NotificationBell'
+import EmptyState from './components/EmptyState'
+import { useTour } from './components/TourContext'
 
 interface Goal {
   id: string
@@ -19,7 +24,7 @@ interface Goal {
 }
 
 interface Profile {
-  username: string
+  full_name: string | null
   avatar_url: string | null
 }
 
@@ -33,6 +38,18 @@ function getGreeting() {
 
 function getDateLabel() {
   return new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
+type ReviewState = 'countdown' | 'open' | 'complete' | 'hidden'
+
+function getReviewState(hasReflection: boolean): { state: ReviewState; daysUntilFriday?: number } {
+  if (hasReflection) return { state: 'complete' }
+  const now = new Date()
+  const day = now.getDay()  // 0=Sun 1=Mon … 6=Sat
+  const h   = now.getHours()
+  if (day === 0 && h >= 21) return { state: 'hidden' }      // Sun after 9 pm — window closed
+  if (day === 5 || day === 6 || day === 0) return { state: 'open' }  // Fri / Sat / Sun before 9 pm
+  return { state: 'countdown', daysUntilFriday: 5 - day }   // Mon(4) Tue(3) Wed(2) Thu(1)
 }
 
 function getMomentumText(score: number) {
@@ -91,16 +108,20 @@ function DonutChart({ planned, total, size = 96 }: { planned: number; total: num
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { startTour } = useTour()
+  const { queueRewards, loadUnseenRewards } = useRewards()
+  const [userId, setUserId] = useState<string | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [goals, setGoals] = useState<Goal[]>([])
   const [todayTasks, setTodayTasks] = useState<DBTask[]>([])
   const [weekTasks, setWeekTasks] = useState<DBTask[]>([])
   const [streak, setStreak] = useState(0)
-  const [weeklyCapacity, setWeeklyCapacity] = useState(40)
+  const [weeklyCapacity, setWeeklyCapacity] = useState(CONSTANTS.DEFAULT_WEEKLY_CAPACITY_HOURS)
   const [loading, setLoading] = useState(true)
   const [greeting, setGreeting] = useState('')
   const [dateLabel, setDateLabel] = useState('')
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [hasThisWeekReflection, setHasThisWeekReflection] = useState(false)
 
   useEffect(() => {
     setGreeting(getGreeting())
@@ -113,25 +134,44 @@ export default function DashboardPage() {
       const todayStr = toDateStr(new Date())
       const monday   = getMonday(new Date())
 
-      const [{ data: profileData }, { data: goalsData }, todayData, weekData, currentStreak] = await Promise.all([
-        supabase.from('profiles').select('username, avatar_url, weekly_capacity').eq('id', user.id).single(),
+      const weekOf = toDateStr(monday)
+      const [{ data: profileData }, { data: goalsData }, todayData, weekData, currentStreak, { data: reflData }, firstRunDone] = await Promise.all([
+        supabase.from('profiles').select('full_name, avatar_url, weekly_capacity').eq('id', user.id).single(),
         supabase.from('goals').select('*').eq('user_id', user.id).order('priority', { ascending: true }),
         getTasksForDate(user.id, todayStr),
         getTasksForWeek(user.id, monday),
         getWeekStreakFromDB(user.id),
+        supabase.from('weekly_reflections').select('week_of').eq('user_id', user.id).eq('week_of', weekOf).maybeSingle(),
+        getFirstRunCompleted(user.id),
       ])
 
+      setUserId(user.id)
       setProfile(profileData)
       setGoals(goalsData || [])
       setTodayTasks(todayData)
       setWeekTasks(weekData)
       setStreak(currentStreak)
+      setHasThisWeekReflection(!!reflData)
       if (profileData?.weekly_capacity) setWeeklyCapacity(profileData.weekly_capacity)
       setLoading(false)
+
+      // Auto-launch the guided tour for new users who haven't seen it yet
+      if (!firstRunDone) {
+        startTour(user.id, true)
+      }
+
+      // Reward reconciliation: check for missed full_day / perfect_week from yesterday,
+      // then surface any unseen rewards earned in other contexts.
+      const earned = await evaluateRewards(user.id, {
+        trigger: 'app_opened',
+        ctx: { date: todayStr },
+      })
+      if (earned.length > 0) queueRewards(earned)
+      await loadUnseenRewards(user.id)
     }
 
     load()
-  }, [])
+  }, [startTour, queueRewards, loadUnseenRewards])
 
   const handleToggleTask = async (task: DBTask) => {
     setTodayTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t))
@@ -140,11 +180,31 @@ export default function DashboardPage() {
     if (!ok) {
       setTodayTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: task.completed } : t))
       setWeekTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: task.completed } : t))
+      return
+    }
+    // Reward evaluation for completions — non-blocking.
+    // goal_complete is intentionally skipped here (no recalc on dashboard); it fires from the daily plan.
+    if (!task.completed && userId) {
+      const goalTitle = task.goal_id
+        ? (goals.find(g => g.id === task.goal_id)?.text ?? null)
+        : null
+      evaluateRewards(userId, {
+        trigger: 'task_completed',
+        ctx: {
+          taskId:        task.id,
+          taskDate:      task.date,
+          taskCreatedAt: task.created_at ?? new Date().toISOString(),
+          taskCategory:  task.category,
+          goalId:        task.goal_id ?? null,
+          goalTitle,
+          goalProgress:  null,
+        },
+      }).then(earned => { if (earned.length > 0) queueRewards(earned) })
     }
   }
 
   const activeGoals = goals.filter(g => g.status === 'active')
-  const topPriorities = activeGoals.slice(0, 3)
+  const topPriorities = activeGoals.slice(0, CONSTANTS.TOP_PRIORITIES_LIMIT)
   const completedToday = todayTasks.filter(t => t.completed).length
   const totalToday = todayTasks.length
   const momentumScore = getMomentumScore(
@@ -168,10 +228,11 @@ export default function DashboardPage() {
     )
   }
 
-  const firstName = profile?.username?.split(' ')[0] || 'there'
+  const firstName   = profile?.full_name?.split(' ')[0] || 'there'
   const capacityPct = weekSummary.totalHours > 0
     ? Math.min(100, Math.round((weekSummary.totalHours / weeklyCapacity) * 100))
     : 0
+  const reviewState = getReviewState(hasThisWeekReflection)
 
   return (
     <div style={{ padding: '56px 16px 16px' }}>
@@ -186,22 +247,28 @@ export default function DashboardPage() {
             Today only needs one meaningful move.
           </p>
         </div>
-        <button
-          onClick={() => router.push('/dashboard/settings')}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, marginTop: 2 }}
-        >
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
-          </svg>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 2 }}>
+          <NotificationBell />
+          <button
+            onClick={() => router.push('/dashboard/settings')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Today's Focus Card */}
-      <div style={{
-        background: 'linear-gradient(135deg, #3B52FF 0%, #2D7DFF 100%)',
-        borderRadius: 20, padding: '20px', marginBottom: 14, color: 'white',
-      }}>
+      <div
+        data-tour="home-today-card"
+        style={{
+          background: 'linear-gradient(135deg, #3B52FF 0%, #2D7DFF 100%)',
+          borderRadius: 20, padding: '20px', marginBottom: 14, color: 'white',
+        }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
           <div>
             <p style={{ fontSize: 12, opacity: 0.8, margin: 0 }}>{dateLabel}</p>
@@ -316,30 +383,19 @@ export default function DashboardPage() {
 
       {/* Top Priorities / First Goal */}
       {activeGoals.length === 0 ? (
-        <div style={{ background: 'linear-gradient(135deg, #EEF2FF 0%, #E0E7FF 100%)', borderRadius: 20, padding: '28px 20px 24px', marginBottom: 14, border: '1px solid #C7D2FE' }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}>
-            <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 14px rgba(99,102,241,0.22)' }}>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6366F1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#6366F1" />
+        <div style={{ marginBottom: 14 }}>
+          <EmptyState
+            icon={
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
               </svg>
-            </div>
-          </div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px', textAlign: 'center' }}>Set Your First Goal</h2>
-          <p style={{ fontSize: 14, color: '#6B7280', margin: '0 0 22px', textAlign: 'center', lineHeight: 1.55 }}>
-            Goals are the foundation of your Cadence. Define what matters most and start building real momentum.
-          </p>
-          <button
-            onClick={() => router.push('/dashboard/goals')}
-            style={{
-              width: '100%', background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)',
-              border: 'none', borderRadius: 12, padding: '14px',
-              color: 'white', fontSize: 15, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit',
-              boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
-            }}
-          >
-            Create My First Goal
-          </button>
+            }
+            iconBg="#EFF6FF"
+            title="Set your first goal"
+            body="Goals are the foundation of your Cadence. Define what matters most and start building real momentum."
+            ctaLabel="Create My First Goal"
+            onCta={() => router.push('/dashboard/goals')}
+          />
         </div>
       ) : (
         <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
@@ -440,26 +496,44 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {/* Weekly Review Due Card */}
-      <div style={{ background: '#FFFBEB', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '1px solid #FDE68A' }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
-            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+      {/* Weekly Review Card — state-driven */}
+      {reviewState.state === 'countdown' && (
+        <div style={{ background: '#F8F8FC', borderRadius: 20, padding: '14px 18px', marginBottom: 14, border: '0.5px solid #E5E5EA', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
           </svg>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: '#92400E', margin: 0 }}>Weekly Review Due</p>
-            <p style={{ fontSize: 13, color: '#B45309', margin: '4px 0 12px' }}>
-              Reflect on last week's progress and plan the week ahead.
-            </p>
-            <button
-              onClick={() => router.push('/dashboard/check-in/weekly')}
-              style={{ background: 'white', border: '1px solid #D97706', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#D97706', cursor: 'pointer', fontFamily: 'inherit' }}
-            >
-              Start Review
-            </button>
+          <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>
+            Weekly Review opens in <strong style={{ color: '#1C1C1E' }}>{reviewState.daysUntilFriday} day{reviewState.daysUntilFriday !== 1 ? 's' : ''}</strong>
+          </p>
+        </div>
+      )}
+      {reviewState.state === 'open' && (
+        <div style={{ background: '#FFFBEB', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '1px solid #FDE68A' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#92400E', margin: 0 }}>Weekly Review Open</p>
+              <p style={{ fontSize: 13, color: '#B45309', margin: '4px 0 12px' }}>Reflect on this week&apos;s progress and set your focus for next week.</p>
+              <button
+                onClick={() => router.push('/dashboard/check-in/weekly')}
+                style={{ background: 'white', border: '1px solid #D97706', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#D97706', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Start Review
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+      {reviewState.state === 'complete' && (
+        <div style={{ background: '#F0FFF4', borderRadius: 20, padding: '14px 18px', marginBottom: 14, border: '0.5px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <p style={{ fontSize: 13, color: '#16A34A', fontWeight: 600, margin: 0 }}>Weekly Review complete</p>
+        </div>
+      )}
 
       {/* FAB */}
       <button

@@ -48,11 +48,11 @@ export default function OnboardingGoalsPage() {
 
       {/* Progress Bar */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
-        {[1, 2, 3, 4, 5].map(step => (
+        {[1, 2, 3, 4, 5, 6].map(step => (
           <div key={step} style={{ flex: 1, height: 4, borderRadius: 2, background: step === 1 ? '#3B7DFF' : '#D1D1D6' }} />
         ))}
       </div>
-      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 1 of 5</p>
+      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 20 }}>Step 1 of 6</p>
 
       {/* Heading */}
       <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', marginBottom: 8 }}>
