@@ -1,6 +1,6 @@
 'use client'
 import React, {
-  createContext, useContext, useState, useCallback, useRef,
+  createContext, useContext, useEffect, useState, useCallback, useRef,
 } from 'react'
 import { useRouter } from 'next/navigation'
 import { TOUR_STEPS, type TourStep } from '@/lib/tourConfig'
@@ -31,9 +31,18 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
   const [stepIndex, setStepIndex] = useState(0)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
   const [isFirstRun, setIsFirstRun] = useState(false)
+  const [navTarget, setNavTarget] = useState<string | null>(null)
   const userIdRef = useRef<string | null>(null)
 
   const currentStep = active ? (TOUR_STEPS[stepIndex] ?? null) : null
+
+  // Deferred navigation — fires after state updates settle to avoid
+  // "setState during render" conflicts with Next.js App Router.
+  useEffect(() => {
+    if (navTarget === null) return
+    router.push(navTarget)
+    setNavTarget(null)
+  }, [navTarget, router])
 
   const measureAnchor = useCallback((id: string) => {
     const el = document.querySelector(`[data-tour="${id}"]`)
@@ -47,10 +56,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setIsFirstRun(firstRun)
     setStepIndex(0)
     setActive(true)
-    // Navigate to step 0's route
     const firstStep = TOUR_STEPS[0]
-    if (firstStep) router.push(firstStep.route)
-  }, [router])
+    if (firstStep) setNavTarget(firstStep.route)
+  }, [])
 
   const finishTour = useCallback(async () => {
     setActive(false)
@@ -70,17 +78,15 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (step.ctaAction === 'try') {
-      // Open the feature's FAB/form — dispatch a custom event the page listens to
       const el = document.querySelector(`[data-tour="${step.anchor}"]`) as HTMLElement | null
       if (el) el.click()
-      // Advance after a short delay so the user sees the opened feature
       setTimeout(() => {
         const nextIndex = stepIndex + 1
         if (nextIndex >= TOUR_STEPS.length) { finishTour(); return }
         const nextStep = TOUR_STEPS[nextIndex]
         setStepIndex(nextIndex)
         setAnchorRect(null)
-        if (nextStep && nextStep.route !== step.route) router.push(nextStep.route)
+        if (nextStep && nextStep.route !== step.route) setNavTarget(nextStep.route)
       }, 400)
       return
     }
@@ -93,9 +99,9 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setAnchorRect(null)
 
     if (nextStep && nextStep.route !== step.route) {
-      router.push(nextStep.route)
+      setNavTarget(nextStep.route)
     }
-  }, [stepIndex, finishTour, router])
+  }, [stepIndex, finishTour])
 
   const skipTour = useCallback(async () => {
     await finishTour()
