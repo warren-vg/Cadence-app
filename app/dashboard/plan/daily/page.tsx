@@ -7,7 +7,7 @@ import {
 } from '@/lib/planData'
 import {
   getTasksForDate, toggleTask, createTask, createRecurringTask,
-  stopRecurrence, recalcGoalProgressFromTasks,
+  stopRecurrence, recalcGoalProgressFromTasks, deleteTask,
   type DBTask, type RecurrenceRule,
 } from '@/lib/db'
 import EmptyState from '@/app/dashboard/components/EmptyState'
@@ -45,6 +45,7 @@ function DailyPlanContent() {
   const [addingTask, setAddingTask]       = useState(false)
   const [goals, setGoals]                 = useState<{id: string; text: string}[]>([])
   const [goalNames, setGoalNames]         = useState<Record<string, string>>({})
+  const [editingTask, setEditingTask]     = useState<DBTask | null>(null)
 
   // Day capacity (from profiles.capacity_schedule)
   const [dayCapacity, setDayCapacity]     = useState(0)
@@ -164,6 +165,7 @@ function DailyPlanContent() {
 
   const closeAddModal = () => {
     setShowAddModal(false)
+    setEditingTask(null)
     setNewTitle(''); setNewCategory('Career'); setNewTime('09:00')
     setNewEndTime('10:00'); setNewDate(''); setNewGoalId(null); setNewPriority('medium')
     setRecurEnabled(false); setRecurFreq('weekly'); setRecurDays([]); setRecurEndsOn('')
@@ -177,6 +179,32 @@ function DailyPlanContent() {
     const [eh, em] = newEndTime.split(':').map(Number)
     const diffMins = (eh * 60 + em) - (sh * 60 + sm)
     const duration = diffMins > 0 ? Math.round((diffMins / 60) * 4) / 4 : 1
+
+    if (editingTask) {
+      const { error } = await supabase.from('tasks').update({
+        text:           newTitle.trim(),
+        scheduled_time: newTime,
+        duration,
+        category:       newCategory,
+        priority:       newPriority,
+        goal_id:        newGoalId,
+        date:           taskDate,
+      }).eq('id', editingTask.id)
+      if (!error) {
+        const updated = await getTasksForDate(userId, date)
+        setTasks(updated)
+        showToast('Task updated')
+        if (newGoalId !== editingTask.goal_id) {
+          if (editingTask.goal_id) await recalcGoalProgressFromTasks(editingTask.goal_id, userId)
+          if (newGoalId) await recalcGoalProgressFromTasks(newGoalId, userId)
+        }
+      } else {
+        showToast('Failed to update task')
+      }
+      closeAddModal()
+      setAddingTask(false)
+      return
+    }
 
     const baseTask = {
       text:           newTitle.trim(),
@@ -230,6 +258,33 @@ function DailyPlanContent() {
     return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
   }
 
+  const handleEditTask = (task: DBTask) => {
+    setNewTitle(task.text)
+    setNewCategory(task.category || 'Career')
+    setNewTime(task.scheduled_time || '09:00')
+    setNewEndTime(addMinutesToTime(task.scheduled_time || '09:00', Math.round(task.duration * 60)))
+    setNewDate(task.date || date)
+    setNewPriority((task.priority as 'high' | 'medium' | 'low') || 'medium')
+    setNewGoalId(task.goal_id ?? null)
+    setRecurEnabled(false)
+    setEditingTask(task)
+    setShowAddModal(true)
+  }
+
+  const handleRemoveTask = async (task: DBTask) => {
+    setTasks(prev => prev.filter(t => t.id !== task.id))
+    const ok = await deleteTask(task.id)
+    if (!ok) {
+      setTasks(prev => [...prev, task].sort((a, b) => (a.scheduled_time || '').localeCompare(b.scheduled_time || '')))
+      showToast('Failed to remove task')
+    } else {
+      showToast(`"${task.text.length > 30 ? task.text.slice(0, 30) + '…' : task.text}" removed`)
+      if (task.goal_id && userId) {
+        await recalcGoalProgressFromTasks(task.goal_id, userId)
+      }
+    }
+  }
+
   const handleSnooze = async (task: DBTask) => {
     const newSnoozeTime = addMinutesToTime(task.scheduled_time || '09:00', 15)
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, scheduled_time: newSnoozeTime } : t))
@@ -239,37 +294,6 @@ function DailyPlanContent() {
       showToast('Failed to snooze task')
     } else {
       showToast(`Snoozed to ${formatTime(newSnoozeTime)}`)
-    }
-  }
-
-  const handleSwap = async (task: DBTask) => {
-    const sorted = [...tasks].sort((a, b) => (a.scheduled_time || '').localeCompare(b.scheduled_time || ''))
-    const idx = sorted.findIndex(t => t.id === task.id)
-    if (idx === -1 || idx >= sorted.length - 1) {
-      showToast('No next task to swap with')
-      return
-    }
-    const next = sorted[idx + 1]
-    const taskTime = task.scheduled_time
-    const nextTime = next.scheduled_time
-    setTasks(prev => prev.map(t => {
-      if (t.id === task.id) return { ...t, scheduled_time: nextTime }
-      if (t.id === next.id) return { ...t, scheduled_time: taskTime }
-      return t
-    }))
-    const [r1, r2] = await Promise.all([
-      supabase.from('tasks').update({ scheduled_time: nextTime }).eq('id', task.id),
-      supabase.from('tasks').update({ scheduled_time: taskTime }).eq('id', next.id),
-    ])
-    if (r1.error || r2.error) {
-      setTasks(prev => prev.map(t => {
-        if (t.id === task.id) return { ...t, scheduled_time: taskTime }
-        if (t.id === next.id) return { ...t, scheduled_time: nextTime }
-        return t
-      }))
-      showToast('Failed to swap tasks')
-    } else {
-      showToast('Tasks swapped')
     }
   }
 
@@ -451,18 +475,9 @@ function DailyPlanContent() {
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                <button
-                  onClick={() => handleSwap(task)}
-                  disabled={index === sorted.length - 1}
-                  style={{
-                    ...actionBtnStyle,
-                    opacity: index === sorted.length - 1 ? 0.3 : 1,
-                    cursor:  index === sorted.length - 1 ? 'default' : 'pointer',
-                  }}
-                >
-                  Swap
-                </button>
+                <button onClick={() => handleEditTask(task)} style={actionBtnStyle}>Edit</button>
                 <button onClick={() => handleSnooze(task)} style={actionBtnStyle}>Snooze</button>
+                <button onClick={() => handleRemoveTask(task)} style={{ ...actionBtnStyle, color: '#FF3B30' }}>Remove</button>
               </div>
             </div>
           )
@@ -590,8 +605,8 @@ function DailyPlanContent() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>New Block</h2>
-                <p style={{ fontSize: 12, color: '#8E8E93', margin: '3px 0 0' }}>Add a new task block to your schedule</p>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>{editingTask ? 'Edit Block' : 'New Block'}</h2>
+                <p style={{ fontSize: 12, color: '#8E8E93', margin: '3px 0 0' }}>{editingTask ? 'Update this task block' : 'Add a new task block to your schedule'}</p>
               </div>
               <button
                 onClick={closeAddModal}
@@ -710,8 +725,8 @@ function DailyPlanContent() {
               </div>
             </div>
 
-            {/* Recurrence accordion */}
-            <div style={{ marginBottom: 24 }}>
+            {/* Recurrence accordion — hidden when editing an existing task */}
+            {!editingTask && <div style={{ marginBottom: 24 }}>
               <button
                 onClick={() => setRecurEnabled(v => !v)}
                 style={{
@@ -782,10 +797,10 @@ function DailyPlanContent() {
                   />
                 </div>
               )}
-            </div>
+            </div>}
 
             {(() => {
-              const missingDays = recurEnabled && recurFreq === 'weekly' && recurDays.length === 0
+              const missingDays = !editingTask && recurEnabled && recurFreq === 'weekly' && recurDays.length === 0
               const canSubmit   = !!(newTitle.trim() && newGoalId && !missingDays)
               return (
                 <button
@@ -799,7 +814,7 @@ function DailyPlanContent() {
                     fontFamily: 'inherit', opacity: addingTask ? 0.6 : 1,
                   }}
                 >
-                  {addingTask ? 'Adding…' : recurEnabled ? 'Add Repeating Block' : 'Add Block'}
+                  {addingTask ? (editingTask ? 'Saving…' : 'Adding…') : editingTask ? 'Save Changes' : recurEnabled ? 'Add Repeating Block' : 'Add Block'}
                 </button>
               )
             })()}

@@ -50,6 +50,307 @@ const CAT_COLORS: Record<string, string> = {
   creative: '#9333EA',
 }
 
+// ─── Waveform palette (premium muted tones) ───────────────────────────────────
+
+const WAVE_CAT_COLORS: Record<string, string> = {
+  career:           '#5B85E8',
+  health:           '#3DB87B',
+  finance:          '#7B62D4',
+  creative:         '#E07070',
+  'personal growth': '#C9963B',
+  personal:         '#C9963B',
+}
+function waveColor(cat: string): string {
+  return WAVE_CAT_COLORS[cat.toLowerCase()] ?? '#9B9BDF'
+}
+
+function getWaveformInsight(tasks: DBTask[]): string {
+  if (tasks.length === 0) return 'Log your first completed task to see your rhythm emerge.'
+  const byCategory: Record<string, number> = {}
+  tasks.forEach(t => {
+    const cat = t.category.toLowerCase()
+    byCategory[cat] = (byCategory[cat] || 0) + t.duration
+  })
+  const sorted = Object.entries(byCategory).sort((a, b) => b[1] - a[1])
+  if (!sorted.length) return 'Start completing tasks to see your rhythm emerge.'
+  const [topCat, topHours] = sorted[0]
+  const name = topCat.charAt(0).toUpperCase() + topCat.slice(1)
+  return `${name} work is leading your rhythm this week — ${topHours.toFixed(1)}h logged.`
+}
+
+// ─── WaveformRhythmChart ──────────────────────────────────────────────────────
+
+function WaveformRhythmChart({ allTasks }: { allTasks: DBTask[] }) {
+  const today = new Date()
+  const monday = getMonday(today)
+  const weekStart = toDateStr(monday)
+  const weekEnd = toDateStr(addDays(monday, 6))
+
+  const weekTasks = allTasks
+    .filter(t => t.completed && t.date >= weekStart && t.date <= weekEnd)
+    .sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date)
+      return a.scheduled_time.localeCompare(b.scheduled_time)
+    })
+
+  const insight = getWaveformInsight(weekTasks)
+
+  // One Meaningful Move: highest-priority completed task per day
+  const PRIORITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
+  const ommIds = new Set<string>()
+  const byDate: Record<string, DBTask[]> = {}
+  weekTasks.forEach(t => { (byDate[t.date] = byDate[t.date] || []).push(t) })
+  Object.values(byDate).forEach(dayTasks => {
+    const omm = [...dayTasks].sort(
+      (a, b) => (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1)
+    )[0]
+    if (omm) ommIds.add(omm.id)
+  })
+
+  const n = weekTasks.length
+  const W = 320, H = 148, PAD_X = 14, PAD_TOP = 14, PAD_BOT = 8
+  const chartW = W - PAD_X * 2
+  const chartH = H - PAD_TOP - PAD_BOT
+  const BASE = PAD_TOP + chartH
+
+  const barW = n > 0 ? Math.max(6, Math.min(16, (chartW / Math.max(n, 1)) * 0.62)) : 10
+  const step = n > 1 ? (chartW - barW) / (n - 1) : 0
+  const maxDur = Math.max(...weekTasks.map(t => t.duration), 0.5)
+
+  const getCX = (i: number) => n === 1 ? PAD_X + chartW / 2 : PAD_X + barW / 2 + i * step
+  const getBarH = (dur: number) => Math.max(10, (dur / maxDur) * chartH * 0.88)
+  const getBarY = (dur: number) => BASE - getBarH(dur)
+
+  const usedCats = [...new Set(weekTasks.map(t => t.category.toLowerCase()))]
+  const weekLabel = `${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${addDays(monday, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+
+  return (
+    <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Weekly Rhythm</h2>
+        <span style={{ fontSize: 11, color: '#8E8E93', fontWeight: 400 }}>{weekLabel}</span>
+      </div>
+      <p style={{ fontSize: 13, color: '#3C3C43', lineHeight: 1.45, margin: '0 0 12px' }}>{insight}</p>
+
+      {n === 0 ? (
+        <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontSize: 13, color: '#C7C7CC' }}>Complete tasks to see your rhythm here.</span>
+        </div>
+      ) : (
+        <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible', display: 'block' }}>
+          {/* Baseline */}
+          <line x1={PAD_X} y1={BASE} x2={W - PAD_X} y2={BASE} stroke="#F0F0F5" strokeWidth="1" />
+
+          {weekTasks.map((t, i) => {
+            const cx = getCX(i)
+            const barH = getBarH(t.duration)
+            const barY = getBarY(t.duration)
+            const color = waveColor(t.category)
+            const isOMM = ommIds.has(t.id)
+            const rx = barW / 2
+
+            return (
+              <g key={t.id}>
+                {/* OMM ring — outer glow */}
+                {isOMM && (
+                  <rect
+                    x={cx - rx - 5} y={barY - 5}
+                    width={barW + 10} height={barH + 10}
+                    rx={rx + 5}
+                    fill="none" stroke={color} strokeWidth="1.5" opacity={0.45}
+                  />
+                )}
+                {/* OMM ring — white halo */}
+                {isOMM && (
+                  <rect
+                    x={cx - rx - 3} y={barY - 3}
+                    width={barW + 6} height={barH + 6}
+                    rx={rx + 3}
+                    fill="none" stroke="white" strokeWidth="3"
+                  />
+                )}
+                {/* Bar */}
+                <rect
+                  x={cx - rx} y={barY}
+                  width={barW} height={barH}
+                  rx={rx} ry={rx}
+                  fill={color}
+                  opacity={isOMM ? 1 : 0.82}
+                />
+              </g>
+            )
+          })}
+        </svg>
+      )}
+
+      {usedCats.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px 12px', marginTop: 10 }}>
+          {usedCats.map(cat => (
+            <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: waveColor(cat), flexShrink: 0 }} />
+              <span style={{ fontSize: 11, color: '#8E8E93' }}>
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── ActivityCalendar ─────────────────────────────────────────────────────────
+
+function ActivityCalendar({
+  allTasks,
+  monthOffset,
+  onPrev,
+  onNext,
+}: {
+  allTasks: DBTask[]
+  monthOffset: number
+  onPrev: () => void
+  onNext: () => void
+}) {
+  const today = new Date()
+  const viewDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1)
+  const year = viewDate.getFullYear()
+  const month = viewDate.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const startDow = new Date(year, month, 1).getDay()
+
+  const pad2 = (n: number) => String(n).padStart(2, '0')
+  const monthStart = `${year}-${pad2(month + 1)}-01`
+  const monthEnd   = `${year}-${pad2(month + 1)}-${pad2(daysInMonth)}`
+  const todayStr   = toDateStr(today)
+
+  const hoursPerDay: Record<string, number> = {}
+  allTasks.filter(t => t.completed && t.date >= monthStart && t.date <= monthEnd).forEach(t => {
+    hoursPerDay[t.date] = (hoursPerDay[t.date] || 0) + t.duration
+  })
+  const maxHours = Math.max(...Object.values(hoursPerDay), 0.1)
+
+  // Count active days in the viewed range
+  const activeDayCount = Object.values(hoursPerDay).filter(h => h > 0).length
+
+  const monthLabel = viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const DAY_NAMES = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
+
+  const cells: Array<{ day: number; dateStr: string } | null> = [
+    ...Array(startDow).fill(null),
+    ...Array.from({ length: daysInMonth }, (_, i) => {
+      const d = i + 1
+      return { day: d, dateStr: `${year}-${pad2(month + 1)}-${pad2(d)}` }
+    }),
+  ]
+
+  const isCurrentMonth = monthOffset === 0
+
+  return (
+    <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+        <div>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Activity</h2>
+          <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>
+            {activeDayCount} active {activeDayCount === 1 ? 'day' : 'days'} this {isCurrentMonth ? 'month' : 'period'}
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            onClick={onPrev}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#8E8E93', display: 'flex', alignItems: 'center' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+          </button>
+          <span style={{ fontSize: 13, fontWeight: 500, color: '#1C1C1E', whiteSpace: 'nowrap' }}>{monthLabel}</span>
+          <button
+            onClick={onNext}
+            disabled={isCurrentMonth}
+            style={{ background: 'none', border: 'none', cursor: isCurrentMonth ? 'default' : 'pointer', padding: 4, color: isCurrentMonth ? '#D1D1D6' : '#8E8E93', display: 'flex', alignItems: 'center' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Day-of-week headers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
+        {DAY_NAMES.map((d, i) => (
+          <div key={i} style={{ textAlign: 'center', fontSize: 10, fontWeight: 500, color: '#8E8E93', paddingBottom: 4 }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Calendar cells */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px 0' }}>
+        {cells.map((cell, i) => {
+          if (!cell) return <div key={i} style={{ height: 36 }} />
+
+          const hours = hoursPerDay[cell.dateStr] || 0
+          const isToday = cell.dateStr === todayStr
+          const isActive = hours > 0
+          // Dot size: 8px baseline, scales up to 22px
+          const dotSize = isActive ? 8 + (hours / maxHours) * 14 : 0
+          // Opacity: 0.35 to 1.0
+          const dotOpacity = isActive ? 0.35 + (hours / maxHours) * 0.65 : 0
+
+          return (
+            <div key={i} style={{ height: 36, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+              {/* Activity dot */}
+              {isActive && (
+                <div style={{
+                  position: 'absolute',
+                  width: dotSize, height: dotSize,
+                  borderRadius: '50%',
+                  background: '#2563EB',
+                  opacity: dotOpacity,
+                }} />
+              )}
+              {/* Today ring */}
+              {isToday && (
+                <div style={{
+                  position: 'absolute',
+                  width: 26, height: 26,
+                  borderRadius: '50%',
+                  border: '1.5px solid #2563EB',
+                }} />
+              )}
+              {/* Day number */}
+              <span style={{
+                position: 'relative', zIndex: 1,
+                fontSize: 11,
+                fontWeight: isToday ? 700 : 400,
+                color: isToday
+                  ? '#2563EB'
+                  : (isActive && dotSize >= 18 ? 'white' : '#8E8E93'),
+              }}>
+                {cell.day}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#2563EB' }} />
+          <span style={{ fontSize: 11, color: '#8E8E93' }}>Active day</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{
+            width: 18, height: 18, borderRadius: '50%',
+            border: '1.5px solid #2563EB',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <span style={{ fontSize: 9, color: '#2563EB', fontWeight: 700 }}>{today.getDate()}</span>
+          </div>
+          <span style={{ fontSize: 11, color: '#8E8E93' }}>Today</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Helper functions ─────────────────────────────────────────────────────────
 
 function getISOWeekNumber(date: Date): number {
@@ -634,6 +935,7 @@ export default function ProgressPage() {
   const [quarterlyData, setQuarterlyData] = useState<WeekData[]>([])
   const [yearlyData, setYearlyData]       = useState<WeekData[]>([])
   const [weekStreak, setWeekStreak]       = useState(0)
+  const [calMonthOffset, setCalMonthOffset] = useState(0)
 
   // Per-chart tooltip indices
   const [momentumActive, setMomentumActive]     = useState<number | null>(null)
@@ -759,10 +1061,10 @@ export default function ProgressPage() {
       onClick={() => { setMomentumActive(null); setCatActive(null); setTimeActive(null); setCompletionActive(null); setShowPeriodMenu(false) }}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Progress</h1>
-          <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>Track your momentum</p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Cadence</h1>
+          <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>Your rhythm over time.</p>
         </div>
         <button
           onClick={() => router.push('/dashboard/progress/community')}
@@ -782,6 +1084,29 @@ export default function ProgressPage() {
           Community
         </button>
       </div>
+
+      {/* ── Period badge for Cadence section ─────────────────────────────── */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 20,
+          padding: '7px 14px', fontSize: 14, fontWeight: 500, color: '#1C1C1E',
+        }}>
+          This Week
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
+        </div>
+      </div>
+
+      {/* ── Waveform Rhythm Chart ─────────────────────────────────────────── */}
+      <WaveformRhythmChart allTasks={allTasks} />
+
+      {/* ── Activity Calendar ─────────────────────────────────────────────── */}
+      <ActivityCalendar
+        allTasks={allTasks}
+        monthOffset={calMonthOffset}
+        onPrev={() => setCalMonthOffset(v => v - 1)}
+        onNext={() => setCalMonthOffset(v => Math.min(v + 1, 0))}
+      />
 
       {/* ── Stats row (Active Goals + Week Streak only) ──────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>

@@ -227,31 +227,7 @@ export default function WeeklyPlannerPage() {
           </div>
         </div>
 
-        {/* Must-Move This Week */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
-          <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px' }}>Must-Move This Week</p>
-          {goals.length === 0 ? (
-            <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>Add active goals to see priorities here.</p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {goals.slice(0, 3).map(goal => {
-                const catStyle = getCatStyle(goal.category)
-                const hrs      = goal.estimated_weekly_hours || CONSTANTS.DEFAULT_HOURS_PER_GOAL_FALLBACK
-                return (
-                  <div key={goal.id} style={{ background: '#F8F8FC', borderRadius: 12, padding: '14px' }}>
-                    <p style={{ fontSize: 15, fontWeight: 500, color: '#1C1C1E', margin: '0 0 6px' }}>{goal.text}</p>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: 12, fontWeight: 500, background: catStyle.bg, color: catStyle.color, padding: '2px 8px', borderRadius: 20 }}>{goal.category}</span>
-                      <span style={{ fontSize: 12, color: '#8E8E93' }}>{hrs}h allocated</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Suggested Tasks */}
+        {/* Goal Priorities — each goal shown alongside its suggested task */}
         {goals.length === 0 ? (
           <EmptyState
             icon="🎯"
@@ -262,46 +238,71 @@ export default function WeeklyPlannerPage() {
             onCta={() => router.push('/dashboard/goals')}
           />
         ) : (
-        <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
-          <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px' }}>Suggested Tasks</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-              {suggestedTasks.map(({ goal, task }, i) => {
-                const catStyle  = getCatStyle(goal.category)
-                const added     = addedGoalIds.has(goal.id)
-                const taskLabel = task.text.length > 48 ? task.text.slice(0, 48) + '…' : task.text
-                const durLabel  = task.duration < 1 ? `${Math.round(task.duration * 60)}m` : `${task.duration}h`
+          <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
+            <div style={{ marginBottom: 14 }}>
+              <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 2px' }}>Goal Priorities</p>
+              <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>Suggested task for each goal — tap Add to schedule</p>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {goals.slice(0, 3).map((goal, i) => {
+                const catStyle   = getCatStyle(goal.category)
+                const hrs        = goal.estimated_weekly_hours || CONSTANTS.DEFAULT_HOURS_PER_GOAL_FALLBACK
+                const suggestion = suggestedTasks.find(s => s.goal.id === goal.id)
+                const added      = addedGoalIds.has(goal.id)
+                const isLast     = i === Math.min(goals.length, 3) - 1
                 return (
                   <div key={goal.id} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '13px 0',
-                    borderBottom: i < suggestedTasks.length - 1 ? '0.5px solid #F2F2F7' : 'none',
+                    paddingTop: i > 0 ? 14 : 0,
+                    paddingBottom: isLast ? 0 : 14,
+                    borderBottom: isLast ? 'none' : '0.5px solid #F2F2F7',
                   }}>
-                    <div style={{ flex: 1, marginRight: 12 }}>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: '0 0 4px' }}>
-                        {taskLabel}
-                      </p>
-                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, fontWeight: 500, background: catStyle.bg, color: catStyle.color, padding: '2px 7px', borderRadius: 20 }}>{goal.category}</span>
-                        <span style={{ fontSize: 12, color: '#8E8E93' }}>{durLabel}</span>
-                      </div>
+                    {/* Goal label */}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5 }}>
+                      <span style={{ fontSize: 11, fontWeight: 600, background: catStyle.bg, color: catStyle.color, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: 0.2 }}>
+                        Goal
+                      </span>
+                      <span style={{ fontSize: 11, color: '#8E8E93' }}>{goal.category} · {hrs}h/wk</span>
                     </div>
-                    <button
-                      onClick={() => handleAddSuggested(goal)}
-                      disabled={added}
-                      style={{
-                        background: added ? '#F0FFF4' : 'none', border: 'none',
-                        cursor: added ? 'default' : 'pointer',
-                        fontSize: 13, color: added ? '#16A34A' : '#3B7DFF',
-                        fontFamily: 'inherit', fontWeight: 600, padding: '4px 8px', borderRadius: 8, flexShrink: 0,
-                      }}
-                    >
-                      {added ? 'Added ✓' : 'Add'}
-                    </button>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: '0 0 8px', lineHeight: 1.35 }}>
+                      {goal.text}
+                    </p>
+
+                    {/* Suggested task for this goal */}
+                    {suggestion ? (
+                      <div style={{
+                        background: '#F8F8FC', borderRadius: 10, padding: '10px 12px',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: 13, color: '#3C3C43', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {suggestion.task.text.length > 44 ? suggestion.task.text.slice(0, 44) + '…' : suggestion.task.text}
+                          </p>
+                          <span style={{ fontSize: 11, color: '#8E8E93' }}>
+                            {suggestion.task.duration < 1 ? `${Math.round(suggestion.task.duration * 60)}m` : `${suggestion.task.duration}h`}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => handleAddSuggested(goal)}
+                          disabled={added}
+                          style={{
+                            background: added ? '#F0FFF4' : '#3B7DFF', border: 'none',
+                            cursor: added ? 'default' : 'pointer',
+                            fontSize: 13, color: added ? '#16A34A' : 'white',
+                            fontFamily: 'inherit', fontWeight: 600,
+                            padding: '6px 14px', borderRadius: 8, flexShrink: 0,
+                          }}
+                        >
+                          {added ? '✓ Added' : 'Add'}
+                        </button>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: 12, color: '#C7C7CC', margin: 0 }}>No suggestion available</p>
+                    )}
                   </div>
                 )
               })}
             </div>
-        </div>
+          </div>
         )}
 
         {/* Build Week */}

@@ -189,8 +189,8 @@ export default function QuarterlyReviewPage() {
 
     for (const action of pivotActions) {
       if (action.action === 'pause') {
-        await supabase.from('goals').update({ status: 'paused' }).eq('id', action.goalId)
-        setGoals(prev => prev.map(g => g.id === action.goalId ? { ...g, status: 'paused' } : g))
+        await supabase.from('goals').update({ status: 'parked' }).eq('id', action.goalId)
+        setGoals(prev => prev.map(g => g.id === action.goalId ? { ...g, status: 'parked' } : g))
       } else if (action.action === 'focus') {
         const goal = goals.find(g => g.id === action.goalId)
         if (goal) {

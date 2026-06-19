@@ -28,9 +28,7 @@ export default function LoginPage() {
   return (
     <div style={{ minHeight: '100vh', background: '#F2F2F7', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif' }}>
       
-      <div style={{ width: 72, height: 72, background: '#3B7DFF', borderRadius: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
-        <span style={{ color: 'white', fontSize: 32 }}>✦</span>
-      </div>
+      <img src="/app-icon.png" alt="Cadence" style={{ width: 80, height: 80, borderRadius: 20, marginBottom: 16 }} />
       <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', marginBottom: 4 }}>Welcome back</h1>
       <p style={{ fontSize: 15, color: '#8E8E93', marginBottom: 36 }}>Sign in to continue</p>
 

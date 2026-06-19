@@ -34,21 +34,25 @@ const tabs = [
     ),
   },
   {
-    label: 'Progress',
-    path: '/dashboard/progress',
-    icon: (active: boolean) => (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3B7DFF' : '#8E8E93'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-        <polyline points="16 7 22 7 22 13" />
-      </svg>
-    ),
-  },
-  {
     label: 'Mentor',
     path: '/dashboard/mentor',
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3B7DFF' : '#8E8E93'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+      </svg>
+    ),
+  },
+  {
+    label: 'Cadence',
+    path: '/dashboard/progress',
+    icon: (active: boolean) => (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? '#3B7DFF' : '#8E8E93'}>
+        <rect x="1"  y="10" width="2.5" height="4"  rx="1.25" />
+        <rect x="5"  y="7"  width="2.5" height="10" rx="1.25" />
+        <rect x="9"  y="4"  width="2.5" height="16" rx="1.25" />
+        <rect x="13" y="2"  width="2.5" height="20" rx="1.25" />
+        <rect x="17" y="5"  width="2.5" height="14" rx="1.25" />
+        <rect x="21" y="9"  width="2.5" height="6"  rx="1.25" />
       </svg>
     ),
   },

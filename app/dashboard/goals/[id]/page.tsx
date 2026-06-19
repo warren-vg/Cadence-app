@@ -4,11 +4,12 @@ import { useRouter, useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { generateGoalDetails } from '../_utils/generate'
 import {
-  getProjects, DEFAULT_WORK_SCHEDULE, recalcGoalProgressFromTasks,
+  getProjects, DEFAULT_WORK_SCHEDULE, recalcGoalProgressFromTasks, createRecurringTask,
   type DBProject, type DBMilestone,
-  getMilestonesForGoal, createMilestone, toggleMilestoneCompleted, replaceMilestonesForGoal,
+  getMilestonesForGoal, createMilestone, updateMilestone, deleteMilestone,
+  toggleMilestoneCompleted, replaceMilestonesForGoal,
 } from '@/lib/db'
-import { generateTasksForGoal } from '@/lib/goalTemplates'
+import { generateTasksForGoalV2 } from '@/lib/goalTemplates'
 import { getCatStyle } from '@/lib/planData'
 
 interface Goal {
@@ -49,7 +50,7 @@ function statusColors(status: string): { bg: string; color: string } {
 
 function SectionActions({ onAdd, onEdit, onRegenerate }: {
   onAdd?: () => void
-  onEdit: () => void
+  onEdit?: () => void
   onRegenerate: () => void
 }) {
   return (
@@ -62,13 +63,15 @@ function SectionActions({ onAdd, onEdit, onRegenerate }: {
           Add
         </button>
       )}
-      <button onClick={onEdit} style={actionBtnStyle}>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
-          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
-        </svg>
-        Edit
-      </button>
+      {onEdit && (
+        <button onClick={onEdit} style={actionBtnStyle}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          Edit
+        </button>
+      )}
       <button onClick={onRegenerate} style={actionBtnStyle}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10" />
@@ -86,33 +89,48 @@ const actionBtnStyle: React.CSSProperties = {
   fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', fontWeight: 500,
 }
 
-function MilestoneRow({ milestone, onToggle }: {
+function MilestoneRow({ milestone, onToggle, onEdit }: {
   milestone: DBMilestone
   onToggle: (id: string) => void
+  onEdit: (milestone: DBMilestone) => void
 }) {
   return (
-    <div
-      style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12 }}
-      onClick={() => onToggle(milestone.id)}
-    >
-      {milestone.completed ? (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, cursor: 'pointer' }}>
-          <circle cx="12" cy="12" r="10" fill="#F0FFF4" stroke="#16A34A" />
-          <polyline points="9 12 11 14 15 10" />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, paddingBottom: 12 }}>
+      <button
+        onClick={() => onToggle(milestone.id)}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', flexShrink: 0, display: 'flex' }}
+      >
+        {milestone.completed ? (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" fill="#F0FFF4" stroke="#16A34A" />
+            <polyline points="9 12 11 14 15 10" />
+          </svg>
+        ) : (
+          <div style={{ width: 22, height: 22, borderRadius: '50%', border: '1.5px solid #D1D1D6' }} />
+        )}
+      </button>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <span style={{
+          fontSize: 14, color: milestone.completed ? '#8E8E93' : '#1C1C1E',
+          textDecoration: milestone.completed ? 'line-through' : 'none',
+        }}>
+          {milestone.text}
+        </span>
+        {milestone.target_date && (
+          <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>
+            Due {new Date(milestone.target_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </p>
+        )}
+      </div>
+      <button
+        onClick={() => onEdit(milestone)}
+        style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', flexShrink: 0, color: '#C7C7CC' }}
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
         </svg>
-      ) : (
-        <div style={{
-          width: 22, height: 22, borderRadius: '50%',
-          border: '1.5px solid #D1D1D6', flexShrink: 0, cursor: 'pointer',
-        }} />
-      )}
-      <span style={{
-        fontSize: 14, color: milestone.completed ? '#8E8E93' : '#1C1C1E',
-        textDecoration: milestone.completed ? 'line-through' : 'none',
-        cursor: 'pointer',
-      }}>
-        {milestone.text}
-      </span>
+      </button>
     </div>
   )
 }
@@ -144,6 +162,11 @@ export default function GoalDetailPage() {
 
   const [userId, setUserId]                 = useState<string | null>(null)
 
+  // Variant counters so each Regenerate click produces a different result
+  const [refinedVariant, setRefinedVariant]       = useState(0)
+  const [milestonesVariant, setMilestonesVariant] = useState(0)
+  const [stepsVariant, setStepsVariant]           = useState(0)
+
   // Details inline edit
   const [editingDetails, setEditingDetails] = useState(false)
   const [editCategory, setEditCategory]     = useState('')
@@ -155,6 +178,12 @@ export default function GoalDetailPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting]     = useState(false)
   const [saving, setSaving]         = useState(false)
+
+  // Milestone edit modal
+  const [milestoneModal, setMilestoneModal] = useState<{ mode: 'add' | 'edit'; milestone?: DBMilestone } | null>(null)
+  const [milestoneText, setMilestoneText]   = useState('')
+  const [milestoneDate, setMilestoneDate]   = useState('')
+  const [savingMilestone, setSavingMilestone] = useState(false)
 
   const refreshProgress = useCallback(async (uid: string) => {
     const { data } = await supabase.from('goals').select('progress').eq('id', id).eq('user_id', uid).single()
@@ -272,8 +301,10 @@ export default function GoalDetailPage() {
 
   const regenerateRefined = async () => {
     if (!goal) return
+    const nextVariant = refinedVariant + 1
+    setRefinedVariant(nextVariant)
     const q = goal.quarter || currentQuarterLabel()
-    const gen = generateGoalDetails(goal.text, goal.category, q, id)
+    const gen = generateGoalDetails(goal.text, goal.category, q, id, nextVariant)
     setRefinedGoal(gen.refinedGoal)
     setMetric(gen.metric)
     setPurpose(gen.purpose)
@@ -282,18 +313,71 @@ export default function GoalDetailPage() {
 
   const regenerateMilestones = async () => {
     if (!goal || !userId) return
+    const nextVariant = milestonesVariant + 1
+    setMilestonesVariant(nextVariant)
     const q = goal.quarter || currentQuarterLabel()
-    const gen = generateGoalDetails(goal.text, goal.category, q, id)
+    const gen = generateGoalDetails(goal.text, goal.category, q, id, nextVariant)
     const ok = await replaceMilestonesForGoal(userId, id, gen.milestones.map(m => ({ text: m.text, completed: false })))
     if (ok) setMilestones(await getMilestonesForGoal(id, userId))
   }
 
   const regenerateSteps = async () => {
     if (!goal) return
+    const nextVariant = stepsVariant + 1
+    setStepsVariant(nextVariant)
     const q = goal.quarter || currentQuarterLabel()
-    const gen = generateGoalDetails(goal.text, goal.category, q, id)
+    const gen = generateGoalDetails(goal.text, goal.category, q, id, nextVariant)
     setSteps(gen.steps)
     await persist({ steps: gen.steps })
+  }
+
+  const openAddMilestone = () => {
+    setMilestoneText('')
+    setMilestoneDate('')
+    setMilestoneModal({ mode: 'add' })
+  }
+
+  const openEditMilestone = (milestone: DBMilestone) => {
+    setMilestoneText(milestone.text)
+    setMilestoneDate(milestone.target_date ?? '')
+    setMilestoneModal({ mode: 'edit', milestone })
+  }
+
+  const closeMilestoneModal = () => {
+    setMilestoneModal(null)
+    setMilestoneText('')
+    setMilestoneDate('')
+  }
+
+  const handleSaveMilestone = async () => {
+    if (!milestoneText.trim() || !userId) return
+    setSavingMilestone(true)
+    if (milestoneModal?.mode === 'add') {
+      const created = await createMilestone(userId, id, milestoneText.trim())
+      if (created) {
+        if (milestoneDate) {
+          await updateMilestone(created.id, { target_date: milestoneDate })
+        }
+        setMilestones(await getMilestonesForGoal(id, userId))
+      }
+    } else if (milestoneModal?.mode === 'edit' && milestoneModal.milestone) {
+      const ok = await updateMilestone(milestoneModal.milestone.id, {
+        text:        milestoneText.trim(),
+        target_date: milestoneDate || null,
+      })
+      if (ok) setMilestones(await getMilestonesForGoal(id, userId))
+    }
+    setSavingMilestone(false)
+    closeMilestoneModal()
+  }
+
+  const handleDeleteMilestone = async () => {
+    if (!milestoneModal?.milestone) return
+    setSavingMilestone(true)
+    const ok = await deleteMilestone(milestoneModal.milestone.id)
+    if (ok) setMilestones(prev => prev.filter(m => m.id !== milestoneModal.milestone!.id))
+    setSavingMilestone(false)
+    closeMilestoneModal()
   }
 
   const updateStatus = async (newStatus: string) => {
@@ -310,9 +394,17 @@ export default function GoalDetailPage() {
           .single()
         const energyBlocks  = (profile?.energy_blocks  as Record<string, string>) || {}
         const workSchedule  = profile?.work_schedule || DEFAULT_WORK_SCHEDULE
-        const generated = generateTasksForGoal(goal, energyBlocks, workSchedule, new Date())
+        const generated = generateTasksForGoalV2(goal, energyBlocks, workSchedule, new Date())
+        const onetimes = generated
+          .filter((g): g is Extract<typeof g, { kind: 'onetime' }> => g.kind === 'onetime')
+          .map(g => ({ ...g.task, user_id: userId }))
+        if (onetimes.length > 0) {
+          await supabase.from('tasks').insert(onetimes)
+        }
+        for (const g of generated.filter((g): g is Extract<typeof g, { kind: 'recurring' }> => g.kind === 'recurring')) {
+          await createRecurringTask(userId, g.payload.taskData, g.payload.rule)
+        }
         if (generated.length > 0) {
-          await supabase.from('tasks').insert(generated.map(t => ({ ...t, user_id: userId, source: 'auto' })))
           await recalcGoalProgressFromTasks(goal.id, userId)
         }
       } catch (e) {
@@ -484,23 +576,7 @@ export default function GoalDetailPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
           <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Milestones</span>
           <SectionActions
-            onAdd={async () => {
-              const text = prompt('New milestone:')
-              if (!text?.trim() || !userId) return
-              const created = await createMilestone(userId, id, text.trim())
-              if (created) setMilestones(prev => [...prev, created])
-            }}
-            onEdit={async () => {
-              const text = milestones.map(m => m.text).join('\n')
-              const updated = prompt('Edit milestones (one per line):', text)
-              if (updated === null || !userId) return
-              const newMilestonesData = updated.split('\n').filter(Boolean).map((t, i) => ({
-                text:      t.trim(),
-                completed: milestones[i]?.completed ?? false,
-              }))
-              const ok = await replaceMilestonesForGoal(userId, id, newMilestonesData)
-              if (ok) setMilestones(await getMilestonesForGoal(id, userId))
-            }}
+            onAdd={openAddMilestone}
             onRegenerate={regenerateMilestones}
           />
         </div>
@@ -508,7 +584,7 @@ export default function GoalDetailPage() {
           <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>No milestones yet.</p>
         ) : (
           milestones.map(m => (
-            <MilestoneRow key={m.id} milestone={m} onToggle={toggleMilestone} />
+            <MilestoneRow key={m.id} milestone={m} onToggle={toggleMilestone} onEdit={openEditMilestone} />
           ))
         )}
       </div>
@@ -793,6 +869,80 @@ export default function GoalDetailPage() {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Milestone add / edit modal */}
+      {milestoneModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }}
+          onClick={closeMilestoneModal}
+        >
+          <div
+            style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '24px 20px 44px' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D1D6', margin: '0 auto 20px' }} />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>
+                {milestoneModal.mode === 'add' ? 'Add Milestone' : 'Edit Milestone'}
+              </h2>
+              <button
+                onClick={closeMilestoneModal}
+                style={{ background: '#F2F2F7', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Milestone</p>
+              <input
+                value={milestoneText}
+                onChange={e => setMilestoneText(e.target.value)}
+                placeholder="e.g. First client signed"
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 24 }}>
+              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>
+                Target date <span style={{ fontWeight: 400, color: '#C7C7CC' }}>(optional)</span>
+              </p>
+              <input
+                type="date"
+                value={milestoneDate}
+                onChange={e => setMilestoneDate(e.target.value)}
+                style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+              />
+            </div>
+
+            <button
+              onClick={handleSaveMilestone}
+              disabled={!milestoneText.trim() || savingMilestone}
+              style={{
+                width: '100%', padding: '14px', borderRadius: 14, border: 'none',
+                background: milestoneText.trim() ? '#1C1C1E' : '#D1D1D6',
+                color: 'white', fontSize: 15, fontWeight: 600,
+                cursor: milestoneText.trim() ? 'pointer' : 'default',
+                fontFamily: 'inherit', marginBottom: 10,
+                opacity: savingMilestone ? 0.6 : 1,
+              }}
+            >
+              {savingMilestone ? 'Saving…' : milestoneModal.mode === 'add' ? 'Add Milestone' : 'Save Changes'}
+            </button>
+
+            {milestoneModal.mode === 'edit' && (
+              <button
+                onClick={handleDeleteMilestone}
+                disabled={savingMilestone}
+                style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'white', border: '0.5px solid #FECACA', color: '#DC2626', fontSize: 15, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Delete Milestone
+              </button>
+            )}
           </div>
         </div>
       )}

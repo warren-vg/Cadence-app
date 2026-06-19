@@ -3,9 +3,10 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { toDateStr, getMonday, formatTime, getCatStyle } from '@/lib/planData'
+import { dailyVariant, COPY } from '@/lib/copy'
 import {
   getTasksForDate, getTasksForWeek, toggleTask as dbToggleTask,
-  recalcGoalProgressFromTasks,
+  recalcGoalProgressFromTasks, getMorningStreak,
   type DBTask,
 } from '@/lib/db'
 
@@ -36,6 +37,16 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   actions?: ChatAction[]
+}
+
+interface MentorContext {
+  goals: Goal[]
+  todayTasks: DBTask[]
+  weekTasks: DBTask[]
+  score: number
+  username: string
+  streak: number
+  lastReflection: { wins?: string | null; challenges?: string | null } | null
 }
 
 // ─── Task Impact Descriptions ─────────────────────────────────────────────────
@@ -169,79 +180,103 @@ function generateBottomLine(tasks: DBTask[], goals: Goal[]): string {
 
 function buildMentorResponse(
   msg: string,
-  goals: Goal[],
-  todayTasks: DBTask[],
-  score: number,
-  username: string,
-  weekTasks: DBTask[],
+  ctx: MentorContext,
 ): { content: string; actions?: ChatAction[] } {
+  const { goals, todayTasks, weekTasks, score, username, streak, lastReflection } = ctx
   const lower = msg.toLowerCase()
   const firstName = username.split(' ')[0] || 'you'
   const activeGoals = goals.filter(g => g.status === 'active')
 
-  // Schedule / today queries
+  // ── Schedule / today ──────────────────────────────────────────────────────
   if (
     lower.includes('schedule') ||
-    lower.includes('what') && (lower.includes('today') || lower.includes('do i have')) ||
+    (lower.includes('what') && (lower.includes('today') || lower.includes('do i have'))) ||
     lower.includes('plan for today') ||
     lower.includes('today entail') ||
-    lower.includes('tasks today')
+    lower.includes('tasks today') ||
+    lower.includes('what should i')
   ) {
     if (todayTasks.length === 0) {
-      return {
-        content: `Your schedule for today is clear — no tasks planned yet. I'd recommend heading to your Plan tab and blocking time for your top priority. ${activeGoals[0] ? `Right now that's "${activeGoals[0].text}".` : 'Add a goal first, then we can break it into daily actions.'} Want some suggestions on how to structure the day?`,
-      }
+      const suggestion = activeGoals[0]
+        ? `The most meaningful thing you could do right now is spend an hour on "${activeGoals[0].text}". Head to Plan to add it.`
+        : `Head to your Plan tab and block some time — even one focused hour will move things forward.`
+      return { content: `Nothing's on the schedule yet today. ${suggestion}` }
     }
     const done = todayTasks.filter(t => t.completed).length
-    const taskList = todayTasks.map(t =>
-      `• ${t.text} at ${formatTime(t.scheduled_time)} (${t.duration}h, ${t.category})`
-    ).join('\n')
+    const remaining = todayTasks.filter(t => !t.completed)
+    if (done === todayTasks.length) {
+      return {
+        content: `Everything on the list today is done — ${todayTasks.length} task${todayTasks.length > 1 ? 's' : ''} complete. That's a clean day. Take a moment, then think about what would make tomorrow equally strong.`,
+      }
+    }
+    const nextUp = remaining[0]
+    const names = remaining.slice(0, 3).map(t => `"${t.text}" at ${formatTime(t.scheduled_time)}`).join(', ')
+    const moreTxt = remaining.length > 3 ? ` and ${remaining.length - 3} more` : ''
     return {
-      content: `You have ${todayTasks.length} task${todayTasks.length > 1 ? 's' : ''} scheduled for today:\n\n${taskList}\n\n${done > 0 ? `You've already completed ${done} of them — solid progress.` : `None completed yet — get started with the first one to build momentum.`} ${done === todayTasks.length && done > 0 ? "You've finished everything for today. Outstanding." : ''} Need help prioritizing?`,
+      content: `${done > 0 ? `You've finished ${done} of ${todayTasks.length} today.` : `${todayTasks.length} thing${todayTasks.length > 1 ? 's' : ''} on deck.`} Still ahead: ${names}${moreTxt}.\n\n${nextUp ? `Start with "${nextUp.text}" — it's the next one on the clock.` : ''}`,
     }
   }
 
-  // Goals / progress queries
+  // ── Goals / progress ──────────────────────────────────────────────────────
   if (
     lower.includes('goal') ||
     lower.includes('how am i doing') ||
-    lower.includes('progress') && !lower.includes('%') ||
+    (lower.includes('progress') && !lower.includes('%')) ||
     lower.includes('status')
   ) {
     if (activeGoals.length === 0) {
       return {
-        content: `You don't have any active goals right now. Head to the Goals tab to activate some from your inbox, or evaluate a new one. The clearer your targets, the better I can guide you.`,
+        content: `You don't have any active goals right now. Head to Goals, activate a few from your inbox, and I can help you build momentum around them.`,
       }
     }
     const avg = Math.round(activeGoals.reduce((s, g) => s + (g.progress || 0), 0) / activeGoals.length)
+    const sorted = [...activeGoals].sort((a, b) => (b.progress || 0) - (a.progress || 0))
+    const top = sorted[0]
+    const bottom = sorted[sorted.length - 1]
     const summary = activeGoals.slice(0, 4).map(g =>
-      `• ${g.text} — ${g.progress || 0}% (${g.category}${g.quarter ? `, ${g.quarter}` : ''})`
+      `• ${g.text} — ${g.progress || 0}%${g.quarter ? ` · ${g.quarter}` : ''}`
     ).join('\n')
+    let tone = ''
+    if (avg >= 65) {
+      tone = `You're further along than most people get. The consistency is showing.`
+    } else if (avg >= 30) {
+      tone = top !== bottom
+        ? `"${top.text}" is leading at ${top.progress || 0}%. If "${bottom.text.slice(0, 40)}" is lagging, that's worth a focused push this week.`
+        : `You're in the execution phase — the work is happening, even when it doesn't feel like much.`
+    } else {
+      tone = lastReflection?.challenges
+        ? `You mentioned some challenges recently: "${lastReflection.challenges.slice(0, 70).trim()}${lastReflection.challenges.length > 70 ? '...' : ''}" — early-stage progress can feel invisible. The compounding hasn't kicked in yet, but it will.`
+        : `Early-stage progress can feel invisible. The compounding hasn't kicked in yet, but it will.`
+    }
     return {
-      content: `Here's where you stand across your ${activeGoals.length} active goal${activeGoals.length > 1 ? 's' : ''}:\n\n${summary}\n\nAverage progress: ${avg}%. ${avg >= 60 ? "You're ahead of the curve — keep the consistency." : avg >= 30 ? "You're building momentum. Double down on your highest priority goal this week." : "These goals are still early. The key is showing up consistently — progress compounds quietly."}`,
+      content: `${activeGoals.length} active goal${activeGoals.length !== 1 ? 's' : ''}, averaging ${avg}%:\n\n${summary}\n\n${tone}`,
     }
   }
 
-  // Momentum / performance queries
+  // ── Momentum / performance ────────────────────────────────────────────────
   if (
     lower.includes('momentum') ||
     lower.includes('score') ||
     lower.includes('performing') ||
+    lower.includes('streak') ||
     lower.includes('how have i')
   ) {
     const weekDone = weekTasks.filter(t => t.completed).length
-    return {
-      content: `Your momentum score is ${score}/100 this week. You've completed ${weekDone} of ${weekTasks.length} tasks. ${
-        score >= 70
-          ? "That's strong — you're building real traction. This consistency will show in your goal progress within weeks."
-          : score >= 40
-            ? "You're in the game. To push higher, prioritize your highest-value tasks first each day — even just completing those moves the score significantly."
-            : "Momentum is built through small wins. Pick one task right now and complete it. That's how the upward spiral starts."
-      }`,
+    const streakTxt = streak > 1 ? ` You've been showing up ${streak} days in a row.` : streak === 1 ? ` Today is day 1 of a new streak.` : ''
+    let body = ''
+    if (score >= 75) {
+      body = `${weekDone} tasks done this week — ${score}/100.${streakTxt} That kind of consistency makes goals feel inevitable.`
+    } else if (score >= 45) {
+      body = `${weekDone} of ${weekTasks.length} tasks this week, ${score}/100.${streakTxt} Solid. To push it higher, lead with your highest-priority task first thing each day.`
+    } else if (score > 0) {
+      body = `${weekDone} tasks done so far, ${score}/100.${streakTxt} You're showing up — that's the foundation. Completing one important task before end of day will move the score.`
+    } else {
+      body = `Momentum is at zero this week.${streak > 0 ? '' : ' That happens.'} The cleanest way to restart: complete one task today. Just one. That breaks the pattern.`
     }
+    return { content: body }
   }
 
-  // Timeline / deadlines
+  // ── Timeline / on track ───────────────────────────────────────────────────
   if (
     lower.includes('timeline') ||
     lower.includes('deadline') ||
@@ -252,22 +287,44 @@ function buildMentorResponse(
     const withDeadlines = activeGoals.filter(g => g.quarter)
     if (withDeadlines.length === 0) {
       return {
-        content: `None of your active goals have target quarters set. I'd recommend assigning timelines so we can track whether you're on pace. Head to any goal's detail page to set one — it's the difference between a dream and a plan.`,
+        content: `None of your active goals have target quarters set. Without a timeline there's no way to know if you're on pace. Head to any goal's detail page and assign a quarter — it turns a wish into a plan.`,
       }
     }
     const onTrack = withDeadlines.filter(g => (g.progress || 0) >= 25)
     const atRisk = withDeadlines.filter(g => (g.progress || 0) < 25)
-    let response = `Timeline check on your ${withDeadlines.length} goal${withDeadlines.length > 1 ? 's' : ''} with deadlines:\n\n`
-    if (onTrack.length > 0) response += `✓ On track: ${onTrack.map(g => `${g.text.slice(0, 35)} (${g.quarter})`).join(', ')}\n`
-    if (atRisk.length > 0) response += `⚠ Needs attention: ${atRisk.map(g => `${g.text.slice(0, 35)} (${g.quarter}, ${g.progress || 0}%)`).join(', ')}`
+    let response = `Timeline check — ${withDeadlines.length} goal${withDeadlines.length > 1 ? 's' : ''} with deadlines:\n\n`
+    if (onTrack.length > 0) response += `On pace: ${onTrack.map(g => `"${g.text.slice(0, 40)}" (${g.quarter}, ${g.progress || 0}%)`).join('; ')}\n`
     if (atRisk.length > 0) {
+      response += `Needs attention: ${atRisk.map(g => `"${g.text.slice(0, 40)}" (${g.quarter}, ${g.progress || 0}%)`).join('; ')}`
       const hrs = atRisk[0].estimated_weekly_hours || 3
-      response += `\n\nFor goals at risk, I'd suggest scheduling at least ${hrs} focused hours per week and breaking them into weekly milestones. Want me to help you think through a catch-up plan?`
+      response += `\n\nFor the at-risk goal${atRisk.length > 1 ? 's' : ''}, block ${hrs}+ hours per week and treat those blocks as fixed appointments. Want help thinking through what that looks like?`
     }
     return { content: response }
   }
 
-  // Advice / suggestions / pivot
+  // ── Gap / re-entry ────────────────────────────────────────────────────────
+  if (
+    lower.includes('struggling') ||
+    lower.includes('behind') ||
+    lower.includes('falling') ||
+    lower.includes('off track') ||
+    lower.includes('lost momentum') ||
+    lower.includes('hard time') ||
+    lower.includes('haven\'t been') ||
+    lower.includes('been a while') ||
+    lower.includes('gap') ||
+    lower.includes('slipped')
+  ) {
+    const topGoal = activeGoals[0]
+    const gapRef = lastReflection?.challenges
+      ? `You mentioned "${lastReflection.challenges.slice(0, 70).trim()}${lastReflection.challenges.length > 70 ? '...' : ''}" as a recent challenge. That context matters.\n\n`
+      : ''
+    return {
+      content: `${gapRef}Re-entry after a gap is one of the most common things I see — and the fix is almost always simpler than it feels.\n\nDon't try to catch up all at once. Pick one task${topGoal ? ` on "${topGoal.text}"` : ''} and complete it today. That single action breaks the pattern. After that, the next one is easier.\n\nWhat's the smallest thing you could do in the next hour?`,
+    }
+  }
+
+  // ── Advice / suggestions ──────────────────────────────────────────────────
   if (
     lower.includes('advice') ||
     lower.includes('suggest') ||
@@ -276,37 +333,39 @@ function buildMentorResponse(
     lower.includes('what if') ||
     lower.includes('help me') ||
     lower.includes('pivot') ||
-    lower.includes('adjust') ||
-    lower.includes('struggling')
+    lower.includes('adjust')
   ) {
     const nextTask = todayTasks.find(t => !t.completed)
     const topGoal = activeGoals[0]
     let advice = ''
     if (nextTask) {
-      advice += `Your most immediate move is to complete "${nextTask.text}" — it's scheduled for ${formatTime(nextTask.scheduled_time)} and directly advances your ${nextTask.category} goal.\n\n`
+      advice += `Most immediate: "${nextTask.text}" at ${formatTime(nextTask.scheduled_time)} — directly tied to your ${nextTask.category} work.\n\n`
     }
     if (topGoal) {
       const hrs = topGoal.estimated_weekly_hours || 3
-      advice += `For your top goal — "${topGoal.text}" — aim for ${hrs} focused hours per week. `
-      if ((topGoal.progress || 0) < 30) {
-        advice += `At ${topGoal.progress || 0}% progress, the biggest lever is consistency over intensity. Short daily sessions beat occasional marathon sessions.`
-      } else if ((topGoal.progress || 0) < 70) {
-        advice += `At ${topGoal.progress || 0}% progress, you're in the execution phase. Protect your deep work blocks for this goal.`
+      const pct = topGoal.progress || 0
+      advice += `Your top goal is "${topGoal.text}" at ${pct}%. `
+      if (pct < 30) {
+        advice += `This early, what matters most is building the routine — aim for ${hrs}h/week in shorter daily sessions rather than one long push.`
+      } else if (pct < 70) {
+        advice += `You're in the hardest stretch — past the excitement, not yet at the finish. Protect your deep work blocks for this one.`
       } else {
-        advice += `At ${topGoal.progress || 0}% progress, you're in the home stretch. Don't take your foot off the gas now — finish strong.`
+        advice += `You're close. Don't let the momentum you've built slow down now — finish it.`
       }
     }
     return {
-      content: advice || `Tell me more about what you're trying to decide — I can give specific guidance with more details. What specifically are you working through?`,
+      content: advice || `I can give you specific guidance with a bit more detail. What's the decision or situation you're working through?`,
     }
   }
 
-  // Mark task complete
+  // ── Mark task done ────────────────────────────────────────────────────────
   if (
     lower.includes('mark') ||
-    lower.includes('done') && !lower.includes('how am i doing') ||
+    (lower.includes('done') && !lower.includes('how am i doing')) ||
     lower.includes('complete') ||
-    lower.includes('finish')
+    lower.includes('finish') ||
+    lower.includes('checked off') ||
+    lower.includes('knocked out')
   ) {
     const matchedTask = todayTasks.find(t =>
       !t.completed &&
@@ -314,31 +373,31 @@ function buildMentorResponse(
     )
     if (matchedTask) {
       return {
-        content: `I can mark "${matchedTask.text}" as complete. Confirm below:`,
+        content: `Got it — want me to mark "${matchedTask.text}" as complete?`,
         actions: [{
           id: `toggle-${matchedTask.id}`,
           type: 'confirm_task_done',
-          label: `✓ Mark "${matchedTask.text.slice(0, 35)}${matchedTask.text.length > 35 ? '...' : ''}" as done`,
+          label: `✓ Mark "${matchedTask.text.slice(0, 40)}${matchedTask.text.length > 40 ? '...' : ''}" as done`,
           payload: { taskId: matchedTask.id },
         }],
       }
     }
     const pending = todayTasks.filter(t => !t.completed)
-    if (pending.length === 0) return { content: `All your tasks for today are already complete! That's a great day. Start planning tomorrow or head to the weekly review.` }
-    if (pending.length > 0) {
-      return {
-        content: `Which task would you like to mark as done?`,
-        actions: pending.slice(0, 4).map(t => ({
-          id: `toggle-${t.id}`,
-          type: 'confirm_task_done' as const,
-          label: `✓ ${t.text.slice(0, 40)}${t.text.length > 40 ? '...' : ''}`,
-          payload: { taskId: t.id },
-        })),
-      }
+    if (pending.length === 0) {
+      return { content: `Everything for today is already done. Nice work.` }
+    }
+    return {
+      content: `Which task are you finishing?`,
+      actions: pending.slice(0, 4).map(t => ({
+        id: `toggle-${t.id}`,
+        type: 'confirm_task_done' as const,
+        label: `✓ ${t.text.slice(0, 42)}${t.text.length > 42 ? '...' : ''}`,
+        payload: { taskId: t.id },
+      })),
     }
   }
 
-  // Update goal progress
+  // ── Update goal progress ──────────────────────────────────────────────────
   if ((lower.includes('update') || lower.includes('set') || lower.includes('change')) && lower.includes('%')) {
     const match = msg.match(/(\d+)\s*%/)
     const pct = match ? parseInt(match[1]) : null
@@ -348,11 +407,11 @@ function buildMentorResponse(
       )
       if (matchedGoal) {
         return {
-          content: `I'll update "${matchedGoal.text}" progress to ${pct}%. Confirm:`,
+          content: `Update "${matchedGoal.text}" to ${pct}%?`,
           actions: [{
             id: `progress-${matchedGoal.id}`,
             type: 'update_goal_progress',
-            label: `Update to ${pct}%`,
+            label: `Set to ${pct}%`,
             payload: { goalId: matchedGoal.id, progress: pct },
           }],
         }
@@ -362,14 +421,14 @@ function buildMentorResponse(
         actions: activeGoals.slice(0, 4).map(g => ({
           id: `progress-${g.id}`,
           type: 'update_goal_progress' as const,
-          label: `${g.text.slice(0, 32)}... → ${pct}%`,
+          label: `${g.text.slice(0, 35)}... → ${pct}%`,
           payload: { goalId: g.id, progress: pct },
         })),
       }
     }
   }
 
-  // Pause / archive a goal
+  // ── Pause / archive ───────────────────────────────────────────────────────
   if (lower.includes('pause') || lower.includes('park') || lower.includes('archive') || lower.includes('put on hold')) {
     const newStatus = lower.includes('archive') ? 'archived' : 'parking'
     const label = newStatus === 'archived' ? 'Archive' : 'Pause'
@@ -378,7 +437,7 @@ function buildMentorResponse(
     )
     if (matchedGoal) {
       return {
-        content: `${label}ing keeps the goal in your system but removes it from your active focus. Sometimes that's the right call — capacity is a real constraint. Should I ${label.toLowerCase()} "${matchedGoal.text}"?`,
+        content: `${label}ing "${matchedGoal.text}" keeps it in your system but removes it from active focus. Sometimes clearing the plate is the right call. Should I ${label.toLowerCase()} it?`,
         actions: [{
           id: `status-${matchedGoal.id}`,
           type: 'update_goal_status',
@@ -388,47 +447,68 @@ function buildMentorResponse(
       }
     }
     return {
-      content: `Which goal are you thinking about ${label.toLowerCase()}ing? Here are your active ones:`,
+      content: `Which goal are you thinking of ${label.toLowerCase()}ing?`,
       actions: activeGoals.slice(0, 4).map(g => ({
         id: `status-${g.id}`,
         type: 'update_goal_status' as const,
-        label: `${label}: ${g.text.slice(0, 32)}...`,
+        label: `${label}: ${g.text.slice(0, 35)}`,
         payload: { goalId: g.id, status: newStatus },
       })),
     }
   }
 
-  // Priority / focus queries
+  // ── Focus / priority ──────────────────────────────────────────────────────
   if (
     lower.includes('focus') ||
     lower.includes('priorit') ||
     lower.includes('most important') ||
-    lower.includes('first')
+    lower.includes('what first') ||
+    lower.includes('where to start')
   ) {
     const nextTask = todayTasks.find(t => !t.completed)
     if (nextTask) {
       return {
-        content: `Right now, your highest priority is "${nextTask.text}" — scheduled for ${formatTime(nextTask.scheduled_time)}, ${nextTask.priority} priority, advancing your ${nextTask.category} goal.\n\nAfter that, your north star for the week is "${activeGoals[0]?.text || 'your top active goal'}". Every completed task today is a vote for who you're becoming.`,
+        content: `Start with "${nextTask.text}" — it's on for ${formatTime(nextTask.scheduled_time)} and it's your next scheduled block. After that, keep the thread going on "${activeGoals[0]?.text?.slice(0, 50) || 'your top goal'}".`,
       }
     }
     if (activeGoals[0]) {
       return {
-        content: `All of today's tasks are done — nicely done! Your next focus should be planning tomorrow around "${activeGoals[0].text}". Would you like suggestions on how to break that into tomorrow's schedule?`,
+        content: `Today's list is clear. The highest-value thing you can do right now is plan tomorrow around "${activeGoals[0].text}". Want some suggestions on how to structure it?`,
       }
     }
+    return { content: `Set your first active goal from the Goals tab, then I can give you a specific focus.` }
   }
 
-  // Greeting
-  if (lower.includes('hi') || lower.includes('hello') || lower.includes('hey') || lower.trim() === 'hey' || lower.trim() === 'hi') {
+  // ── Last week / reflection ────────────────────────────────────────────────
+  if (lower.includes('last week') || lower.includes('reflection') || lower.includes('how did i do last')) {
+    if (lastReflection) {
+      const winsPart = lastReflection.wins
+        ? `Wins: "${lastReflection.wins.slice(0, 100)}${lastReflection.wins.length > 100 ? '...' : ''}"`
+        : ''
+      const challengePart = lastReflection.challenges
+        ? `${winsPart ? '\n' : ''}Challenges: "${lastReflection.challenges.slice(0, 100)}${lastReflection.challenges.length > 100 ? '...' : ''}"`
+        : ''
+      return {
+        content: `From your last weekly reflection:\n\n${winsPart}${challengePart}\n\nIs there something from last week you want to carry forward or address this week?`,
+      }
+    }
     return {
-      content: `Hey ${firstName}! I'm fully up to speed on your goals, schedule, and progress. I can help you navigate priorities, review timelines, suggest adjustments, or just tell you where things stand. What would you like to work through?`,
+      content: `You haven't completed a weekly reflection recently. Head to Check-In → Weekly to log your wins and challenges — it's one of the most useful inputs I have for giving you relevant guidance.`,
     }
   }
 
-  // Summary fallback
+  // ── Greeting ──────────────────────────────────────────────────────────────
+  if (lower.includes('hi') || lower.includes('hello') || lower.includes('hey') || lower.trim().length < 8) {
+    const pending = todayTasks.filter(t => !t.completed).length
+    return {
+      content: `Hey ${firstName}! ${pending > 0 ? `You've got ${pending} task${pending > 1 ? 's' : ''} to work through today.` : activeGoals.length > 0 ? `${activeGoals.length} goals active.` : `No active goals yet.`} What would you like to dig into?`,
+    }
+  }
+
+  // ── Fallback ──────────────────────────────────────────────────────────────
   const pending = todayTasks.filter(t => !t.completed).length
   return {
-    content: `Here's your snapshot, ${firstName}: ${activeGoals.length} active goal${activeGoals.length !== 1 ? 's' : ''}, ${pending} task${pending !== 1 ? 's' : ''} remaining today, momentum score ${score}/100. I can speak to your schedule, goal progress, timelines, or help you think through any adjustments. What would you like to dig into?`,
+    content: `${firstName}, here's where things stand: ${activeGoals.length} active goal${activeGoals.length !== 1 ? 's' : ''}, ${pending} task${pending !== 1 ? 's' : ''} remaining today, momentum ${score}/100${streak > 1 ? `, ${streak}-day streak` : ''}. I can speak to your schedule, goal progress, timelines, or help you think through adjustments. What do you need?`,
   }
 }
 
@@ -452,6 +532,8 @@ export default function MentorPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [score, setScore] = useState(0)
   const [username, setUsername] = useState('')
+  const [streak, setStreak] = useState(0)
+  const [lastReflection, setLastReflection] = useState<{ wins?: string | null; challenges?: string | null } | null>(null)
   const [insight, setInsight] = useState('')
   const [loading, setLoading] = useState(true)
   const [needleOpen, setNeedleOpen] = useState(false)
@@ -460,27 +542,55 @@ export default function MentorPage() {
   const [typing, setTyping] = useState(false)
   const chatEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const sessionIdRef = useRef<string>('')
 
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const [{ data: profile }, { data: goalsData }] = await Promise.all([
-        supabase.from('profiles').select('username').eq('id', user.id).single(),
+      // Generate a per-page-visit session ID for grouping new messages
+      sessionIdRef.current = crypto.randomUUID()
+
+      const [
+        profileResult,
+        goalsResult,
+        historyResult,
+        fetchedStreak,
+        reflectionResult,
+      ] = await Promise.all([
+        supabase.from('profiles').select('full_name').eq('id', user.id).single(),
         supabase.from('goals').select('*').eq('user_id', user.id).order('priority', { ascending: true }),
+        supabase.from('mentor_messages')
+          .select('role, content')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true })
+          .limit(20),
+        getMorningStreak(user.id),
+        supabase.from('weekly_reflections')
+          .select('wins, challenges')
+          .eq('user_id', user.id)
+          .order('week_of', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ])
 
-      const name = profile?.username || ''
-      const fetchedGoals: Goal[] = goalsData || []
+      const name         = profileResult.data?.full_name || ''
+      const firstName    = name.split(' ')[0] || 'there'
+      const fetchedGoals: Goal[] = goalsResult.data || []
+      const historyData  = historyResult.data || []
+      const reflection   = reflectionResult.data
+        ? { wins: reflectionResult.data.wins, challenges: reflectionResult.data.challenges }
+        : null
+
       const todayStr = toDateStr(new Date())
-      const monday = getMonday(new Date())
+      const monday   = getMonday(new Date())
       const [todayData, weekData] = await Promise.all([
         getTasksForDate(user.id, todayStr),
         getTasksForWeek(user.id, monday),
       ])
       const completedInWeek = weekData.filter(t => t.completed).length
-      const momentumScore = weekData.length > 0 ? Math.round((completedInWeek / weekData.length) * 100) : 0
+      const momentumScore   = weekData.length > 0 ? Math.round((completedInWeek / weekData.length) * 100) : 0
 
       setUserId(user.id)
       setUsername(name)
@@ -488,23 +598,42 @@ export default function MentorPage() {
       setTodayTasks(todayData)
       setWeekTasks(weekData)
       setScore(momentumScore)
+      setStreak(fetchedStreak)
+      setLastReflection(reflection)
       setInsight(generateInsight(fetchedGoals, todayData, momentumScore))
 
-      const firstName  = name.split(' ')[0] || 'there'
+      // Reconstruct history as ChatMessage objects
+      const historyMessages: ChatMessage[] = historyData.map((m, i) => ({
+        id: `history-${i}`,
+        role: m.role as 'user' | 'assistant',
+        content: m.content || '',
+      }))
+
       const activeGoals  = fetchedGoals.filter(g => g.status === 'active')
-      const doneToday    = todayData.filter(t => t.completed).length
       const avgProgress  = activeGoals.length > 0
         ? Math.round(activeGoals.reduce((s, g) => s + (g.progress || 0), 0) / activeGoals.length)
         : 0
-      const openingContent = activeGoals.length > 0
-        ? `Hi ${firstName}! Here's where you stand:\n\n• ${activeGoals.length} active goal${activeGoals.length !== 1 ? 's' : ''} · ${avgProgress}% avg progress\n• ${todayData.length} task${todayData.length !== 1 ? 's' : ''} today · ${doneToday} completed\n• Momentum: ${momentumScore}/100\n\n${generateInsight(fetchedGoals, todayData, momentumScore)}\n\nAsk me about your goals, today's schedule, timelines, or anything you need to think through.`
-        : `Hi ${firstName}! I'm your Cadence mentor — I'm connected to your goals, schedule, and progress. You don't have any active goals yet. Head to the Goals tab to set some up and I'll help you build a plan around them. What's on your mind?`
-      setMessages([{
-        id: 'init',
-        role: 'assistant',
-        content: openingContent,
-      }])
+      const doneToday    = todayData.filter(t => t.completed).length
+      const hasHistory   = historyMessages.length > 0
 
+      let openingMessage: ChatMessage
+      if (hasHistory) {
+        // Returning user — brief welcome back with current snapshot
+        openingMessage = {
+          id: 'welcome-back',
+          role: 'assistant',
+          content: `Welcome back, ${firstName}. ${activeGoals.length > 0 ? `${activeGoals.length} active goal${activeGoals.length !== 1 ? 's' : ''} · ${avgProgress}% avg · ${momentumScore}/100 momentum${fetchedStreak > 1 ? ` · ${fetchedStreak}-day streak` : ''}.` : `No active goals yet.`} What's on your mind?`,
+        }
+      } else {
+        // First-time user — full contextual greeting
+        const openingContent = activeGoals.length > 0
+          ? `Hi ${firstName}! Here's where you stand:\n\n• ${activeGoals.length} active goal${activeGoals.length !== 1 ? 's' : ''} · ${avgProgress}% avg progress\n• ${todayData.length} task${todayData.length !== 1 ? 's' : ''} today · ${doneToday} completed\n• Momentum: ${momentumScore}/100\n\n${generateInsight(fetchedGoals, todayData, momentumScore)}\n\nAsk me about your goals, today's schedule, timelines, or anything you need to think through.`
+          : `Hi ${firstName}! I'm your Cadence mentor — I'm connected to your goals, schedule, and progress. You don't have any active goals yet. Head to the Goals tab to set some up and I'll help you build a plan around them. What's on your mind?`
+        openingMessage = { id: 'init', role: 'assistant', content: openingContent }
+      }
+
+      // Show the last 10 history messages + opening message
+      setMessages([...historyMessages.slice(-10), openingMessage])
       setLoading(false)
     }
     init()
@@ -571,10 +700,10 @@ export default function MentorPage() {
       id: `confirm-${Date.now()}`,
       role: 'assistant',
       content: action.type === 'confirm_task_done'
-        ? `Done! Task marked as complete. Your momentum score has been updated.`
+        ? `Done — task marked as complete.`
         : action.type === 'update_goal_progress'
-          ? `Progress updated to ${(action.payload as { progress: number }).progress}%. Keep pushing.`
-          : `Goal status updated. Your active goals list has been refreshed.`,
+          ? `Progress updated to ${(action.payload as { progress: number }).progress}%.`
+          : `Goal status updated.`,
     }
     setMessages(prev => [...prev, confirmMsg])
   }
@@ -588,10 +717,11 @@ export default function MentorPage() {
     setMessages(prev => [...prev, userMsg])
     setTyping(true)
 
-    // Simulate processing delay
+    // Simulate a natural thinking pause
     await new Promise(r => setTimeout(r, 900 + Math.random() * 600))
 
-    const response = buildMentorResponse(text, goals, todayTasks, score, username, weekTasks)
+    const ctx: MentorContext = { goals, todayTasks, weekTasks, score, username, streak, lastReflection }
+    const response = buildMentorResponse(text, ctx)
     const assistantMsg: ChatMessage = {
       id: `assistant-${Date.now()}`,
       role: 'assistant',
@@ -601,6 +731,14 @@ export default function MentorPage() {
 
     setTyping(false)
     setMessages(prev => [...prev, assistantMsg])
+
+    // Persist both sides of the exchange to mentor_messages
+    if (userId && sessionIdRef.current) {
+      await supabase.from('mentor_messages').insert([
+        { user_id: userId, session_id: sessionIdRef.current, role: 'user',      content: text },
+        { user_id: userId, session_id: sessionIdRef.current, role: 'assistant', content: response.content },
+      ])
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -628,7 +766,7 @@ export default function MentorPage() {
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Your Mentor</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3 }}>Guidance tailored to your journey</p>
+        <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3 }}>{dailyVariant(COPY.mentor_subtitle, userId || '')}</p>
       </div>
 
       {/* Today's Insight Card */}

@@ -1,5 +1,4 @@
 import BottomNav from './components/BottomNav'
-import NotificationBell from './components/NotificationBell'
 import UsernameBackfillModal from './components/UsernameBackfillModal'
 import TourShell from './components/TourShell'
 import { RewardProvider } from './components/RewardContext'
@@ -16,8 +15,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}>
           {/* Blocks app access for users without a @username (post-migration backfill) */}
           <UsernameBackfillModal />
-          {/* floating=true: renders on every page except /dashboard (home handles it inline) */}
-          <NotificationBell floating />
           <div style={{ maxWidth: 480, margin: '0 auto', paddingBottom: 88 }}>
             {children}
           </div>

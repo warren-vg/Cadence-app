@@ -270,7 +270,7 @@ export default function SettingsPage() {
       return
     }
     const firstName = (name || '').split(' ')[0] || 'user'
-    setModalValue(currentUsername ?? '')
+    setModalValue('')
     setModalStatus('idle')
     setShowUsernameModal(true)
     setModalLoadingSuggs(true)

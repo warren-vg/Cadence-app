@@ -274,6 +274,24 @@ export async function replaceMilestonesForGoal(
   return true
 }
 
+export async function updateMilestone(
+  milestoneId: string,
+  updates: { text?: string; target_date?: string | null }
+): Promise<boolean> {
+  const { error } = await supabase
+    .from('milestones')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', milestoneId)
+  if (error) { console.error('updateMilestone:', error.message); return false }
+  return true
+}
+
+export async function deleteMilestone(milestoneId: string): Promise<boolean> {
+  const { error } = await supabase.from('milestones').delete().eq('id', milestoneId)
+  if (error) { console.error('deleteMilestone:', error.message); return false }
+  return true
+}
+
 // ─── Schedule CRUD ────────────────────────────────────────────────────────────
 
 export async function getScheduleForDate(userId: string, dateStr: string): Promise<DBScheduleItem[]> {

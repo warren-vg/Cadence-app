@@ -2,8 +2,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { createGoal, replaceMilestonesForGoal, DEFAULT_WORK_SCHEDULE } from '@/lib/db'
-import { generateTasksForGoal } from '@/lib/goalTemplates'
+import { createGoal, replaceMilestonesForGoal, DEFAULT_WORK_SCHEDULE, createRecurringTask, recalcGoalProgressFromTasks } from '@/lib/db'
+import { dailyVariant, COPY } from '@/lib/copy'
+import { generateTasksForGoalV2 } from '@/lib/goalTemplates'
 import EmptyState from '@/app/dashboard/components/EmptyState'
 
 type TabType = 'inbox' | 'active' | 'parked' | 'archived'
@@ -293,16 +294,23 @@ export default function GoalsPage() {
           .single()
         const energyBlocks = (profile?.energy_blocks as Record<string, string>) || {}
         const workSchedule = profile?.work_schedule || DEFAULT_WORK_SCHEDULE
-        const seedTasks = generateTasksForGoal(
+        const generated = generateTasksForGoalV2(
           { ...created, project_id: newLinkedProjectId },
           energyBlocks,
           workSchedule,
           new Date(),
         )
-        if (seedTasks.length > 0) {
-          await supabase.from('tasks').insert(
-            seedTasks.map(t => ({ ...t, user_id: userId, source: 'auto' as const }))
-          )
+        const onetimes = generated
+          .filter((g): g is Extract<typeof g, { kind: 'onetime' }> => g.kind === 'onetime')
+          .map(g => ({ ...g.task, user_id: userId }))
+        if (onetimes.length > 0) {
+          await supabase.from('tasks').insert(onetimes)
+        }
+        for (const g of generated.filter((g): g is Extract<typeof g, { kind: 'recurring' }> => g.kind === 'recurring')) {
+          await createRecurringTask(userId, g.payload.taskData, g.payload.rule)
+        }
+        if (generated.length > 0) {
+          await recalcGoalProgressFromTasks(created.id, userId)
         }
       } catch (e) {
         console.warn('Seed task generation failed:', e)
@@ -347,7 +355,7 @@ export default function GoalsPage() {
       <div style={{ marginBottom: 16 }}>
         <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Goals</h1>
         <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3, marginBottom: 0 }}>
-          Track and refine your priorities
+          {dailyVariant(COPY.goals_subtitle, userId || '')}
         </p>
       </div>
 
@@ -453,7 +461,7 @@ export default function GoalsPage() {
               'Nothing archived'
             }
             body={
-              activeTab === 'active' ? 'Goals are the foundation of your Cadence. Add one to start building real momentum.' :
+              activeTab === 'active' ? dailyVariant(COPY.goals_empty_body, userId || '') :
               activeTab === 'inbox'  ? 'Goals you evaluate and save will appear here before you activate them.' :
               activeTab === 'parked' ? 'Paused goals live here. Resume them whenever the time is right.' :
               'Goals you\'ve archived will appear here.'
