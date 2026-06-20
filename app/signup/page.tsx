@@ -17,7 +17,7 @@ export default function SignupPage() {
     const { data, error: signupError } = await supabase.auth.signUp({ email, password })
     if (signupError) { setError(signupError.message); setLoading(false); return }
     if (data.user) {
-      await supabase.from('profiles').insert({ id: data.user.id, full_name: name, onboarding_complete: false })
+      await supabase.from('profiles').insert({ id: data.user.id, full_name: name, onboarding_complete: false, first_run_completed: false })
     }
     router.push('/onboarding/goals')
   }

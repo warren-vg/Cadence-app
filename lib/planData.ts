@@ -48,7 +48,7 @@ export function formatTime(hhmm: string): string {
 /** Convert "HH:MM" → total minutes. Throws on invalid format. */
 export function timeToMinutes(hhmm: string): number {
   const parts = hhmm.split(':')
-  if (parts.length !== 2) throw new Error(`Invalid time format: ${hhmm}`)
+  if (parts.length < 2) throw new Error(`Invalid time format: ${hhmm}`)
   const h = parseInt(parts[0], 10)
   const m = parseInt(parts[1], 10)
   if (isNaN(h) || isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {

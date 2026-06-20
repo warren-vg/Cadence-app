@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function WelcomePage() {
   const features = [
@@ -30,20 +31,14 @@ export default function WelcomePage() {
       }}
     >
       {/* App Icon */}
-      <div
-        style={{
-          width: 80,
-          height: 80,
-          background: '#3B7DFF',
-          borderRadius: 20,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          marginBottom: 20,
-        }}
-      >
-        <span style={{ color: 'white', fontSize: 36 }}>✦</span>
-      </div>
+      <Image
+        src="/app-icon.png"
+        alt="Cadence"
+        width={80}
+        height={80}
+        style={{ borderRadius: 20, marginBottom: 20 }}
+        priority
+      />
 
       {/* Title */}
       <h1
