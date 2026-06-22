@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   toDateStr, getMonday, addDays, getCatStyle, formatTime,
@@ -36,6 +36,8 @@ export default function PlanPage() {
   const [goals, setGoals]             = useState<GoalRow[]>([])
   const [mounted, setMounted]         = useState(false)
   const [userId, setUserId]           = useState<string | null>(null)
+  const touchStartX = useRef(0)
+  const touchStartY = useRef(0)
 
   // Load user + goals once
   useEffect(() => {
@@ -159,7 +161,23 @@ export default function PlanPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div
+            key={weekOffset}
+            className="card-enter"
+            onTouchStart={e => {
+              touchStartX.current = e.touches[0].clientX
+              touchStartY.current = e.touches[0].clientY
+            }}
+            onTouchEnd={e => {
+              const dx = e.changedTouches[0].clientX - touchStartX.current
+              const dy = e.changedTouches[0].clientY - touchStartY.current
+              if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                if (dx > 0) setWeekOffset(o => o - 1)
+                else setWeekOffset(o => o + 1)
+              }
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+          >
             {DAY_FULL.map((dayName, i) => {
               const date    = addDays(weekMonday, i)
               const dateStr = toDateStr(date)
@@ -215,12 +233,14 @@ export default function PlanPage() {
           <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
             <button
               onClick={() => router.push('/dashboard/plan/weekly')}
+              className="card-press"
               style={{ flex: 1, padding: '14px', borderRadius: 14, background: '#1C1C1E', border: 'none', color: 'white', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Edit Weekly Plan
             </button>
             <button
               onClick={() => router.push('/dashboard/plan/schedule')}
+              className="card-press"
               style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Manage Schedule
@@ -231,7 +251,20 @@ export default function PlanPage() {
 
       {/* ── DAILY VIEW ── */}
       {view === 'Daily' && (
-        <>
+        <div
+          onTouchStart={e => {
+            touchStartX.current = e.touches[0].clientX
+            touchStartY.current = e.touches[0].clientY
+          }}
+          onTouchEnd={e => {
+            const dx = e.changedTouches[0].clientX - touchStartX.current
+            const dy = e.changedTouches[0].clientY - touchStartY.current
+            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+              if (dx > 0) setDayOffset(o => o - 1)
+              else setDayOffset(o => o + 1)
+            }
+          }}
+        >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
             <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Today&apos;s Schedule</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -256,7 +289,7 @@ export default function PlanPage() {
             />
           ) : (
           <>
-          <div className="card-enter" style={{ background: 'white', borderRadius: 20, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+          <div key={dayOffset} className="card-enter" style={{ background: 'white', borderRadius: 20, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
             {dailyTasks.map((task, i) => {
                 const catStyle = getCatStyle(task.category)
                 return (
@@ -283,13 +316,14 @@ export default function PlanPage() {
 
           <button
             onClick={() => router.push(`/dashboard/plan/daily?date=${targetDayStr}`)}
+            className="card-press"
             style={{ width: '100%', padding: '14px', borderRadius: 14, background: '#1C1C1E', border: 'none', color: 'white', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             View Detailed Daily Plan
           </button>
           </>
           )}
-        </>
+        </div>
       )}
 
       {/* ── MONTHLY VIEW ── */}
@@ -367,6 +401,7 @@ export default function PlanPage() {
 
           <button
             onClick={() => router.push('/dashboard/plan/quarterly')}
+            className="card-press"
             style={{ width: '100%', marginTop: 16, padding: '14px', borderRadius: 14, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             View Quarterly Planner

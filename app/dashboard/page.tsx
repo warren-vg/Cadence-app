@@ -116,6 +116,48 @@ function DonutChart({ planned, total, size = 96 }: { planned: number; total: num
   )
 }
 
+function useCountUp(target: number, duration = 600): number {
+  const [value, setValue] = useState(0)
+  const prevTarget = useRef(0)
+  useEffect(() => {
+    const from = prevTarget.current
+    prevTarget.current = target
+    if (from === target) return
+    const start = performance.now()
+    let rafId: number
+    const step = (time: number) => {
+      const t = Math.min((time - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setValue(Math.round(from + eased * (target - from)))
+      if (t < 1) rafId = requestAnimationFrame(step)
+    }
+    rafId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(rafId)
+  }, [target, duration])
+  return value
+}
+
+function useCountUpFloat(target: number, duration = 600): number {
+  const [value, setValue] = useState(0)
+  const prevTarget = useRef(0)
+  useEffect(() => {
+    const from = prevTarget.current
+    prevTarget.current = target
+    if (from === target) return
+    const start = performance.now()
+    let rafId: number
+    const step = (time: number) => {
+      const t = Math.min((time - start) / duration, 1)
+      const eased = 1 - Math.pow(1 - t, 3)
+      setValue(Math.round((from + eased * (target - from)) * 10) / 10)
+      if (t < 1) rafId = requestAnimationFrame(step)
+    }
+    rafId = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(rafId)
+  }, [target, duration])
+  return value
+}
+
 const MOVE_KEY = (d: string) => `cadence_move_${d}`
 const SKIP_KEY = (d: string) => `cadence_move_skipped_${d}`
 const EVE_KEY  = (d: string) => `cadence_evening_${d}`
@@ -148,6 +190,7 @@ export default function DashboardPage() {
   const [eveningIntention, setEveningIntention] = useState('')
   const [eveningLogged, setEveningLogged] = useState(false)
   const [currentHour] = useState(() => new Date().getHours())
+  const [completingTaskIds, setCompletingTaskIds] = useState<Set<string>>(new Set())
   const carouselRef = useRef<HTMLDivElement>(null)
 
   // Load Meaningful Move state from localStorage
@@ -251,6 +294,12 @@ export default function DashboardPage() {
   // ── Task toggle ─────────────────────────────────────────────────────────────
 
   const handleToggleTask = async (task: DBTask) => {
+    if (!task.completed) {
+      setCompletingTaskIds(prev => new Set([...prev, task.id]))
+      setTimeout(() => setCompletingTaskIds(prev => {
+        const next = new Set(prev); next.delete(task.id); return next
+      }), 350)
+    }
     setTodayTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t))
     setWeekTasks(prev => prev.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t))
     const ok = await dbToggleTask(task.id, task.completed)
@@ -316,6 +365,11 @@ export default function DashboardPage() {
     totalHours:     Math.round(weekTasks.reduce((s, t) => s + t.duration, 0) * 10) / 10,
   }
 
+  const animTotalToday    = useCountUp(totalToday)
+  const animTodayPlanned  = useCountUpFloat(todayPlannedHours)
+  const animStreak        = useCountUp(streak)
+  const animMomentumScore = useCountUp(momentumScore)
+
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -352,6 +406,7 @@ export default function DashboardPage() {
           <NotificationBell />
           <button
             onClick={() => router.push('/dashboard/settings')}
+            className="card-press"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -365,9 +420,9 @@ export default function DashboardPage() {
       {/* ── Morning Touchpoint stat cards (always visible) ──────────────── */}
       <div className="card-enter" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
         {[
-          { label: 'TASKS TODAY', value: String(totalToday) },
-          { label: 'PLANNED',     value: `${todayPlannedHours}h` },
-          { label: 'DAY STREAK',  value: streak > 0 ? `${streak} 🔥` : '—' },
+          { label: 'TASKS TODAY', value: String(animTotalToday) },
+          { label: 'PLANNED',     value: `${animTodayPlanned}h` },
+          { label: 'DAY STREAK',  value: streak > 0 ? `${animStreak} 🔥` : '—' },
         ].map(card => (
           <div key={card.label} style={{
             background: 'white', borderRadius: 16, padding: '12px 8px',
@@ -568,6 +623,7 @@ export default function DashboardPage() {
             <button
               onClick={() => moveTask && handleToggleTask(moveTask)}
               disabled={!moveTask}
+              className="card-press"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 background: '#3B7DFF', border: 'none', borderRadius: 12,
@@ -700,6 +756,7 @@ export default function DashboardPage() {
               localStorage.setItem(EVE_KEY(d), JSON.stringify({ learned: eveningLearned, intention: eveningIntention, logged: true }))
               setEveningLogged(true)
             }}
+            className="card-press"
             style={{
               width: '100%', background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
               border: 'none', borderRadius: 16, padding: '14px',
@@ -775,6 +832,7 @@ export default function DashboardPage() {
                   >
                     <button
                       onClick={() => handleToggleTask(task)}
+                      className={`card-press${completingTaskIds.has(task.id) ? ' check-bounce' : ''}`}
                       style={{
                         width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
                         background: task.completed ? 'white' : 'transparent',
@@ -810,6 +868,7 @@ export default function DashboardPage() {
 
             <button
               onClick={() => router.push(`/dashboard/plan/daily?date=${toDateStr(new Date())}`)}
+              className="card-press"
               style={{
                 width: '100%', background: 'rgba(255,255,255,0.15)', border: 'none',
                 borderRadius: 12, padding: '10px', color: 'white', fontSize: 13, fontWeight: 600,
@@ -823,7 +882,11 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Momentum Score Card ─────────────────────────────────────────── */}
-          <div className="card-enter" style={{ animationDelay: '160ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+          <div
+            className="card-enter card-press card-hover"
+            onClick={() => router.push('/dashboard/progress')}
+            style={{ animationDelay: '160ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)', cursor: 'pointer' }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(255,149,0,0.20), 0 1px 2px rgba(0,0,0,0.06)' }}>
@@ -836,7 +899,7 @@ export default function DashboardPage() {
                   <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>Tasks completed vs planned</p>
                 </div>
               </div>
-              <span style={{ fontSize: 28, fontWeight: 700, color: '#FF9500', fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px' }}>{momentumScore}</span>
+              <span style={{ fontSize: 28, fontWeight: 700, color: '#FF9500', fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px' }}>{animMomentumScore}</span>
             </div>
 
             <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, marginBottom: 10, overflow: 'hidden' }}>
@@ -879,7 +942,7 @@ export default function DashboardPage() {
                   </svg>
                   <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Top Priorities</h2>
                 </div>
-                <button onClick={() => router.push('/dashboard/goals')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
+                <button onClick={() => router.push('/dashboard/goals')} className="card-press" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
                   View All
                 </button>
               </div>
@@ -917,7 +980,7 @@ export default function DashboardPage() {
                 </svg>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>This Week</h2>
               </div>
-              <button onClick={() => router.push('/dashboard/plan')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
+              <button onClick={() => router.push('/dashboard/plan')} className="card-press" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
                 Edit Plan
               </button>
             </div>
@@ -967,6 +1030,24 @@ export default function DashboardPage() {
                 </p>
               </div>
             )}
+
+            <button
+              onClick={() => router.push('/dashboard/mentor')}
+              className="card-press"
+              style={{
+                width: '100%', marginTop: 14, padding: '12px',
+                borderRadius: 14, background: '#F5F3FF',
+                border: '1px solid rgba(139,92,246,0.18)',
+                color: '#7C3AED', fontSize: 14, fontWeight: 600,
+                cursor: 'pointer', fontFamily: 'inherit',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
+              </svg>
+              Meet with my Mentor
+            </button>
           </div>
 
           {/* ── Weekly Review Card ──────────────────────────────────────────── */}
@@ -991,6 +1072,7 @@ export default function DashboardPage() {
                   <p style={{ fontSize: 13, color: '#B45309', margin: '4px 0 12px' }}>Reflect on this week&apos;s progress and set your focus for next week.</p>
                   <button
                     onClick={() => router.push('/dashboard/check-in/weekly')}
+                    className="card-press"
                     style={{ background: 'white', border: '1px solid #D97706', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#D97706', cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     Start Review
@@ -1011,6 +1093,7 @@ export default function DashboardPage() {
       {/* ── FAB ──────────────────────────────────────────────────────────────── */}
       <button
         onClick={() => setShowQuickAdd(true)}
+        className="card-press"
         style={{
           position: 'fixed', bottom: 80, right: 20, width: 52, height: 52, borderRadius: '50%',
           background: '#3B7DFF', border: 'none', cursor: 'pointer',
@@ -1077,6 +1160,7 @@ export default function DashboardPage() {
                 <button
                   key={item.label}
                   onClick={item.onClick}
+                  className="card-press"
                   style={{
                     display: 'flex', alignItems: 'center', gap: 14,
                     padding: '14px 16px', borderRadius: 16,
@@ -1203,6 +1287,7 @@ export default function DashboardPage() {
             {/* View My Cadence */}
             <button
               onClick={() => { setShowCompletionModal(false); router.push(`/dashboard/plan/daily?date=${toDateStr(new Date())}`) }}
+              className="card-press"
               style={{
                 width: '100%', background: 'white', border: 'none', borderRadius: 16,
                 padding: '14px', color: '#3B52FF', fontSize: 15, fontWeight: 700,

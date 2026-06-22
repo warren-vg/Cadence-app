@@ -116,10 +116,45 @@ body {
   box-shadow: 0 0 0 3px rgba(59, 125, 255, 0.12) !important;
 }
 
+/* ── Completion check-bounce ── */
+@keyframes check-bounce {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.22); }
+  65%  { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+.check-bounce {
+  animation: check-bounce 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Nav icon active pulse ── */
+@keyframes icon-pulse {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18); }
+  70%  { transform: scale(0.94); }
+  100% { transform: scale(1); }
+}
+.icon-pulse {
+  animation: icon-pulse 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Card hover lift (pointer/mouse devices only) ── */
+@media (hover: hover) {
+  .card-hover {
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.10), 0 2px 8px rgba(0, 0, 0, 0.06) !important;
+  }
+}
+
 /* ── Respect reduced-motion preferences ── */
 @media (prefers-reduced-motion: reduce) {
   .card-enter            { animation: none !important; opacity: 1 !important; transform: none !important; }
   .card-press:active     { transform: none !important; }
   .card-glass-shimmer::after,
   .card-glass-shimmer-light::after { animation: none !important; }
+  .check-bounce, .icon-pulse { animation: none !important; }
+  .card-hover:hover      { transform: none !important; }
 }

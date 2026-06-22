@@ -124,7 +124,11 @@ export default function BottomNav() {
                   transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 }} />
               )}
-              <span style={{ position: 'relative', lineHeight: 0 }}>
+              <span
+                key={active ? 'active' : 'inactive'}
+                className={active ? 'icon-pulse' : undefined}
+                style={{ position: 'relative', lineHeight: 0 }}
+              >
                 {tab.icon(active)}
               </span>
               <span style={{
