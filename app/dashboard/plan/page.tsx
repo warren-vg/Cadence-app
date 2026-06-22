@@ -120,7 +120,7 @@ export default function PlanPage() {
       {/* View Switcher */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-        background: 'white', borderRadius: 14, padding: '4px',
+        background: 'white', borderRadius: 16, padding: '4px',
         border: '0.5px solid #E5E5EA', marginBottom: 20,
       }}>
         {(['Daily', 'Weekly', 'Monthly'] as ViewMode[]).map(v => (
@@ -128,7 +128,7 @@ export default function PlanPage() {
             key={v}
             onClick={() => setView(v)}
             style={{
-              padding: '9px 0', borderRadius: 10,
+              padding: '9px 0', borderRadius: 12,
               background: view === v ? '#3B7DFF' : 'transparent',
               border: 'none',
               fontSize: 14, fontWeight: view === v ? 600 : 400,
@@ -172,8 +172,10 @@ export default function PlanPage() {
                 <button
                   key={i}
                   onClick={() => router.push(`/dashboard/plan/daily?date=${dateStr}`)}
+                  className="card-enter card-press"
                   style={{
-                    background: 'white', borderRadius: 16, padding: '16px 18px',
+                    animationDelay: `${i * 45}ms`,
+                    background: 'white', borderRadius: 20, padding: '16px 18px',
                     border: isToday ? '2px solid #3B7DFF' : '0.5px solid #E5E5EA',
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -254,7 +256,7 @@ export default function PlanPage() {
             />
           ) : (
           <>
-          <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+          <div className="card-enter" style={{ background: 'white', borderRadius: 20, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
             {dailyTasks.map((task, i) => {
                 const catStyle = getCatStyle(task.category)
                 return (
@@ -321,7 +323,7 @@ export default function PlanPage() {
                   : new Date(rawDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 const monthTaskCount = Math.round(weeklyHrs * 4)
                 return (
-                  <div key={goal.id} style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+                  <div key={goal.id} className="card-enter" style={{ animationDelay: `${goals.indexOf(goal) * 60}ms`, background: 'white', borderRadius: 20, padding: '18px', border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                       <div style={{ flex: 1, paddingRight: 12 }}>
                         <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>{goal.text}</p>
@@ -347,7 +349,7 @@ export default function PlanPage() {
                     </div>
 
                     <div style={{ height: 6, background: '#F2F2F7', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${goal.progress || 0}%`, background: '#3B7DFF', borderRadius: 4 }} />
+                      <div style={{ height: '100%', width: `${goal.progress || 0}%`, background: 'linear-gradient(90deg, #3B52FF, #3B7DFF)', borderRadius: 4 }} />
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

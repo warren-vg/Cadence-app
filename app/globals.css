@@ -25,7 +25,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
 }
 
-/* ── Glass shimmer overlay for dark gradient cards (blue, purple, orange) ── */
+/* ── Glass shimmer overlay for dark gradient cards ── */
 .card-glass-shimmer {
   position: absolute;
   inset: 0;
@@ -52,7 +52,7 @@ body {
   animation: glass-breathe 4.5s ease-in-out infinite;
 }
 
-/* ── Glass shimmer for light/pastel gradient cards (lavender, mint) ── */
+/* ── Glass shimmer for light/pastel gradient cards ── */
 .card-glass-shimmer-light {
   position: absolute;
   inset: 0;
@@ -82,4 +82,44 @@ body {
 @keyframes glass-breathe {
   0%, 100% { opacity: 0.55; }
   50%       { opacity: 1;    }
+}
+
+/* ── Card entrance animation ── */
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card-enter {
+  animation: card-enter 0.30s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ── Card press state ── */
+.card-press {
+  transition: transform 0.12s ease, box-shadow 0.12s ease !important;
+}
+
+.card-press:active {
+  transform: scale(0.97) !important;
+}
+
+/* ── Input / textarea focus glow ── */
+.cadence-input:focus {
+  outline: none !important;
+  border-color: #3B7DFF !important;
+  box-shadow: 0 0 0 3px rgba(59, 125, 255, 0.12) !important;
+}
+
+/* ── Respect reduced-motion preferences ── */
+@media (prefers-reduced-motion: reduce) {
+  .card-enter            { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .card-press:active     { transform: none !important; }
+  .card-glass-shimmer::after,
+  .card-glass-shimmer-light::after { animation: none !important; }
 }

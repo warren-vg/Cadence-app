@@ -90,7 +90,7 @@ function ActionBtn({
         flex: wide ? 1 : 1,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         padding: '9px 12px',
-        background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 10,
+        background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 12,
         fontSize: 13, fontWeight: 500, color: '#3C3C43',
         cursor: 'pointer', fontFamily: 'inherit',
       }}
@@ -112,7 +112,7 @@ function GoalCard({
   const catStyle = getCatStyle(goal.category)
   return (
     <div style={{
-      background: 'white', borderRadius: 16, padding: '16px',
+      background: 'white', borderRadius: 20, padding: '16px',
       border: '0.5px solid #E5E5EA',
       boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
     }}>
@@ -166,8 +166,8 @@ function GoalCard({
           <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, overflow: 'hidden' }}>
             <div style={{
               height: '100%', width: `${goal.progress || 0}%`,
-              background: '#3B7DFF', borderRadius: 4,
-              transition: 'width 0.4s ease',
+              background: 'linear-gradient(90deg, #3B52FF, #3B7DFF)',
+              borderRadius: 4, transition: 'width 0.4s ease',
             }} />
           </div>
         </div>
@@ -364,7 +364,7 @@ export default function GoalsPage() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
         <div style={{
           flex: 1, display: 'flex', alignItems: 'center', gap: 8,
-          background: 'white', borderRadius: 12, border: '0.5px solid #E5E5EA',
+          background: 'white', borderRadius: 14, border: '0.5px solid #E5E5EA',
           padding: '10px 14px',
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -383,7 +383,7 @@ export default function GoalsPage() {
         </div>
         <button
           style={{
-            width: 44, height: 44, borderRadius: 12,
+            width: 44, height: 44, borderRadius: 14,
             background: 'white', border: '0.5px solid #E5E5EA',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', flexShrink: 0,
@@ -402,7 +402,7 @@ export default function GoalsPage() {
         onClick={() => router.push('/dashboard/goals/evaluate')}
         style={{
           width: '100%', background: 'linear-gradient(135deg, #3B52FF 0%, #8B5CF6 100%)',
-          borderRadius: 16, padding: '18px 20px', marginBottom: 16,
+          borderRadius: 20, padding: '18px 20px', marginBottom: 16,
           border: '1px solid rgba(255,255,255,0.18)', cursor: 'pointer',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           fontFamily: 'inherit', textAlign: 'left', boxSizing: 'border-box',
@@ -427,7 +427,7 @@ export default function GoalsPage() {
       {/* Tabs */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-        background: 'white', borderRadius: 12, padding: '4px',
+        background: 'white', borderRadius: 16, padding: '4px',
         border: '0.5px solid #E5E5EA', marginBottom: 16,
       }}>
         {tabs.map(tab => (
@@ -435,12 +435,13 @@ export default function GoalsPage() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              padding: '7px 4px', borderRadius: 8,
+              padding: '7px 4px',
               border: 'none',
               background: activeTab === tab ? '#3B7DFF' : 'transparent',
               fontSize: 13, fontWeight: activeTab === tab ? 600 : 400,
               color: activeTab === tab ? 'white' : '#8E8E93',
               cursor: 'pointer', fontFamily: 'inherit',
+              borderRadius: 12,
               boxShadow: activeTab === tab ? '0 2px 10px rgba(59,125,255,0.28), 0 1px 3px rgba(0,0,0,0.10)' : 'none',
               transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
             }}
@@ -476,14 +477,15 @@ export default function GoalsPage() {
             onCta={() => activeTab === 'active' || activeTab === 'inbox' ? openNewGoal() : setActiveTab('active')}
           />
         ) : (
-          filteredGoals.map(goal => (
-            <GoalCard
-              key={goal.id}
-              goal={goal}
-              tab={activeTab}
-              onNavigate={() => router.push(`/dashboard/goals/${goal.id}`)}
-              onStatusChange={updateStatus}
-            />
+          filteredGoals.map((goal, i) => (
+            <div key={goal.id} className="card-enter" style={{ animationDelay: `${Math.min(i, 6) * 70}ms` }}>
+              <GoalCard
+                goal={goal}
+                tab={activeTab}
+                onNavigate={() => router.push(`/dashboard/goals/${goal.id}`)}
+                onStatusChange={updateStatus}
+              />
+            </div>
           ))
         )}
       </div>
@@ -513,7 +515,7 @@ export default function GoalsPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', background: 'white', borderRadius: '20px 20px 0 0', maxHeight: '92vh', overflowY: 'auto', paddingBottom: 40 }}
+            style={{ width: '100%', background: 'white', borderRadius: '28px 28px 0 0', maxHeight: '92vh', overflowY: 'auto', paddingBottom: 40 }}
           >
             {/* Drag handle */}
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
@@ -544,8 +546,9 @@ export default function GoalsPage() {
                   placeholder="e.g. Launch a new podcast in 6 months with 10 episodes"
                   value={newTitle}
                   onChange={e => setNewTitle(e.target.value)}
+                  className="cadence-input"
                   style={{
-                    width: '100%', padding: '12px 14px', borderRadius: 12,
+                    width: '100%', padding: '12px 14px', borderRadius: 14,
                     border: '1px solid #E5E5EA', fontSize: 15, color: '#1C1C1E',
                     fontFamily: 'inherit', outline: 'none', background: '#F9F9F9', boxSizing: 'border-box',
                   }}
@@ -564,7 +567,7 @@ export default function GoalsPage() {
                         key={cat}
                         onClick={() => setNewCategory(cat)}
                         style={{
-                          padding: '10px 8px', borderRadius: 12, border: 'none',
+                          padding: '10px 8px', borderRadius: 16, border: 'none',
                           background: selected ? cs.color : '#F2F2F7',
                           cursor: 'pointer', fontFamily: 'inherit',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -767,8 +770,9 @@ export default function GoalsPage() {
                   value={newNotes}
                   onChange={e => setNewNotes(e.target.value)}
                   rows={3}
+                  className="cadence-input"
                   style={{
-                    width: '100%', padding: '12px 14px', borderRadius: 12,
+                    width: '100%', padding: '12px 14px', borderRadius: 14,
                     border: '1px solid #E5E5EA', fontSize: 15, color: '#1C1C1E',
                     fontFamily: 'inherit', outline: 'none', background: '#F9F9F9',
                     resize: 'none', boxSizing: 'border-box',
@@ -781,7 +785,7 @@ export default function GoalsPage() {
                 onClick={handleCreateGoal}
                 disabled={!newTitle.trim() || creatingGoal}
                 style={{
-                  width: '100%', padding: '15px 0', borderRadius: 14,
+                  width: '100%', padding: '15px 0', borderRadius: 16,
                   background: !newTitle.trim() || creatingGoal ? '#D1D1D6' : '#3B7DFF',
                   border: 'none', color: 'white', fontSize: 16, fontWeight: 600,
                   cursor: !newTitle.trim() || creatingGoal ? 'default' : 'pointer',

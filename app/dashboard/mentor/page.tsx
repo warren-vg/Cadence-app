@@ -770,9 +770,10 @@ export default function MentorPage() {
       </div>
 
       {/* Today's Insight Card */}
-      <div style={{
+      <div className="card-enter" style={{
+        animationDelay: '60ms',
         background: 'linear-gradient(135deg, #6B3FFF 0%, #3B7DFF 100%)',
-        borderRadius: 20, padding: '20px', marginBottom: 14,
+        borderRadius: 24, padding: '20px', marginBottom: 14,
         position: 'relative', overflow: 'hidden',
         border: '1px solid rgba(255,255,255,0.18)',
         boxShadow: '0 4px 24px rgba(107,63,255,0.24), 0 1px 4px rgba(59,125,255,0.14)',
@@ -799,8 +800,9 @@ export default function MentorPage() {
       </div>
 
       {/* Moving the Needle Card */}
-      <div style={{
-        background: 'white', borderRadius: 20, marginBottom: 14,
+      <div className="card-enter" style={{
+        animationDelay: '140ms',
+        background: 'white', borderRadius: 24, marginBottom: 14,
         border: '0.5px solid #E5E5EA', overflow: 'hidden',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
       }}>
@@ -864,7 +866,7 @@ export default function MentorPage() {
                     )
                     return (
                       <div key={task.id} style={{
-                        background: '#FAFAFA', borderRadius: 14, padding: '14px',
+                        background: '#FAFAFA', borderRadius: 16, padding: '14px',
                         border: task.completed ? '1px solid #D1FAE5' : '0.5px solid #E5E5EA',
                         opacity: task.completed ? 0.7 : 1,
                       }}>
@@ -926,8 +928,9 @@ export default function MentorPage() {
       </div>
 
       {/* Ask Your Mentor */}
-      <div style={{
-        background: 'white', borderRadius: 20, marginBottom: 14,
+      <div className="card-enter" style={{
+        animationDelay: '220ms',
+        background: 'white', borderRadius: 24, marginBottom: 14,
         border: '0.5px solid #E5E5EA', overflow: 'hidden',
         boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
       }}>
@@ -1051,6 +1054,7 @@ export default function MentorPage() {
                 onChange={e => setInputText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask about your goals, schedule, or progress."
+                className="cadence-input"
                 style={{
                   flex: 1, border: 'none', outline: 'none', background: 'transparent',
                   fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit',

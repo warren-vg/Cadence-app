@@ -363,14 +363,14 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Morning Touchpoint stat cards (always visible) ──────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+      <div className="card-enter" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
         {[
           { label: 'TASKS TODAY', value: String(totalToday) },
           { label: 'PLANNED',     value: `${todayPlannedHours}h` },
           { label: 'DAY STREAK',  value: streak > 0 ? `${streak} 🔥` : '—' },
         ].map(card => (
           <div key={card.label} style={{
-            background: 'white', borderRadius: 14, padding: '12px 8px',
+            background: 'white', borderRadius: 16, padding: '12px 8px',
             border: '0.5px solid #E5E5EA', textAlign: 'center',
             boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
           }}>
@@ -432,7 +432,7 @@ export default function DashboardPage() {
                       scrollSnapAlign: 'center',
                       flexShrink: 0,
                       background: 'white',
-                      borderRadius: 20,
+                      borderRadius: 24,
                       padding: '20px 18px 18px',
                       border: isActive ? '2px solid #3B7DFF' : '1.5px solid #E5E5EA',
                       boxShadow: isActive ? '0 4px 20px rgba(59,125,255,0.12)' : '0 2px 8px rgba(0,0,0,0.04)',
@@ -441,7 +441,7 @@ export default function DashboardPage() {
                     }}
                   >
                     <span style={{
-                      fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+                      fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 24,
                       background: tCat.bg, color: tCat.color, display: 'inline-block', marginBottom: 12,
                     }}>
                       {task.category || 'Task'}
@@ -498,8 +498,9 @@ export default function DashboardPage() {
           <button
             onClick={() => selectedTask && selectMove(selectedTask)}
             disabled={!selectedTask}
+            className="card-press"
             style={{
-              width: '100%', background: '#3B7DFF', border: 'none', borderRadius: 14,
+              width: '100%', background: '#3B7DFF', border: 'none', borderRadius: 16,
               padding: '16px', color: 'white', fontSize: 16, fontWeight: 700,
               cursor: selectedTask ? 'pointer' : 'default', fontFamily: 'inherit',
               marginBottom: 10, opacity: selectedTask ? 1 : 0.5,
@@ -526,7 +527,7 @@ export default function DashboardPage() {
         <div
           data-tour="home-meaningful-move"
           style={{
-            background: 'white', borderRadius: 20, padding: '20px 20px 20px 24px',
+            background: 'white', borderRadius: 24, padding: '20px 20px 20px 24px',
             marginBottom: 14, border: '1.5px solid #3B7DFF',
             boxShadow: '0 4px 20px rgba(59,125,255,0.10)',
             position: 'relative', overflow: 'hidden',
@@ -543,7 +544,7 @@ export default function DashboardPage() {
             </p>
             {moveCat && (
               <span style={{
-                fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+                fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 24,
                 background: moveCat.bg, color: moveCat.color,
               }}>
                 {meaningfulMove.category}
@@ -569,7 +570,7 @@ export default function DashboardPage() {
               disabled={!moveTask}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: '#3B7DFF', border: 'none', borderRadius: 10,
+                background: '#3B7DFF', border: 'none', borderRadius: 12,
                 padding: '10px 18px', color: 'white', fontSize: 14, fontWeight: 600,
                 cursor: moveTask ? 'pointer' : 'default', fontFamily: 'inherit',
               }}
@@ -599,7 +600,7 @@ export default function DashboardPage() {
       {isEvening && meaningfulMove && !eveningLogged && (
         <div style={{
           background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
-          borderRadius: 20, padding: '20px', marginBottom: 14,
+          borderRadius: 24, padding: '20px', marginBottom: 14,
           border: '1px solid rgba(221,214,254,0.7)',
           position: 'relative', overflow: 'hidden',
           boxShadow: '0 4px 20px rgba(124,58,237,0.10), 0 1px 4px rgba(124,58,237,0.06)',
@@ -618,7 +619,7 @@ export default function DashboardPage() {
           </p>
 
           {/* Summary stats */}
-          <div style={{ background: 'white', borderRadius: 14, padding: '16px', marginBottom: 12 }}>
+          <div style={{ background: 'white', borderRadius: 16, padding: '16px', marginBottom: 12 }}>
             <p style={{ fontSize: 9, fontWeight: 700, color: '#8E8E93', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 12px' }}>
               Today&apos;s summary
             </p>
@@ -637,7 +638,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Meaningful Move Insight card */}
-          <div style={{ background: 'white', borderRadius: 14, padding: '14px 16px', marginBottom: 14 }}>
+          <div style={{ background: 'white', borderRadius: 16, padding: '14px 16px', marginBottom: 14 }}>
             <p style={{ fontSize: 9, fontWeight: 700, color: '#7C3AED', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 10px' }}>
               Meaningful Move Insight
             </p>
@@ -649,13 +650,13 @@ export default function DashboardPage() {
                 fontSize: 11, fontWeight: 600, flexShrink: 0,
                 color: meaningfulMove.completed ? '#34C759' : '#FF9500',
                 background: meaningfulMove.completed ? 'rgba(52,199,89,0.12)' : 'rgba(255,149,0,0.12)',
-                padding: '3px 10px', borderRadius: 20,
+                padding: '3px 10px', borderRadius: 24,
               }}>
                 {meaningfulMove.completed ? 'Complete' : 'In progress'}
               </span>
             </div>
             {moveCat && (
-              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: moveCat.bg, color: moveCat.color, display: 'inline-block', marginTop: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 24, background: moveCat.bg, color: moveCat.color, display: 'inline-block', marginTop: 8 }}>
                 {meaningfulMove.category}
               </span>
             )}
@@ -701,7 +702,7 @@ export default function DashboardPage() {
             }}
             style={{
               width: '100%', background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-              border: 'none', borderRadius: 14, padding: '14px',
+              border: 'none', borderRadius: 16, padding: '14px',
               color: 'white', fontSize: 15, fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10,
             }}
@@ -728,9 +729,11 @@ export default function DashboardPage() {
           {/* ── Today's Focus Card ──────────────────────────────────────────── */}
           <div
             data-tour="home-today-card"
+            className="card-enter"
             style={{
+              animationDelay: '80ms',
               background: 'linear-gradient(135deg, #3B52FF 0%, #2D7DFF 100%)',
-              borderRadius: 20, padding: '20px', marginBottom: 14, color: 'white',
+              borderRadius: 24, padding: '20px', marginBottom: 14, color: 'white',
               position: 'relative', overflow: 'hidden',
               border: '1px solid rgba(255,255,255,0.18)',
               boxShadow: '0 4px 24px rgba(59,82,255,0.22), 0 1px 4px rgba(59,82,255,0.12)',
@@ -743,7 +746,7 @@ export default function DashboardPage() {
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: '2px 0 0' }}>Today&apos;s Focus</h2>
               </div>
               <span style={{
-                background: 'rgba(255,255,255,0.2)', borderRadius: 20,
+                background: 'rgba(255,255,255,0.2)', borderRadius: 24,
                 padding: '4px 10px', fontSize: 12, fontWeight: 600,
               }}>
                 {completedToday}/{totalToday} Done
@@ -809,7 +812,7 @@ export default function DashboardPage() {
               onClick={() => router.push(`/dashboard/plan/daily?date=${toDateStr(new Date())}`)}
               style={{
                 width: '100%', background: 'rgba(255,255,255,0.15)', border: 'none',
-                borderRadius: 10, padding: '10px', color: 'white', fontSize: 13, fontWeight: 600,
+                borderRadius: 12, padding: '10px', color: 'white', fontSize: 13, fontWeight: 600,
                 cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 gap: 6, fontFamily: 'inherit',
               }}
@@ -820,7 +823,7 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Momentum Score Card ─────────────────────────────────────────── */}
-          <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+          <div className="card-enter" style={{ animationDelay: '160ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(255,149,0,0.20), 0 1px 2px rgba(0,0,0,0.06)' }}>
@@ -839,7 +842,11 @@ export default function DashboardPage() {
             <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, marginBottom: 10, overflow: 'hidden' }}>
               <div style={{
                 height: '100%', width: `${momentumScore}%`,
-                background: momentumScore >= 60 ? '#34C759' : momentumScore >= 30 ? '#FF9500' : '#FF3B30',
+                background: momentumScore >= 60
+                  ? 'linear-gradient(90deg, #22C55E, #34C759)'
+                  : momentumScore >= 30
+                  ? 'linear-gradient(90deg, #F59E0B, #FF9500)'
+                  : 'linear-gradient(90deg, #EF4444, #FF3B30)',
                 borderRadius: 4, transition: 'width 0.6s ease',
               }} />
             </div>
@@ -864,7 +871,7 @@ export default function DashboardPage() {
               />
             </div>
           ) : (
-            <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+            <div className="card-enter" style={{ animationDelay: '240ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -902,7 +909,7 @@ export default function DashboardPage() {
           )}
 
           {/* ── This Week Card ──────────────────────────────────────────────── */}
-          <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+          <div className="card-enter" style={{ animationDelay: '320ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -964,7 +971,7 @@ export default function DashboardPage() {
 
           {/* ── Weekly Review Card ──────────────────────────────────────────── */}
           {reviewState.state === 'countdown' && (
-            <div style={{ background: '#F8F8FC', borderRadius: 20, padding: '14px 18px', marginBottom: 14, border: '0.5px solid #E5E5EA', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: '#F8F8FC', borderRadius: 24, padding: '14px 18px', marginBottom: 14, border: '0.5px solid #E5E5EA', display: 'flex', alignItems: 'center', gap: 12 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
               </svg>
@@ -974,7 +981,7 @@ export default function DashboardPage() {
             </div>
           )}
           {reviewState.state === 'open' && (
-            <div style={{ background: '#FFFBEB', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '1px solid #FDE68A' }}>
+            <div style={{ background: '#FFFBEB', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '1px solid #FDE68A' }}>
               <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
                   <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
@@ -993,7 +1000,7 @@ export default function DashboardPage() {
             </div>
           )}
           {reviewState.state === 'complete' && (
-            <div style={{ background: '#F0FFF4', borderRadius: 20, padding: '14px 18px', marginBottom: 14, border: '0.5px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: '#F0FFF4', borderRadius: 24, padding: '14px 18px', marginBottom: 14, border: '0.5px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: 12 }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                 <polyline points="20 6 9 17 4 12" />
               </svg>
@@ -1077,7 +1084,7 @@ export default function DashboardPage() {
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
                   }}
                 >
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 2px 8px ${item.color}30, 0 1px 2px rgba(0,0,0,0.06)` }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 16, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 2px 8px ${item.color}30, 0 1px 2px rgba(0,0,0,0.06)` }}>
                     {item.icon}
                   </div>
                   <div>
@@ -1107,7 +1114,7 @@ export default function DashboardPage() {
             onClick={e => e.stopPropagation()}
             style={{
               background: 'linear-gradient(160deg, #3B52FF 0%, #1D3399 100%)',
-              borderRadius: 28, padding: '32px 24px 28px',
+              borderRadius: 32, padding: '32px 24px 28px',
               width: '100%', maxWidth: 400,
               textAlign: 'center', position: 'relative',
               overflow: 'hidden',
@@ -1157,7 +1164,7 @@ export default function DashboardPage() {
             }}>
               {moveCat && (
                 <span style={{
-                  fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+                  fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 24,
                   background: moveCat.bg, color: moveCat.color,
                   display: 'inline-block', marginBottom: 10,
                 }}>
@@ -1171,7 +1178,7 @@ export default function DashboardPage() {
                 <span style={{
                   fontSize: 11, fontWeight: 600, color: '#34C759',
                   background: 'rgba(52,199,89,0.18)',
-                  padding: '3px 10px', borderRadius: 20, flexShrink: 0,
+                  padding: '3px 10px', borderRadius: 24, flexShrink: 0,
                   display: 'flex', alignItems: 'center', gap: 4,
                 }}>
                   <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#34C759' }} />
@@ -1197,7 +1204,7 @@ export default function DashboardPage() {
             <button
               onClick={() => { setShowCompletionModal(false); router.push(`/dashboard/plan/daily?date=${toDateStr(new Date())}`) }}
               style={{
-                width: '100%', background: 'white', border: 'none', borderRadius: 14,
+                width: '100%', background: 'white', border: 'none', borderRadius: 16,
                 padding: '14px', color: '#3B52FF', fontSize: 15, fontWeight: 700,
                 cursor: 'pointer', fontFamily: 'inherit', marginBottom: 12,
               }}

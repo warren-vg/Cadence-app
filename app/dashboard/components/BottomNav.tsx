@@ -78,13 +78,13 @@ export default function BottomNav() {
       {/* Pill card: pointer-events re-enabled */}
       <div style={{
         width: '100%',
-        maxWidth: 440,
+        maxWidth: 370,
         display: 'flex',
         alignItems: 'center',
         background: 'rgba(255, 255, 255, 0.82)',
         backdropFilter: 'blur(20px) saturate(180%)',
         WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-        borderRadius: 28,
+        borderRadius: 9999,
         border: '0.5px solid rgba(255, 255, 255, 0.65)',
         boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)',
         padding: '6px 8px',
@@ -118,7 +118,7 @@ export default function BottomNav() {
                 <span style={{
                   position: 'absolute',
                   inset: 0,
-                  borderRadius: 18,
+                  borderRadius: 9999,
                   background: 'rgba(59, 125, 255, 0.10)',
                   boxShadow: '0 2px 12px rgba(59, 125, 255, 0.18)',
                   transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',

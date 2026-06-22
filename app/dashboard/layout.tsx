@@ -9,7 +9,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <TourShell>
       <RewardProvider>
         <div style={{
-          background: '#F2F2F7',
+          background: 'radial-gradient(ellipse at 50% -8%, #E8EAF6 0%, #F2F2F7 58%)',
           minHeight: '100vh',
           fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif',
         }}>
