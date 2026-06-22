@@ -114,6 +114,7 @@ function GoalCard({
     <div style={{
       background: 'white', borderRadius: 16, padding: '16px',
       border: '0.5px solid #E5E5EA',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
     }}>
       {/* Badges row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -353,7 +354,7 @@ export default function GoalsPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Goals</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0, letterSpacing: '-0.4px' }}>Goals</h1>
         <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3, marginBottom: 0 }}>
           {dailyVariant(COPY.goals_subtitle, userId || '')}
         </p>
@@ -402,11 +403,14 @@ export default function GoalsPage() {
         style={{
           width: '100%', background: 'linear-gradient(135deg, #3B52FF 0%, #8B5CF6 100%)',
           borderRadius: 16, padding: '18px 20px', marginBottom: 16,
-          border: 'none', cursor: 'pointer',
+          border: '1px solid rgba(255,255,255,0.18)', cursor: 'pointer',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           fontFamily: 'inherit', textAlign: 'left', boxSizing: 'border-box',
+          position: 'relative', overflow: 'hidden',
+          boxShadow: '0 4px 24px rgba(59,82,255,0.22), 0 1px 4px rgba(139,92,246,0.15)',
         }}
       >
+        <div className="card-glass-shimmer" />
         <div>
           <p style={{ fontSize: 16, fontWeight: 700, color: 'white', margin: 0 }}>
             Evaluate a New Goal
@@ -432,11 +436,13 @@ export default function GoalsPage() {
             onClick={() => setActiveTab(tab)}
             style={{
               padding: '7px 4px', borderRadius: 8,
-              border: activeTab === tab ? '1.5px solid #1C1C1E' : '1.5px solid transparent',
-              background: 'transparent',
+              border: 'none',
+              background: activeTab === tab ? '#3B7DFF' : 'transparent',
               fontSize: 13, fontWeight: activeTab === tab ? 600 : 400,
-              color: activeTab === tab ? '#1C1C1E' : '#8E8E93',
+              color: activeTab === tab ? 'white' : '#8E8E93',
               cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: activeTab === tab ? '0 2px 10px rgba(59,125,255,0.28), 0 1px 3px rgba(0,0,0,0.10)' : 'none',
+              transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
             }}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}

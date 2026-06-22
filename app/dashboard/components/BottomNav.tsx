@@ -63,20 +63,38 @@ export default function BottomNav() {
   const router = useRouter()
 
   return (
+    /* Outer wrapper: fixed, full-width, pointer-events none so page scrolls through the gap */
     <div style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0,
-      background: 'white',
-      borderTop: '0.5px solid #D1D1D6',
+      position: 'fixed',
+      bottom: 0, left: 0, right: 0,
+      paddingBottom: 'calc(12px + env(safe-area-inset-bottom))',
+      paddingLeft: 20, paddingRight: 20,
+      paddingTop: 12,
+      zIndex: 100,
+      pointerEvents: 'none',
       display: 'flex',
       justifyContent: 'center',
-      zIndex: 100,
-      paddingBottom: 'env(safe-area-inset-bottom)',
     }}>
-      <div style={{ display: 'flex', width: '100%', maxWidth: 480, margin: '0 auto' }}>
+      {/* Pill card: pointer-events re-enabled */}
+      <div style={{
+        width: '100%',
+        maxWidth: 440,
+        display: 'flex',
+        alignItems: 'center',
+        background: 'rgba(255, 255, 255, 0.82)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        borderRadius: 28,
+        border: '0.5px solid rgba(255, 255, 255, 0.65)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06)',
+        padding: '6px 8px',
+        pointerEvents: 'all',
+      }}>
         {tabs.map(tab => {
           const active = tab.path === '/dashboard'
             ? pathname === '/dashboard'
             : pathname.startsWith(tab.path)
+
           return (
             <button
               key={tab.path}
@@ -87,15 +105,36 @@ export default function BottomNav() {
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '10px 0 8px',
+                padding: '7px 4px',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
-                gap: 3,
+                gap: 2,
+                position: 'relative',
               }}
             >
-              {tab.icon(active)}
-              <span style={{ fontSize: 10, fontWeight: active ? 600 : 400, color: active ? '#3B7DFF' : '#8E8E93' }}>
+              {/* Selected backing pill with glow */}
+              {active && (
+                <span style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: 18,
+                  background: 'rgba(59, 125, 255, 0.10)',
+                  boxShadow: '0 2px 12px rgba(59, 125, 255, 0.18)',
+                  transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                }} />
+              )}
+              <span style={{ position: 'relative', lineHeight: 0 }}>
+                {tab.icon(active)}
+              </span>
+              <span style={{
+                position: 'relative',
+                fontSize: 10,
+                fontWeight: active ? 600 : 400,
+                color: active ? '#3B7DFF' : '#8E8E93',
+                letterSpacing: active ? '-0.1px' : 0,
+                transition: 'color 0.2s ease, font-weight 0.2s ease',
+              }}>
                 {tab.label}
               </span>
             </button>

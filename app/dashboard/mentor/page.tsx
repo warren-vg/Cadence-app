@@ -765,7 +765,7 @@ export default function MentorPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Your Mentor</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0, letterSpacing: '-0.4px' }}>Your Mentor</h1>
         <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3 }}>{dailyVariant(COPY.mentor_subtitle, userId || '')}</p>
       </div>
 
@@ -773,8 +773,12 @@ export default function MentorPage() {
       <div style={{
         background: 'linear-gradient(135deg, #6B3FFF 0%, #3B7DFF 100%)',
         borderRadius: 20, padding: '20px', marginBottom: 14,
+        position: 'relative', overflow: 'hidden',
+        border: '1px solid rgba(255,255,255,0.18)',
+        boxShadow: '0 4px 24px rgba(107,63,255,0.24), 0 1px 4px rgba(59,125,255,0.14)',
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <div className="card-glass-shimmer" />
+        <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
             <SparkleIcon size={16} />
             <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>
@@ -785,11 +789,11 @@ export default function MentorPage() {
         </div>
         <p style={{
           fontSize: 18, fontWeight: 700, color: 'white', margin: 0, lineHeight: 1.45,
-          letterSpacing: '-0.2px',
+          letterSpacing: '-0.3px', position: 'relative',
         }}>
           {insight}
         </p>
-        <div style={{ marginTop: 16 }}>
+        <div style={{ marginTop: 16, position: 'relative' }}>
           <SparkleIcon size={14} color="rgba(255,255,255,0.3)" />
         </div>
       </div>
@@ -798,6 +802,7 @@ export default function MentorPage() {
       <div style={{
         background: 'white', borderRadius: 20, marginBottom: 14,
         border: '0.5px solid #E5E5EA', overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
       }}>
         <button
           onClick={() => setNeedleOpen(o => !o)}
@@ -810,6 +815,7 @@ export default function MentorPage() {
           <div style={{
             width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
             background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 10px rgba(22,163,74,0.20), 0 1px 2px rgba(0,0,0,0.06)',
           }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
@@ -866,6 +872,7 @@ export default function MentorPage() {
                           <div style={{
                             width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
                             background: catStyle.bg, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            boxShadow: `0 2px 8px ${catStyle.color}30, 0 1px 2px rgba(0,0,0,0.05)`,
                           }}>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={catStyle.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill={catStyle.color} />
@@ -900,8 +907,11 @@ export default function MentorPage() {
                 <div style={{
                   background: 'linear-gradient(135deg, #F0FDFA 0%, #ECFDF5 100%)',
                   borderRadius: 14, padding: '14px 16px',
-                  border: '1px solid #A7F3D0',
+                  border: '1px solid rgba(167,243,208,0.8)',
+                  position: 'relative', overflow: 'hidden',
+                  boxShadow: '0 2px 12px rgba(16,185,129,0.10)',
                 }}>
+                  <div className="card-glass-shimmer-light" />
                   <p style={{ fontSize: 13, fontWeight: 700, color: '#065F46', margin: '0 0 6px' }}>
                     Bottom Line
                   </p>
@@ -919,12 +929,26 @@ export default function MentorPage() {
       <div style={{
         background: 'white', borderRadius: 20, marginBottom: 14,
         border: '0.5px solid #E5E5EA', overflow: 'hidden',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
       }}>
-        <div style={{ padding: '18px 20px 14px' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Ask Your Mentor</h2>
-          <p style={{ fontSize: 13, color: '#8E8E93', margin: '3px 0 0' }}>
-            Get insights about your goals, schedule, and progress
-          </p>
+        <div style={{ padding: '18px 20px 14px', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+            background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 10px rgba(107,63,255,0.20), 0 1px 3px rgba(0,0,0,0.06)',
+          }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B3FFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="9" r="5" />
+              <path d="M9 14.5A3 3 0 009 20h6a3 3 0 000-5.5" />
+              <line x1="12" y1="18" x2="12" y2="21" />
+            </svg>
+          </div>
+          <div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Ask Your Mentor</h2>
+            <p style={{ fontSize: 13, color: '#8E8E93', margin: '2px 0 0' }}>
+              Get personalized advice anytime
+            </p>
+          </div>
         </div>
 
         {/* Chat Messages */}

@@ -166,12 +166,12 @@ export default function UsernameOnboardingPage() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('username, full_name')
+        .select('username, full_name, onboarding_complete')
         .eq('id', user.id)
         .single()
 
-      // Already has a handle — skip this step
-      if (profile?.username) { router.replace('/dashboard'); return }
+      // Onboarding already finished — skip this step
+      if (profile?.onboarding_complete) { router.replace('/dashboard'); return }
 
       setUserId(user.id)
       const name = (profile?.full_name ?? '').split(' ')[0] || 'user'

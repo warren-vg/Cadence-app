@@ -113,7 +113,7 @@ export default function PlanPage() {
 
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Plan</h1>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0, letterSpacing: '-0.4px' }}>Plan</h1>
         <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3, marginBottom: 0 }}>Your schedule and timeline</p>
       </div>
 
@@ -134,7 +134,8 @@ export default function PlanPage() {
               fontSize: 14, fontWeight: view === v ? 600 : 400,
               color: view === v ? 'white' : '#8E8E93',
               cursor: 'pointer', fontFamily: 'inherit',
-              transition: 'all 0.15s',
+              boxShadow: view === v ? '0 2px 10px rgba(59,125,255,0.28), 0 1px 3px rgba(0,0,0,0.10)' : 'none',
+              transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
             }}
           >
             {v}
@@ -176,6 +177,7 @@ export default function PlanPage() {
                     border: isToday ? '2px solid #3B7DFF' : '0.5px solid #E5E5EA',
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    boxShadow: isToday ? '0 4px 20px rgba(59,125,255,0.12), 0 1px 3px rgba(0,0,0,0.05)' : '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04)',
                   }}
                 >
                   <div>
@@ -199,7 +201,7 @@ export default function PlanPage() {
                     )}
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontSize: 22, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>{dayTasks.length}</p>
+                    <p style={{ fontSize: 22, fontWeight: 700, color: '#1C1C1E', margin: 0, fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.3px' }}>{dayTasks.length}</p>
                     <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>tasks · {hours}h</p>
                   </div>
                 </button>
@@ -252,7 +254,7 @@ export default function PlanPage() {
             />
           ) : (
           <>
-          <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16 }}>
+          <div style={{ background: 'white', borderRadius: 16, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
             {dailyTasks.map((task, i) => {
                 const catStyle = getCatStyle(task.category)
                 return (
@@ -319,7 +321,7 @@ export default function PlanPage() {
                   : new Date(rawDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 const monthTaskCount = Math.round(weeklyHrs * 4)
                 return (
-                  <div key={goal.id} style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA' }}>
+                  <div key={goal.id} style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                       <div style={{ flex: 1, paddingRight: 12 }}>
                         <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>{goal.text}</p>

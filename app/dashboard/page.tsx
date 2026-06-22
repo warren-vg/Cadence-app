@@ -341,11 +341,11 @@ export default function DashboardPage() {
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0, letterSpacing: '-0.4px' }}>
             {greeting}, {firstName}
           </h1>
           <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3 }}>
-            {showCarousel ? dateLabel : dailyVariant(COPY.state2_subtitle, userId || '')}
+            {dateLabel}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginTop: 2 }}>
@@ -362,38 +362,35 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {showCarousel ? (
-        /* ═══════════════════════════════════════════════════════════════════════
-           STATE 1 — Morning Touchpoint: "Choose your move"
-           ═══════════════════════════════════════════════════════════════════════ */
-        <>
-          {/* Three summary stat cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 24 }}>
-            {[
-              { label: 'TASKS TODAY', value: String(totalToday) },
-              { label: 'PLANNED',     value: `${todayPlannedHours}h` },
-              { label: 'DAY STREAK',  value: streak > 0 ? `${streak} 🔥` : '—' },
-            ].map(card => (
-              <div key={card.label} style={{
-                background: 'white', borderRadius: 14, padding: '12px 8px',
-                border: '0.5px solid #E5E5EA', textAlign: 'center',
-              }}>
-                <p style={{ fontSize: 9, fontWeight: 600, color: '#8E8E93', letterSpacing: 0.5, margin: 0, textTransform: 'uppercase' }}>
-                  {card.label}
-                </p>
-                <p style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '4px 0 0', lineHeight: 1 }}>
-                  {card.value}
-                </p>
-              </div>
-            ))}
+      {/* ── Morning Touchpoint stat cards (always visible) ──────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
+        {[
+          { label: 'TASKS TODAY', value: String(totalToday) },
+          { label: 'PLANNED',     value: `${todayPlannedHours}h` },
+          { label: 'DAY STREAK',  value: streak > 0 ? `${streak} 🔥` : '—' },
+        ].map(card => (
+          <div key={card.label} style={{
+            background: 'white', borderRadius: 14, padding: '12px 8px',
+            border: '0.5px solid #E5E5EA', textAlign: 'center',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
+          }}>
+            <p style={{ fontSize: 9, fontWeight: 600, color: '#8E8E93', letterSpacing: 0.5, margin: 0, textTransform: 'uppercase' }}>
+              {card.label}
+            </p>
+            <p style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '4px 0 0', lineHeight: 1, fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.3px' }}>
+              {card.value}
+            </p>
           </div>
+        ))}
+      </div>
 
-          {/* Section label */}
+      {/* ── Choose Your Move carousel (inline below stat cards) ──────────── */}
+      {showCarousel && (
+        <>
           <p style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', margin: '0 0 14px' }}>
             Choose your move
           </p>
 
-          {/* Carousel — overflow clipped by parent to hide horizontal scrollbar */}
           <div style={{ overflow: 'hidden', marginBottom: 4 }}>
             <div
               ref={carouselRef}
@@ -463,7 +460,6 @@ export default function DashboardPage() {
                         </span>
                       </div>
                     )}
-                    {/* Active indicator bar */}
                     <div style={{
                       height: 3, borderRadius: 2,
                       background: isActive ? '#3B7DFF' : '#E5E5EA',
@@ -476,9 +472,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Dot pagination */}
           {todayTasks.length > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 24, paddingTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 16, paddingTop: 8 }}>
               {todayTasks.map((_, i) => (
                 <button
                   key={i}
@@ -495,13 +490,11 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Prompt */}
-          <p style={{ fontSize: 15, color: '#3C3C43', textAlign: 'center', lineHeight: 1.65, margin: '0 0 24px' }}>
+          <p style={{ fontSize: 15, color: '#3C3C43', textAlign: 'center', lineHeight: 1.65, margin: '0 0 16px' }}>
             {dailyVariant(COPY.carousel_prompt_main, userId || '')}{' '}
             <span style={{ color: '#8E8E93' }}>{dailyVariant(COPY.carousel_prompt_sub, userId || '')}</span>
           </p>
 
-          {/* Primary CTA */}
           <button
             onClick={() => selectedTask && selectMove(selectedTask)}
             disabled={!selectedTask}
@@ -509,215 +502,228 @@ export default function DashboardPage() {
               width: '100%', background: '#3B7DFF', border: 'none', borderRadius: 14,
               padding: '16px', color: 'white', fontSize: 16, fontWeight: 700,
               cursor: selectedTask ? 'pointer' : 'default', fontFamily: 'inherit',
-              marginBottom: 14, opacity: selectedTask ? 1 : 0.5,
+              marginBottom: 10, opacity: selectedTask ? 1 : 0.5,
             }}
           >
             Make this my move
           </button>
 
-          {/* Skip */}
           <button
             onClick={skipMove}
             style={{
               width: '100%', background: 'none', border: 'none',
               color: '#8E8E93', fontSize: 14, cursor: 'pointer',
-              fontFamily: 'inherit', padding: '8px',
+              fontFamily: 'inherit', padding: '8px', marginBottom: 6,
             }}
           >
             Skip for now
           </button>
         </>
-      ) : (
-        /* ─── Normal home: STATE 2 hero card + existing cards ─────────────── */
-        <>
-          {/* ═══════════════════════════════════════════════════════════════
-              STATE 2 — ONE MEANINGFUL MOVE Hero Card
-              ═══════════════════════════════════════════════════════════════ */}
-          {meaningfulMove && (
-            <div
-              data-tour="home-meaningful-move"
+      )}
+
+      {/* ── One Meaningful Move hero card (shows after move is selected) ── */}
+      {meaningfulMove && (
+        <div
+          data-tour="home-meaningful-move"
+          style={{
+            background: 'white', borderRadius: 20, padding: '20px 20px 20px 24px',
+            marginBottom: 14, border: '1.5px solid #3B7DFF',
+            boxShadow: '0 4px 20px rgba(59,125,255,0.10)',
+            position: 'relative', overflow: 'hidden',
+          }}
+        >
+          <div style={{
+            position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
+            background: 'linear-gradient(180deg, #3B7DFF 0%, #2D7DFF 100%)',
+          }} />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#3B7DFF', textTransform: 'uppercase', margin: 0 }}>
+              One Meaningful Move
+            </p>
+            {moveCat && (
+              <span style={{
+                fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
+                background: moveCat.bg, color: moveCat.color,
+              }}>
+                {meaningfulMove.category}
+              </span>
+            )}
+          </div>
+
+          <h2 style={{
+            fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px',
+            textDecoration: meaningfulMove.completed ? 'line-through' : 'none',
+            opacity: meaningfulMove.completed ? 0.45 : 1,
+          }}>
+            {meaningfulMove.taskText}
+          </h2>
+
+          <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 16px' }}>
+            {dailyVariant(COPY.move_card_subtitle, userId || '')}
+          </p>
+
+          {!meaningfulMove.completed ? (
+            <button
+              onClick={() => moveTask && handleToggleTask(moveTask)}
+              disabled={!moveTask}
               style={{
-                background: 'white', borderRadius: 20, padding: '20px 20px 20px 24px',
-                marginBottom: 14, border: '1.5px solid #3B7DFF',
-                boxShadow: '0 4px 20px rgba(59,125,255,0.10)',
-                position: 'relative', overflow: 'hidden',
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: '#3B7DFF', border: 'none', borderRadius: 10,
+                padding: '10px 18px', color: 'white', fontSize: 14, fontWeight: 600,
+                cursor: moveTask ? 'pointer' : 'default', fontFamily: 'inherit',
               }}
             >
-              {/* Left accent bar */}
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Mark complete
+            </button>
+          ) : (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <div style={{
-                position: 'absolute', left: 0, top: 0, bottom: 0, width: 4,
-                background: 'linear-gradient(180deg, #3B7DFF 0%, #2D7DFF 100%)',
-              }} />
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, color: '#3B7DFF', textTransform: 'uppercase', margin: 0 }}>
-                  One Meaningful Move
-                </p>
-                {moveCat && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20,
-                    background: moveCat.bg, color: moveCat.color,
-                  }}>
-                    {meaningfulMove.category}
-                  </span>
-                )}
-              </div>
-
-              <h2 style={{
-                fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px',
-                textDecoration: meaningfulMove.completed ? 'line-through' : 'none',
-                opacity: meaningfulMove.completed ? 0.45 : 1,
+                width: 20, height: 20, borderRadius: '50%', background: '#34C759',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}>
-                {meaningfulMove.taskText}
-              </h2>
-
-              <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 16px' }}>
-                {dailyVariant(COPY.move_card_subtitle, userId || '')}
-              </p>
-
-              {!meaningfulMove.completed ? (
-                <button
-                  onClick={() => moveTask && handleToggleTask(moveTask)}
-                  disabled={!moveTask}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    background: '#3B7DFF', border: 'none', borderRadius: 10,
-                    padding: '10px 18px', color: 'white', fontSize: 14, fontWeight: 600,
-                    cursor: moveTask ? 'pointer' : 'default', fontFamily: 'inherit',
-                  }}
-                >
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Mark complete
-                </button>
-              ) : (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{
-                    width: 20, height: 20, borderRadius: '50%', background: '#34C759',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                  }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round">
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </div>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: '#34C759' }}>Move complete</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* ═══════════════════════════════════════════════════════════════
-              STATE 4 — Evening Touchpoint (shows 5 pm+, dismissible)
-              ═══════════════════════════════════════════════════════════════ */}
-          {isEvening && meaningfulMove && !eveningLogged && (
-            <div style={{
-              background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
-              borderRadius: 20, padding: '20px', marginBottom: 14,
-              border: '1px solid #DDD6FE',
-            }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: '#7C3AED', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 4px' }}>
-                Evening reflection
-              </p>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>
-                How did today go, {firstName}?
-              </h3>
-              <p style={{ fontSize: 13, color: '#6D28D9', margin: '0 0 16px' }}>
-                {meaningfulMove.completed
-                  ? dailyVariant(COPY.evening_completed, userId || '')
-                  : dailyVariant(COPY.evening_incomplete, userId || '')}
-              </p>
-
-              {/* Summary stats */}
-              <div style={{ background: 'white', borderRadius: 14, padding: '16px', marginBottom: 14 }}>
-                <p style={{ fontSize: 9, fontWeight: 700, color: '#8E8E93', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 12px' }}>
-                  Today&apos;s summary
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0, marginBottom: 14 }}>
-                  {[
-                    { value: `${completedToday}/${totalToday}`, label: 'Tasks' },
-                    { value: `${todayPlannedHours}h`,           label: 'Planned' },
-                    { value: `${momentumScore}`,                 label: 'Momentum', color: '#34C759' },
-                  ].map((s, i) => (
-                    <div key={i} style={{ textAlign: 'center' }}>
-                      <p style={{ fontSize: 20, fontWeight: 700, color: s.color || '#1C1C1E', margin: 0 }}>{s.value}</p>
-                      <p style={{ fontSize: 11, color: '#8E8E93', margin: '2px 0 0' }}>{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ borderTop: '1px solid #F2F2F7', paddingTop: 12 }}>
-                  <p style={{ fontSize: 9, fontWeight: 700, color: '#3B7DFF', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 4px' }}>
-                    Your move today
-                  </p>
-                  <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>
-                    {meaningfulMove.taskText}
-                  </p>
-                </div>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
               </div>
-
-              {/* Reflection inputs */}
-              <p style={{ fontSize: 13, color: '#4C1D95', fontWeight: 500, margin: '0 0 8px' }}>
-                What&apos;s one thing you learned today?
-              </p>
-              <textarea
-                value={eveningLearned}
-                onChange={e => setEveningLearned(e.target.value)}
-                placeholder="Your biggest insight or lesson..."
-                rows={3}
-                style={{
-                  width: '100%', borderRadius: 12, padding: '12px 14px',
-                  border: '1px solid #DDD6FE', fontSize: 14, color: '#1C1C1E',
-                  background: 'white', resize: 'none', fontFamily: 'inherit',
-                  outline: 'none', boxSizing: 'border-box', marginBottom: 12,
-                }}
-              />
-              <p style={{ fontSize: 13, color: '#4C1D95', fontWeight: 500, margin: '0 0 8px' }}>
-                Set tomorrow&apos;s intention
-              </p>
-              <input
-                type="text"
-                value={eveningIntention}
-                onChange={e => setEveningIntention(e.target.value)}
-                placeholder="One thing to focus on tomorrow..."
-                style={{
-                  width: '100%', borderRadius: 12, padding: '12px 14px',
-                  border: '1px solid #DDD6FE', fontSize: 14, color: '#1C1C1E',
-                  background: 'white', fontFamily: 'inherit', outline: 'none',
-                  boxSizing: 'border-box', marginBottom: 16,
-                }}
-              />
-
-              <button
-                onClick={() => {
-                  const d = toDateStr(new Date())
-                  localStorage.setItem(EVE_KEY(d), JSON.stringify({ learned: eveningLearned, intention: eveningIntention, logged: true }))
-                  setEveningLogged(true)
-                }}
-                style={{
-                  width: '100%', background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-                  border: 'none', borderRadius: 14, padding: '14px',
-                  color: 'white', fontSize: 15, fontWeight: 700,
-                  cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10,
-                }}
-              >
-                Log today
-              </button>
-              <button
-                onClick={() => {
-                  const d = toDateStr(new Date())
-                  localStorage.setItem(EVE_KEY(d), JSON.stringify({ learned: '', intention: '', logged: true }))
-                  setEveningLogged(true)
-                }}
-                style={{
-                  width: '100%', background: 'none', border: 'none',
-                  color: '#8E8E93', fontSize: 14, cursor: 'pointer',
-                  fontFamily: 'inherit', padding: '4px',
-                }}
-              >
-                Skip tonight
-              </button>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#34C759' }}>Move complete</span>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Evening Touchpoint (5 pm+, requires move selected) ───────────── */}
+      {isEvening && meaningfulMove && !eveningLogged && (
+        <div style={{
+          background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
+          borderRadius: 20, padding: '20px', marginBottom: 14,
+          border: '1px solid rgba(221,214,254,0.7)',
+          position: 'relative', overflow: 'hidden',
+          boxShadow: '0 4px 20px rgba(124,58,237,0.10), 0 1px 4px rgba(124,58,237,0.06)',
+        }}>
+          <div className="card-glass-shimmer-light" />
+          <p style={{ fontSize: 10, fontWeight: 700, color: '#7C3AED', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 4px' }}>
+            Evening reflection
+          </p>
+          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>
+            How did today go, {firstName}?
+          </h3>
+          <p style={{ fontSize: 13, color: '#6D28D9', margin: '0 0 16px' }}>
+            {meaningfulMove.completed
+              ? dailyVariant(COPY.evening_completed, userId || '')
+              : dailyVariant(COPY.evening_incomplete, userId || '')}
+          </p>
+
+          {/* Summary stats */}
+          <div style={{ background: 'white', borderRadius: 14, padding: '16px', marginBottom: 12 }}>
+            <p style={{ fontSize: 9, fontWeight: 700, color: '#8E8E93', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 12px' }}>
+              Today&apos;s summary
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0 }}>
+              {[
+                { value: `${completedToday}/${totalToday}`, label: 'Tasks' },
+                { value: `${todayPlannedHours}h`,           label: 'Planned' },
+                { value: `${momentumScore}`,                 label: 'Momentum', color: '#34C759' },
+              ].map((s, i) => (
+                <div key={i} style={{ textAlign: 'center' }}>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: s.color || '#1C1C1E', margin: 0 }}>{s.value}</p>
+                  <p style={{ fontSize: 11, color: '#8E8E93', margin: '2px 0 0' }}>{s.label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Meaningful Move Insight card */}
+          <div style={{ background: 'white', borderRadius: 14, padding: '14px 16px', marginBottom: 14 }}>
+            <p style={{ fontSize: 9, fontWeight: 700, color: '#7C3AED', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 10px' }}>
+              Meaningful Move Insight
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: 0, flex: 1, lineHeight: 1.4 }}>
+                {meaningfulMove.taskText}
+              </p>
+              <span style={{
+                fontSize: 11, fontWeight: 600, flexShrink: 0,
+                color: meaningfulMove.completed ? '#34C759' : '#FF9500',
+                background: meaningfulMove.completed ? 'rgba(52,199,89,0.12)' : 'rgba(255,149,0,0.12)',
+                padding: '3px 10px', borderRadius: 20,
+              }}>
+                {meaningfulMove.completed ? 'Complete' : 'In progress'}
+              </span>
+            </div>
+            {moveCat && (
+              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20, background: moveCat.bg, color: moveCat.color, display: 'inline-block', marginTop: 8 }}>
+                {meaningfulMove.category}
+              </span>
+            )}
+          </div>
+
+          {/* Reflection inputs */}
+          <p style={{ fontSize: 13, color: '#4C1D95', fontWeight: 500, margin: '0 0 8px' }}>
+            What&apos;s one thing you learned today?
+          </p>
+          <textarea
+            value={eveningLearned}
+            onChange={e => setEveningLearned(e.target.value)}
+            placeholder="Your biggest insight or lesson..."
+            rows={3}
+            style={{
+              width: '100%', borderRadius: 12, padding: '12px 14px',
+              border: '1px solid #DDD6FE', fontSize: 14, color: '#1C1C1E',
+              background: 'white', resize: 'none', fontFamily: 'inherit',
+              outline: 'none', boxSizing: 'border-box', marginBottom: 12,
+            }}
+          />
+          <p style={{ fontSize: 13, color: '#4C1D95', fontWeight: 500, margin: '0 0 8px' }}>
+            Set tomorrow&apos;s intention
+          </p>
+          <input
+            type="text"
+            value={eveningIntention}
+            onChange={e => setEveningIntention(e.target.value)}
+            placeholder="One thing to focus on tomorrow..."
+            style={{
+              width: '100%', borderRadius: 12, padding: '12px 14px',
+              border: '1px solid #DDD6FE', fontSize: 14, color: '#1C1C1E',
+              background: 'white', fontFamily: 'inherit', outline: 'none',
+              boxSizing: 'border-box', marginBottom: 16,
+            }}
+          />
+
+          <button
+            onClick={() => {
+              const d = toDateStr(new Date())
+              localStorage.setItem(EVE_KEY(d), JSON.stringify({ learned: eveningLearned, intention: eveningIntention, logged: true }))
+              setEveningLogged(true)
+            }}
+            style={{
+              width: '100%', background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+              border: 'none', borderRadius: 14, padding: '14px',
+              color: 'white', fontSize: 15, fontWeight: 700,
+              cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10,
+            }}
+          >
+            Log today
+          </button>
+          <button
+            onClick={() => {
+              const d = toDateStr(new Date())
+              localStorage.setItem(EVE_KEY(d), JSON.stringify({ learned: '', intention: '', logged: true }))
+              setEveningLogged(true)
+            }}
+            style={{
+              width: '100%', background: 'none', border: 'none',
+              color: '#8E8E93', fontSize: 14, cursor: 'pointer',
+              fontFamily: 'inherit', padding: '4px',
+            }}
+          >
+            Skip tonight
+          </button>
+        </div>
+      )}
 
           {/* ── Today's Focus Card ──────────────────────────────────────────── */}
           <div
@@ -725,8 +731,12 @@ export default function DashboardPage() {
             style={{
               background: 'linear-gradient(135deg, #3B52FF 0%, #2D7DFF 100%)',
               borderRadius: 20, padding: '20px', marginBottom: 14, color: 'white',
+              position: 'relative', overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.18)',
+              boxShadow: '0 4px 24px rgba(59,82,255,0.22), 0 1px 4px rgba(59,82,255,0.12)',
             }}
           >
+            <div className="card-glass-shimmer" />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
               <div>
                 <p style={{ fontSize: 12, opacity: 0.8, margin: 0 }}>{dateLabel}</p>
@@ -810,10 +820,10 @@ export default function DashboardPage() {
           </div>
 
           {/* ── Momentum Score Card ─────────────────────────────────────────── */}
-          <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
+          <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(255,149,0,0.20), 0 1px 2px rgba(0,0,0,0.06)' }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF9500" stroke="none">
                     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                   </svg>
@@ -823,7 +833,7 @@ export default function DashboardPage() {
                   <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>Tasks completed vs planned</p>
                 </div>
               </div>
-              <span style={{ fontSize: 28, fontWeight: 700, color: '#FF9500' }}>{momentumScore}</span>
+              <span style={{ fontSize: 28, fontWeight: 700, color: '#FF9500', fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px' }}>{momentumScore}</span>
             </div>
 
             <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, marginBottom: 10, overflow: 'hidden' }}>
@@ -854,7 +864,7 @@ export default function DashboardPage() {
               />
             </div>
           ) : (
-            <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
+            <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -892,7 +902,7 @@ export default function DashboardPage() {
           )}
 
           {/* ── This Week Card ──────────────────────────────────────────────── */}
-          <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
+          <div style={{ background: 'white', borderRadius: 20, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -990,8 +1000,6 @@ export default function DashboardPage() {
               <p style={{ fontSize: 13, color: '#16A34A', fontWeight: 600, margin: 0 }}>Weekly Review complete</p>
             </div>
           )}
-        </>
-      )}
 
       {/* ── FAB ──────────────────────────────────────────────────────────────── */}
       <button
@@ -1069,7 +1077,7 @@ export default function DashboardPage() {
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
                   }}
                 >
-                  <div style={{ width: 44, height: 44, borderRadius: 12, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 2px 8px ${item.color}30, 0 1px 2px rgba(0,0,0,0.06)` }}>
                     {item.icon}
                   </div>
                   <div>
@@ -1102,8 +1110,12 @@ export default function DashboardPage() {
               borderRadius: 28, padding: '32px 24px 28px',
               width: '100%', maxWidth: 400,
               textAlign: 'center', position: 'relative',
+              overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,0.18)',
+              boxShadow: '0 24px 60px rgba(59,82,255,0.40)',
             }}
           >
+            <div className="card-glass-shimmer" />
             {/* Close button */}
             <button
               onClick={() => setShowCompletionModal(false)}
