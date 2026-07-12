@@ -804,7 +804,7 @@ export default function MentorPage() {
         animationDelay: '140ms',
         background: 'white', borderRadius: 24, marginBottom: 14,
         border: '0.5px solid #E5E5EA', overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
       }}>
         <button
           onClick={() => setNeedleOpen(o => !o)}
@@ -932,11 +932,11 @@ export default function MentorPage() {
         animationDelay: '220ms',
         background: 'white', borderRadius: 24, marginBottom: 14,
         border: '0.5px solid #E5E5EA', overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
       }}>
         <div style={{ padding: '18px 20px 14px', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 14, flexShrink: 0,
+            width: 44, height: 44, borderRadius: 12, flexShrink: 0,
             background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center',
             boxShadow: '0 2px 10px rgba(107,63,255,0.20), 0 1px 3px rgba(0,0,0,0.06)',
           }}>
@@ -997,6 +997,7 @@ export default function MentorPage() {
                     <button
                       key={action.id}
                       onClick={() => !action.applied && applyAction(action, msg.id)}
+                      className={action.applied ? undefined : 'card-press'}
                       style={{
                         background: action.applied ? '#F0FFF4' : 'white',
                         border: action.applied ? '1px solid #A7F3D0' : '1px solid #3B7DFF',
@@ -1088,9 +1089,11 @@ export default function MentorPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 8 }}>
         <button
           onClick={() => router.push('/dashboard/goals')}
+          className="card-press"
           style={{
             background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 16,
             padding: '16px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
           }}
         >
           <div style={{ marginBottom: 8 }}>
@@ -1103,9 +1106,11 @@ export default function MentorPage() {
 
         <button
           onClick={() => router.push('/dashboard/plan')}
+          className="card-press"
           style={{
             background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 16,
             padding: '16px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
           }}
         >
           <div style={{ marginBottom: 8 }}>

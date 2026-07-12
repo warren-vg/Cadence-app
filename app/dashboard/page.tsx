@@ -160,7 +160,6 @@ function useCountUpFloat(target: number, duration = 600): number {
 
 const MOVE_KEY = (d: string) => `cadence_move_${d}`
 const SKIP_KEY = (d: string) => `cadence_move_skipped_${d}`
-const EVE_KEY  = (d: string) => `cadence_evening_${d}`
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -186,10 +185,6 @@ export default function DashboardPage() {
   const [carouselIndex, setCarouselIndex] = useState(0)
   const [showCompletionModal, setShowCompletionModal] = useState(false)
   const [moveSkipped, setMoveSkipped] = useState(false)
-  const [eveningLearned, setEveningLearned] = useState('')
-  const [eveningIntention, setEveningIntention] = useState('')
-  const [eveningLogged, setEveningLogged] = useState(false)
-  const [currentHour] = useState(() => new Date().getHours())
   const [completingTaskIds, setCompletingTaskIds] = useState<Set<string>>(new Set())
   const carouselRef = useRef<HTMLDivElement>(null)
 
@@ -201,15 +196,6 @@ export default function DashboardPage() {
       if (raw) setMeaningfulMove(JSON.parse(raw) as MeaningfulMove)
     } catch {}
     if (localStorage.getItem(SKIP_KEY(d))) setMoveSkipped(true)
-    try {
-      const ev = localStorage.getItem(EVE_KEY(d))
-      if (ev) {
-        const p = JSON.parse(ev)
-        setEveningLearned(p.learned || '')
-        setEveningIntention(p.intention || '')
-        setEveningLogged(p.logged || false)
-      }
-    } catch {}
   }, [])
 
   // Sync carousel scroll position when index changes programmatically
@@ -242,6 +228,24 @@ export default function DashboardPage() {
         supabase.from('weekly_reflections').select('week_of').eq('user_id', user.id).eq('week_of', weekOf).maybeSingle(),
         getFirstRunCompleted(user.id),
       ])
+
+      // Touchpoint time-gate — redirect to the matching full-screen experience
+      // if the user hasn't visited it yet today. Skips new users still in onboarding.
+      if (firstRunDone) {
+        const h = new Date().getHours()
+        if (h >= 5 && h < 12 && !localStorage.getItem(`cadence_tp_morning_${todayStr}`)) {
+          router.replace('/dashboard/touchpoint/morning')
+          return
+        }
+        if (h >= 12 && h < 17 && !localStorage.getItem(`cadence_tp_midday_${todayStr}`)) {
+          router.replace('/dashboard/touchpoint/midday')
+          return
+        }
+        if (h >= 17 && h < 23 && !localStorage.getItem(`cadence_tp_evening_${todayStr}`)) {
+          router.replace('/dashboard/touchpoint/evening')
+          return
+        }
+      }
 
       setUserId(user.id)
       setProfile(profileData)
@@ -384,7 +388,6 @@ export default function DashboardPage() {
     : 0
   const reviewState  = getReviewState(hasThisWeekReflection)
   const showCarousel = !meaningfulMove && !moveSkipped && todayTasks.length > 0
-  const isEvening    = currentHour >= 17
   const moveTask     = meaningfulMove ? (todayTasks.find(t => t.id === meaningfulMove.taskId) ?? null) : null
   const moveCat      = meaningfulMove ? (CATEGORY_COLORS[meaningfulMove.category] ?? { bg: '#F2F2F7', color: '#8E8E93' }) : null
   const selectedTask = todayTasks[carouselIndex] ?? null
@@ -420,19 +423,23 @@ export default function DashboardPage() {
       {/* ── Morning Touchpoint stat cards (always visible) ──────────────── */}
       <div className="card-enter" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 14 }}>
         {[
-          { label: 'TASKS TODAY', value: String(animTotalToday) },
-          { label: 'PLANNED',     value: `${animTodayPlanned}h` },
-          { label: 'DAY STREAK',  value: streak > 0 ? `${animStreak} 🔥` : '—' },
+          { label: 'TASKS TODAY', value: String(animTotalToday), glow: false },
+          { label: 'PLANNED',     value: `${animTodayPlanned}h`, glow: false },
+          { label: 'DAY STREAK',  value: streak > 0 ? `${animStreak} 🔥` : '—', glow: streak > 0 },
         ].map(card => (
           <div key={card.label} style={{
             background: 'white', borderRadius: 16, padding: '12px 8px',
             border: '0.5px solid #E5E5EA', textAlign: 'center',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
           }}>
             <p style={{ fontSize: 9, fontWeight: 600, color: '#8E8E93', letterSpacing: 0.5, margin: 0, textTransform: 'uppercase' }}>
               {card.label}
             </p>
-            <p style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '4px 0 0', lineHeight: 1, fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.3px' }}>
+            <p style={{
+              fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '4px 0 0', lineHeight: 1,
+              fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.3px',
+              textShadow: card.glow ? '0 0 14px rgba(255,149,0,0.45), 0 0 28px rgba(255,149,0,0.20)' : undefined,
+            }}>
               {card.value}
             </p>
           </div>
@@ -446,19 +453,19 @@ export default function DashboardPage() {
             Choose your move
           </p>
 
-          <div style={{ overflow: 'hidden', marginBottom: 4 }}>
+          <div style={{ overflow: 'clip' as any, marginBottom: 4 }}>
             <div
               ref={carouselRef}
+              className="cadence-carousel"
               style={{
                 display: 'flex',
                 overflowX: 'scroll',
                 scrollSnapType: 'x mandatory',
                 scrollbarWidth: 'none',
                 WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-x',
                 paddingLeft: '6%',
                 paddingRight: '6%',
-                paddingBottom: 20,
-                marginBottom: -20,
                 gap: 12,
                 marginLeft: -16,
                 marginRight: -16,
@@ -652,136 +659,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* ── Evening Touchpoint (5 pm+, requires move selected) ───────────── */}
-      {isEvening && meaningfulMove && !eveningLogged && (
-        <div style={{
-          background: 'linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%)',
-          borderRadius: 24, padding: '20px', marginBottom: 14,
-          border: '1px solid rgba(221,214,254,0.7)',
-          position: 'relative', overflow: 'hidden',
-          boxShadow: '0 4px 20px rgba(124,58,237,0.10), 0 1px 4px rgba(124,58,237,0.06)',
-        }}>
-          <div className="card-glass-shimmer-light" />
-          <p style={{ fontSize: 10, fontWeight: 700, color: '#7C3AED', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 4px' }}>
-            Evening reflection
-          </p>
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>
-            How did today go, {firstName}?
-          </h3>
-          <p style={{ fontSize: 13, color: '#6D28D9', margin: '0 0 16px' }}>
-            {meaningfulMove.completed
-              ? dailyVariant(COPY.evening_completed, userId || '')
-              : dailyVariant(COPY.evening_incomplete, userId || '')}
-          </p>
-
-          {/* Summary stats */}
-          <div style={{ background: 'white', borderRadius: 16, padding: '16px', marginBottom: 12 }}>
-            <p style={{ fontSize: 9, fontWeight: 700, color: '#8E8E93', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 12px' }}>
-              Today&apos;s summary
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 0 }}>
-              {[
-                { value: `${completedToday}/${totalToday}`, label: 'Tasks' },
-                { value: `${todayPlannedHours}h`,           label: 'Planned' },
-                { value: `${momentumScore}`,                 label: 'Momentum', color: '#34C759' },
-              ].map((s, i) => (
-                <div key={i} style={{ textAlign: 'center' }}>
-                  <p style={{ fontSize: 20, fontWeight: 700, color: s.color || '#1C1C1E', margin: 0 }}>{s.value}</p>
-                  <p style={{ fontSize: 11, color: '#8E8E93', margin: '2px 0 0' }}>{s.label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Meaningful Move Insight card */}
-          <div style={{ background: 'white', borderRadius: 16, padding: '14px 16px', marginBottom: 14 }}>
-            <p style={{ fontSize: 9, fontWeight: 700, color: '#7C3AED', letterSpacing: 0.8, textTransform: 'uppercase', margin: '0 0 10px' }}>
-              Meaningful Move Insight
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: 0, flex: 1, lineHeight: 1.4 }}>
-                {meaningfulMove.taskText}
-              </p>
-              <span style={{
-                fontSize: 11, fontWeight: 600, flexShrink: 0,
-                color: meaningfulMove.completed ? '#34C759' : '#FF9500',
-                background: meaningfulMove.completed ? 'rgba(52,199,89,0.12)' : 'rgba(255,149,0,0.12)',
-                padding: '3px 10px', borderRadius: 24,
-              }}>
-                {meaningfulMove.completed ? 'Complete' : 'In progress'}
-              </span>
-            </div>
-            {moveCat && (
-              <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 24, background: moveCat.bg, color: moveCat.color, display: 'inline-block', marginTop: 8 }}>
-                {meaningfulMove.category}
-              </span>
-            )}
-          </div>
-
-          {/* Reflection inputs */}
-          <p style={{ fontSize: 13, color: '#4C1D95', fontWeight: 500, margin: '0 0 8px' }}>
-            What&apos;s one thing you learned today?
-          </p>
-          <textarea
-            value={eveningLearned}
-            onChange={e => setEveningLearned(e.target.value)}
-            placeholder="Your biggest insight or lesson..."
-            rows={3}
-            style={{
-              width: '100%', borderRadius: 12, padding: '12px 14px',
-              border: '1px solid #DDD6FE', fontSize: 14, color: '#1C1C1E',
-              background: 'white', resize: 'none', fontFamily: 'inherit',
-              outline: 'none', boxSizing: 'border-box', marginBottom: 12,
-            }}
-          />
-          <p style={{ fontSize: 13, color: '#4C1D95', fontWeight: 500, margin: '0 0 8px' }}>
-            Set tomorrow&apos;s intention
-          </p>
-          <input
-            type="text"
-            value={eveningIntention}
-            onChange={e => setEveningIntention(e.target.value)}
-            placeholder="One thing to focus on tomorrow..."
-            style={{
-              width: '100%', borderRadius: 12, padding: '12px 14px',
-              border: '1px solid #DDD6FE', fontSize: 14, color: '#1C1C1E',
-              background: 'white', fontFamily: 'inherit', outline: 'none',
-              boxSizing: 'border-box', marginBottom: 16,
-            }}
-          />
-
-          <button
-            onClick={() => {
-              const d = toDateStr(new Date())
-              localStorage.setItem(EVE_KEY(d), JSON.stringify({ learned: eveningLearned, intention: eveningIntention, logged: true }))
-              setEveningLogged(true)
-            }}
-            className="card-press"
-            style={{
-              width: '100%', background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
-              border: 'none', borderRadius: 16, padding: '14px',
-              color: 'white', fontSize: 15, fontWeight: 700,
-              cursor: 'pointer', fontFamily: 'inherit', marginBottom: 10,
-            }}
-          >
-            Log today
-          </button>
-          <button
-            onClick={() => {
-              const d = toDateStr(new Date())
-              localStorage.setItem(EVE_KEY(d), JSON.stringify({ learned: '', intention: '', logged: true }))
-              setEveningLogged(true)
-            }}
-            style={{
-              width: '100%', background: 'none', border: 'none',
-              color: '#8E8E93', fontSize: 14, cursor: 'pointer',
-              fontFamily: 'inherit', padding: '4px',
-            }}
-          >
-            Skip tonight
-          </button>
-        </div>
-      )}
 
           {/* ── Today's Focus Card ──────────────────────────────────────────── */}
           <div
@@ -823,15 +700,18 @@ export default function DashboardPage() {
                 {todayTasks.slice(0, 4).map((task, i) => (
                   <div
                     key={task.id}
+                    onClick={() => handleToggleTask(task)}
+                    className="row-tap-dark"
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
                       paddingTop: i > 0 ? 10 : 0,
                       paddingBottom: i < Math.min(todayTasks.length, 4) - 1 ? 10 : 0,
                       borderBottom: i < Math.min(todayTasks.length, 4) - 1 ? '1px solid rgba(255,255,255,0.12)' : 'none',
+                      cursor: 'pointer', borderRadius: 8,
                     }}
                   >
                     <button
-                      onClick={() => handleToggleTask(task)}
+                      onClick={e => { e.stopPropagation(); handleToggleTask(task) }}
                       className={`card-press${completingTaskIds.has(task.id) ? ' check-bounce' : ''}`}
                       style={{
                         width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
@@ -885,7 +765,7 @@ export default function DashboardPage() {
           <div
             className="card-enter card-press card-hover"
             onClick={() => router.push('/dashboard/progress')}
-            style={{ animationDelay: '160ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)', cursor: 'pointer' }}
+            style={{ animationDelay: '160ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)', cursor: 'pointer' }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -903,15 +783,18 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, marginBottom: 10, overflow: 'hidden' }}>
-              <div style={{
-                height: '100%', width: `${momentumScore}%`,
-                background: momentumScore >= 60
-                  ? 'linear-gradient(90deg, #22C55E, #34C759)'
-                  : momentumScore >= 30
-                  ? 'linear-gradient(90deg, #F59E0B, #FF9500)'
-                  : 'linear-gradient(90deg, #EF4444, #FF3B30)',
-                borderRadius: 4, transition: 'width 0.6s ease',
-              }} />
+              <div
+                className="progress-fill-shimmer"
+                style={{
+                  height: '100%', width: `${momentumScore}%`,
+                  background: momentumScore >= 60
+                    ? 'linear-gradient(90deg, #22C55E, #34C759)'
+                    : momentumScore >= 30
+                    ? 'linear-gradient(90deg, #F59E0B, #FF9500)'
+                    : 'linear-gradient(90deg, #EF4444, #FF3B30)',
+                  borderRadius: 4, transition: 'width 0.6s ease',
+                }}
+              />
             </div>
 
             <p style={{ fontSize: 13, color: '#3C3C43', margin: 0 }}>{getMomentumText(momentumScore, userId || '')}</p>
@@ -934,7 +817,7 @@ export default function DashboardPage() {
               />
             </div>
           ) : (
-            <div className="card-enter" style={{ animationDelay: '240ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+            <div className="card-enter" style={{ animationDelay: '240ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -972,7 +855,7 @@ export default function DashboardPage() {
           )}
 
           {/* ── This Week Card ──────────────────────────────────────────────── */}
-          <div className="card-enter" style={{ animationDelay: '320ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+          <div className="card-enter" style={{ animationDelay: '320ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1168,7 +1051,7 @@ export default function DashboardPage() {
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
                   }}
                 >
-                  <div style={{ width: 44, height: 44, borderRadius: 16, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 2px 8px ${item.color}30, 0 1px 2px rgba(0,0,0,0.06)` }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 12, background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 2px 8px ${item.color}30, 0 1px 2px rgba(0,0,0,0.06)` }}>
                     {item.icon}
                   </div>
                   <div>
@@ -1286,7 +1169,7 @@ export default function DashboardPage() {
 
             {/* View My Cadence */}
             <button
-              onClick={() => { setShowCompletionModal(false); router.push(`/dashboard/plan/daily?date=${toDateStr(new Date())}`) }}
+              onClick={() => { setShowCompletionModal(false); router.push('/dashboard/progress') }}
               className="card-press"
               style={{
                 width: '100%', background: 'white', border: 'none', borderRadius: 16,

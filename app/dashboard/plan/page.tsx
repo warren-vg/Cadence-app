@@ -197,7 +197,7 @@ export default function PlanPage() {
                     border: isToday ? '2px solid #3B7DFF' : '0.5px solid #E5E5EA',
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                     width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    boxShadow: isToday ? '0 4px 20px rgba(59,125,255,0.12), 0 1px 3px rgba(0,0,0,0.05)' : '0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04)',
+                    boxShadow: isToday ? '0 4px 20px rgba(59,125,255,0.12), 0 1px 3px rgba(0,0,0,0.05)' : '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
                   }}
                 >
                   <div>
@@ -289,7 +289,7 @@ export default function PlanPage() {
             />
           ) : (
           <>
-          <div key={dayOffset} className="card-enter" style={{ background: 'white', borderRadius: 20, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16, boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+          <div key={dayOffset} className="card-enter" style={{ background: 'white', borderRadius: 20, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16, boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
             {dailyTasks.map((task, i) => {
                 const catStyle = getCatStyle(task.category)
                 return (
@@ -357,7 +357,7 @@ export default function PlanPage() {
                   : new Date(rawDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 const monthTaskCount = Math.round(weeklyHrs * 4)
                 return (
-                  <div key={goal.id} className="card-enter" style={{ animationDelay: `${goals.indexOf(goal) * 60}ms`, background: 'white', borderRadius: 20, padding: '18px', border: '0.5px solid #E5E5EA', boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)' }}>
+                  <div key={goal.id} className="card-enter" style={{ animationDelay: `${goals.indexOf(goal) * 60}ms`, background: 'white', borderRadius: 20, padding: '18px', border: '0.5px solid #E5E5EA', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                       <div style={{ flex: 1, paddingRight: 12 }}>
                         <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>{goal.text}</p>
@@ -383,7 +383,7 @@ export default function PlanPage() {
                     </div>
 
                     <div style={{ height: 6, background: '#F2F2F7', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${goal.progress || 0}%`, background: 'linear-gradient(90deg, #3B52FF, #3B7DFF)', borderRadius: 4 }} />
+                      <div className="progress-fill-shimmer" style={{ height: '100%', width: `${goal.progress || 0}%`, background: 'linear-gradient(90deg, #3B52FF, #3B7DFF)', borderRadius: 4 }} />
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

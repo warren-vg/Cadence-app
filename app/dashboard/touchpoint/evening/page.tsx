@@ -29,6 +29,7 @@ export default function EveningTouchpointPage() {
       if (!user) { router.replace('/login'); return }
 
       const today = toDateStr(new Date())
+      localStorage.setItem('cadence_tp_evening_' + today, '1')
       const monday = getMonday(new Date())
 
       const [{ data: profile }, todayTasks, weekTasks, streak, existing] = await Promise.all([

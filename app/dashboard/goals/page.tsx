@@ -86,6 +86,7 @@ function ActionBtn({
   return (
     <button
       onClick={onClick}
+      className="card-press"
       style={{
         flex: wide ? 1 : 1,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
@@ -114,7 +115,7 @@ function GoalCard({
     <div style={{
       background: 'white', borderRadius: 20, padding: '16px',
       border: '0.5px solid #E5E5EA',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.05)',
+      boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
     }}>
       {/* Badges row */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -137,6 +138,7 @@ function GoalCard({
         </div>
         <button
           onClick={onNavigate}
+          className="card-press"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -164,11 +166,14 @@ function GoalCard({
             <span style={{ fontSize: 12, color: '#8E8E93' }}>{goal.progress || 0}%</span>
           </div>
           <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', width: `${goal.progress || 0}%`,
-              background: 'linear-gradient(90deg, #3B52FF, #3B7DFF)',
-              borderRadius: 4, transition: 'width 0.4s ease',
-            }} />
+            <div
+              className="progress-fill-shimmer"
+              style={{
+                height: '100%', width: `${goal.progress || 0}%`,
+                background: 'linear-gradient(90deg, #3B52FF, #3B7DFF)',
+                borderRadius: 4, transition: 'width 0.4s ease',
+              }}
+            />
           </div>
         </div>
       )}
@@ -494,6 +499,7 @@ export default function GoalsPage() {
       <button
         data-tour="goals-fab"
         onClick={openNewGoal}
+        className="card-press"
         style={{
           position: 'fixed', bottom: 80, right: 20,
           width: 52, height: 52, borderRadius: '50%',

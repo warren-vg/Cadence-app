@@ -41,6 +41,7 @@ export default function MiddayTouchpointPage() {
       if (!user) { router.replace('/login'); return }
 
       const today = toDateStr(new Date())
+      localStorage.setItem('cadence_tp_midday_' + today, '1')
       const [{ data: profile }, tasks] = await Promise.all([
         supabase.from('profiles').select('full_name').eq('id', user.id).single(),
         getTasksForDate(user.id, today),

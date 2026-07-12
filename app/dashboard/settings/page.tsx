@@ -246,16 +246,25 @@ export default function SettingsPage() {
   const handleSave = async () => {
     if (!profile) return
     setSaving(true)
-    try {
-      await supabase.from('profiles').update({ full_name: name.trim(), notifications, notification_preferences: notifPrefs }).eq('id', profile.id)
-      saveTheme(theme)
-      setName(name.trim())
-      setSavedName(name.trim())
-      setSaved(true)
-      setTimeout(() => setSaved(false), 2000)
-    } catch { /* ignore */ } finally {
-      setSaving(false)
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: name.trim(),
+        notifications,
+        notification_preferences: notifPrefs,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', profile.id)
+    setSaving(false)
+    if (error) {
+      showToast('Failed to save — please try again')
+      return
     }
+    saveTheme(theme)
+    setName(name.trim())
+    setSavedName(name.trim())
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   const showToast = (msg: string) => {
