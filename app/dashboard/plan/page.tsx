@@ -36,12 +36,15 @@ export default function PlanPage() {
   const [goals, setGoals]             = useState<GoalRow[]>([])
   const [mounted, setMounted]         = useState(false)
   const [userId, setUserId]           = useState<string | null>(null)
+  const [weeklyLayout, setWeeklyLayout] = useState<'list' | 'grid'>('list')
   const touchStartX = useRef(0)
   const touchStartY = useRef(0)
 
   // Load user + goals once
   useEffect(() => {
     setMounted(true)
+    const savedLayout = localStorage.getItem('cadence_weekly_layout') as 'list' | 'grid' | null
+    if (savedLayout) setWeeklyLayout(savedLayout)
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
@@ -111,19 +114,19 @@ export default function PlanPage() {
   const monthLabel = `${MONTHS[monthDate.getMonth()]} ${monthDate.getFullYear()}`
 
   return (
-    <div style={{ padding: '56px 16px 16px' }}>
+    <div style={{ padding: '56px 16px 16px', background: 'var(--c-bg)', minHeight: '100vh' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0, letterSpacing: '-0.4px' }}>Plan</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3, marginBottom: 0 }}>Your schedule and timeline</p>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--c-text-1)', margin: 0, letterSpacing: '-0.4px' }}>Plan</h1>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', marginTop: 3, marginBottom: 0 }}>Your schedule and timeline</p>
       </div>
 
       {/* View Switcher */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-        background: 'white', borderRadius: 16, padding: '4px',
-        border: '0.5px solid #E5E5EA', marginBottom: 20,
+        background: 'var(--c-surface)', borderRadius: 16, padding: '4px',
+        border: '0.5px solid var(--c-border)', marginBottom: 20,
       }}>
         {(['Daily', 'Weekly', 'Monthly'] as ViewMode[]).map(v => (
           <button
@@ -134,7 +137,7 @@ export default function PlanPage() {
               background: view === v ? '#3B7DFF' : 'transparent',
               border: 'none',
               fontSize: 14, fontWeight: view === v ? 600 : 400,
-              color: view === v ? 'white' : '#8E8E93',
+              color: view === v ? 'white' : 'var(--c-text-2)',
               cursor: 'pointer', fontFamily: 'inherit',
               boxShadow: view === v ? '0 2px 10px rgba(59,125,255,0.28), 0 1px 3px rgba(0,0,0,0.10)' : 'none',
               transition: 'all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -149,15 +152,57 @@ export default function PlanPage() {
       {view === 'Weekly' && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>This Week</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>This Week</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <button onClick={() => setWeekOffset(o => o - 1)} style={navBtnStyle}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-mid)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
               </button>
-              <span style={{ fontSize: 13, color: '#3C3C43', minWidth: 90, textAlign: 'center' }}>{weekLabel}</span>
+              <span style={{ fontSize: 13, color: 'var(--c-text-mid)', minWidth: 90, textAlign: 'center' }}>{weekLabel}</span>
               <button onClick={() => setWeekOffset(o => o + 1)} style={navBtnStyle}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-mid)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
               </button>
+
+              {/* Layout toggle */}
+              <div style={{ display: 'flex', gap: 4, marginLeft: 4, background: 'var(--c-surface-2)', borderRadius: 8, padding: '3px' }}>
+                <button
+                  onClick={() => { setWeeklyLayout('list'); localStorage.setItem('cadence_weekly_layout', 'list') }}
+                  title="List view"
+                  style={{
+                    width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', padding: 0,
+                    background: weeklyLayout === 'list' ? 'var(--c-surface)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: weeklyLayout === 'list' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={weeklyLayout === 'list' ? '#3B7DFF' : 'var(--c-text-2)'} strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="8" y1="6" x2="21" y2="6"/>
+                    <line x1="8" y1="12" x2="21" y2="12"/>
+                    <line x1="8" y1="18" x2="21" y2="18"/>
+                    <line x1="3" y1="6" x2="3.01" y2="6"/>
+                    <line x1="3" y1="12" x2="3.01" y2="12"/>
+                    <line x1="3" y1="18" x2="3.01" y2="18"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => { setWeeklyLayout('grid'); localStorage.setItem('cadence_weekly_layout', 'grid') }}
+                  title="Grid view"
+                  style={{
+                    width: 28, height: 28, borderRadius: 6, border: 'none', cursor: 'pointer', padding: 0,
+                    background: weeklyLayout === 'grid' ? 'var(--c-surface)' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: weeklyLayout === 'grid' ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={weeklyLayout === 'grid' ? '#3B7DFF' : 'var(--c-text-2)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="7" height="7" rx="1"/>
+                    <rect x="14" y="3" width="7" height="7" rx="1"/>
+                    <rect x="3" y="14" width="7" height="7" rx="1"/>
+                    <rect x="14" y="14" width="7" height="7" rx="1"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -176,7 +221,10 @@ export default function PlanPage() {
                 else setWeekOffset(o => o + 1)
               }
             }}
-            style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+            style={weeklyLayout === 'grid'
+              ? { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }
+              : { display: 'flex', flexDirection: 'column', gap: 10 }
+            }
           >
             {DAY_FULL.map((dayName, i) => {
               const date    = addDays(weekMonday, i)
@@ -193,37 +241,72 @@ export default function PlanPage() {
                   className="card-enter card-press"
                   style={{
                     animationDelay: `${i * 45}ms`,
-                    background: 'white', borderRadius: 20, padding: '16px 18px',
-                    border: isToday ? '2px solid #3B7DFF' : '0.5px solid #E5E5EA',
+                    background: 'var(--c-surface)', borderRadius: 20,
+                    border: isToday ? '2px solid #3B7DFF' : '0.5px solid var(--c-border)',
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
-                    width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    boxShadow: isToday ? '0 4px 20px rgba(59,125,255,0.12), 0 1px 3px rgba(0,0,0,0.05)' : '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
+                    boxShadow: isToday
+                      ? '0 4px 20px rgba(59,125,255,0.12), 0 1px 3px rgba(0,0,0,0.05)'
+                      : '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
+                    ...(weeklyLayout === 'list'
+                      ? { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 18px' }
+                      : { width: '100%', display: 'block', padding: '14px 14px' }
+                    ),
+                    ...(weeklyLayout === 'grid' && i === 6 ? { gridColumn: '1 / -1', maxWidth: 'calc(50% - 5px)', margin: '0 auto' } : {}),
                   }}
                 >
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>{dayName}</span>
+                  {weeklyLayout === 'list' ? (
+                    <>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)' }}>{dayName}</span>
+                          {isToday && (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: '#3B7DFF', background: '#EFF6FF', borderRadius: 20, padding: '2px 8px' }}>Today</span>
+                          )}
+                        </div>
+                        {focusCats.length > 0 ? (
+                          <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>
+                            Focus:{' '}
+                            {focusCats.map((cat, ci) => (
+                              <span key={cat} style={{ color: getCatStyle(cat).color }}>
+                                {cat}{ci < focusCats.length - 1 ? ' & ' : ''}
+                              </span>
+                            ))}
+                          </p>
+                        ) : (
+                          <p style={{ fontSize: 13, color: 'var(--c-text-3)', margin: 0 }}>No tasks planned</p>
+                        )}
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--c-text-1)', margin: 0, fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.3px' }}>{dayTasks.length}</p>
+                        <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: 0 }}>tasks · {hours}h</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text-1)' }}>{dayName}</span>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text-1)', fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.3px' }}>{dayTasks.length}</span>
+                      </div>
                       {isToday && (
-                        <span style={{ fontSize: 11, fontWeight: 600, color: '#3B7DFF', background: '#EFF6FF', borderRadius: 20, padding: '2px 8px' }}>Today</span>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: '#3B7DFF', background: '#EFF6FF', borderRadius: 20, padding: '2px 8px', display: 'inline-block', marginBottom: 6 }}>Today</span>
                       )}
-                    </div>
-                    {focusCats.length > 0 ? (
-                      <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>
-                        Focus:{' '}
-                        {focusCats.map((cat, ci) => (
-                          <span key={cat} style={{ color: getCatStyle(cat).color }}>
-                            {cat}{ci < focusCats.length - 1 ? ' & ' : ''}
-                          </span>
-                        ))}
-                      </p>
-                    ) : (
-                      <p style={{ fontSize: 13, color: '#D1D1D6', margin: 0 }}>No tasks planned</p>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <p style={{ fontSize: 22, fontWeight: 700, color: '#1C1C1E', margin: 0, fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.3px' }}>{dayTasks.length}</p>
-                    <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>tasks · {hours}h</p>
-                  </div>
+                      {focusCats.length > 0 ? (
+                        <div>
+                          <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--c-text-2)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: 0.5 }}>FOCUS</p>
+                          <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: 0 }}>
+                            {focusCats.map((cat, ci) => (
+                              <span key={cat} style={{ color: getCatStyle(cat).color }}>
+                                {cat}{ci < focusCats.length - 1 ? ' & ' : ''}
+                              </span>
+                            ))}
+                          </p>
+                        </div>
+                      ) : (
+                        <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: 0 }}>No tasks</p>
+                      )}
+                      <p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: '8px 0 0' }}>{dayTasks.length} tasks · {hours}h</p>
+                    </>
+                  )}
                 </button>
               )
             })}
@@ -234,14 +317,14 @@ export default function PlanPage() {
             <button
               onClick={() => router.push('/dashboard/plan/weekly')}
               className="card-press"
-              style={{ flex: 1, padding: '14px', borderRadius: 14, background: '#1C1C1E', border: 'none', color: 'white', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'var(--c-text-1)', border: 'none', color: 'var(--c-surface)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Edit Weekly Plan
             </button>
             <button
               onClick={() => router.push('/dashboard/plan/schedule')}
               className="card-press"
-              style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: 'var(--c-text-1)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Manage Schedule
             </button>
@@ -266,14 +349,14 @@ export default function PlanPage() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Today&apos;s Schedule</h2>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Today&apos;s Schedule</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button onClick={() => setDayOffset(o => o - 1)} style={navBtnStyle}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-mid)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
               </button>
-              <span style={{ fontSize: 13, color: '#3C3C43', minWidth: 80, textAlign: 'center' }}>{dayLabel}</span>
+              <span style={{ fontSize: 13, color: 'var(--c-text-mid)', minWidth: 80, textAlign: 'center' }}>{dayLabel}</span>
               <button onClick={() => setDayOffset(o => o + 1)} style={navBtnStyle}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-mid)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
               </button>
             </div>
           </div>
@@ -289,23 +372,23 @@ export default function PlanPage() {
             />
           ) : (
           <>
-          <div key={dayOffset} className="card-enter" style={{ background: 'white', borderRadius: 20, overflow: 'hidden', border: '0.5px solid #E5E5EA', marginBottom: 16, boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
+          <div key={dayOffset} className="card-enter" style={{ background: 'var(--c-surface)', borderRadius: 20, overflow: 'hidden', border: '0.5px solid var(--c-border)', marginBottom: 16, boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
             {dailyTasks.map((task, i) => {
                 const catStyle = getCatStyle(task.category)
                 return (
                   <div key={task.id} style={{
                     padding: '14px 18px',
-                    borderBottom: i < dailyTasks.length - 1 ? '0.5px solid #F2F2F7' : 'none',
+                    borderBottom: i < dailyTasks.length - 1 ? '0.5px solid var(--c-border-sub)' : 'none',
                     display: 'flex', gap: 14, alignItems: 'flex-start',
                   }}>
-                    <span style={{ fontSize: 13, color: '#8E8E93', minWidth: 44, marginTop: 2 }}>
+                    <span style={{ fontSize: 13, color: 'var(--c-text-2)', minWidth: 44, marginTop: 2 }}>
                       {formatTime(task.scheduled_time)}
                     </span>
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 15, fontWeight: 500, color: '#1C1C1E', margin: '0 0 5px' }}>{task.text}</p>
+                      <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--c-text-1)', margin: '0 0 5px' }}>{task.text}</p>
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <span style={{ fontSize: 11, fontWeight: 500, background: catStyle.bg, color: catStyle.color, padding: '2px 8px', borderRadius: 20 }}>{task.category}</span>
-                        <span style={{ fontSize: 12, color: '#8E8E93' }}>{task.duration} {task.duration === 1 ? 'hour' : 'hours'}</span>
+                        <span style={{ fontSize: 12, color: 'var(--c-text-2)' }}>{task.duration} {task.duration === 1 ? 'hour' : 'hours'}</span>
                       </div>
                     </div>
                   </div>
@@ -317,7 +400,7 @@ export default function PlanPage() {
           <button
             onClick={() => router.push(`/dashboard/plan/daily?date=${targetDayStr}`)}
             className="card-press"
-            style={{ width: '100%', padding: '14px', borderRadius: 14, background: '#1C1C1E', border: 'none', color: 'white', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'var(--c-text-1)', border: 'none', color: 'var(--c-surface)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             View Detailed Daily Plan
           </button>
@@ -330,21 +413,21 @@ export default function PlanPage() {
       {view === 'Monthly' && (
         <>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Goal Timeline</h2>
+            <h2 style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Goal Timeline</h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <button onClick={() => setMonthOffset(o => o - 1)} style={navBtnStyle}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-mid)" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
               </button>
-              <span style={{ fontSize: 13, color: '#3C3C43', minWidth: 90, textAlign: 'center' }}>{monthLabel}</span>
+              <span style={{ fontSize: 13, color: 'var(--c-text-mid)', minWidth: 90, textAlign: 'center' }}>{monthLabel}</span>
               <button onClick={() => setMonthOffset(o => o + 1)} style={navBtnStyle}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-mid)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
               </button>
             </div>
           </div>
 
           {goals.length === 0 ? (
-            <div style={{ background: 'white', borderRadius: 16, padding: '40px 20px', textAlign: 'center', border: '0.5px solid #E5E5EA', color: '#8E8E93' }}>
-              <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: '#3C3C43' }}>No active goals</p>
+            <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '40px 20px', textAlign: 'center', border: '0.5px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+              <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: 'var(--c-text-mid)' }}>No active goals</p>
               <p style={{ fontSize: 13, margin: 0 }}>Add goals to see your monthly timeline.</p>
             </div>
           ) : (
@@ -357,10 +440,10 @@ export default function PlanPage() {
                   : new Date(rawDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
                 const monthTaskCount = Math.round(weeklyHrs * 4)
                 return (
-                  <div key={goal.id} className="card-enter" style={{ animationDelay: `${goals.indexOf(goal) * 60}ms`, background: 'white', borderRadius: 20, padding: '18px', border: '0.5px solid #E5E5EA', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
+                  <div key={goal.id} className="card-enter" style={{ animationDelay: `${goals.indexOf(goal) * 60}ms`, background: 'var(--c-surface)', borderRadius: 20, padding: '18px', border: '0.5px solid var(--c-border)', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                       <div style={{ flex: 1, paddingRight: 12 }}>
-                        <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>{goal.text}</p>
+                        <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 6px' }}>{goal.text}</p>
                         <span style={{ fontSize: 12, fontWeight: 500, background: catStyle.bg, color: catStyle.color, padding: '2px 8px', borderRadius: 20 }}>{goal.category}</span>
                       </div>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
@@ -374,24 +457,24 @@ export default function PlanPage() {
                         { label: 'Weekly Avg',  value: `${weeklyHrs}h`,    sub: 'per week' },
                         { label: 'Progress',    value: `${goal.progress || 0}%`, sub: 'complete' },
                       ].map(stat => (
-                        <div key={stat.label} style={{ background: '#F8F8FC', borderRadius: 10, padding: '10px 8px' }}>
-                          <p style={{ fontSize: 11, color: '#8E8E93', margin: '0 0 3px' }}>{stat.label}</p>
-                          <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 1px' }}>{stat.value}</p>
-                          <p style={{ fontSize: 11, color: '#8E8E93', margin: 0 }}>{stat.sub}</p>
+                        <div key={stat.label} style={{ background: 'var(--c-surface-2)', borderRadius: 10, padding: '10px 8px' }}>
+                          <p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: '0 0 3px' }}>{stat.label}</p>
+                          <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 1px' }}>{stat.value}</p>
+                          <p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: 0 }}>{stat.sub}</p>
                         </div>
                       ))}
                     </div>
 
-                    <div style={{ height: 6, background: '#F2F2F7', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
+                    <div style={{ height: 6, background: 'var(--c-surface-3)', borderRadius: 4, marginBottom: 12, overflow: 'hidden' }}>
                       <div className="progress-fill-shimmer" style={{ height: '100%', width: `${goal.progress || 0}%`, background: 'linear-gradient(90deg, #3B52FF, #3B7DFF)', borderRadius: 4 }} />
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
                       </svg>
-                      <span style={{ fontSize: 13, color: '#8E8E93' }}>Target Completion</span>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', marginLeft: 'auto' }}>{targetDate}</span>
+                      <span style={{ fontSize: 13, color: 'var(--c-text-2)' }}>Target Completion</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', marginLeft: 'auto' }}>{targetDate}</span>
                     </div>
                   </div>
                 )
@@ -402,7 +485,7 @@ export default function PlanPage() {
           <button
             onClick={() => router.push('/dashboard/plan/quarterly')}
             className="card-press"
-            style={{ width: '100%', marginTop: 16, padding: '14px', borderRadius: 14, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ width: '100%', marginTop: 16, padding: '14px', borderRadius: 14, background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: 'var(--c-text-1)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             View Quarterly Planner
           </button>
@@ -414,7 +497,7 @@ export default function PlanPage() {
 
 
 const navBtnStyle: React.CSSProperties = {
-  background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 8,
+  background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 8,
   width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
   cursor: 'pointer', padding: 0,
 }

@@ -750,8 +750,8 @@ export default function MentorPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--c-bg)' }}>
+        <div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading...</div>
       </div>
     )
   }
@@ -761,12 +761,12 @@ export default function MentorPage() {
   const catGroups = [...new Set(todayTasks.map(t => t.category))]
 
   return (
-    <div style={{ padding: '56px 16px 16px' }}>
+    <div style={{ padding: '56px 16px 16px', background: 'var(--c-bg)', minHeight: '100vh' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0, letterSpacing: '-0.4px' }}>Your Mentor</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3 }}>{dailyVariant(COPY.mentor_subtitle, userId || '')}</p>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--c-text-1)', margin: 0, letterSpacing: '-0.4px' }}>Your Mentor</h1>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', marginTop: 3 }}>{dailyVariant(COPY.mentor_subtitle, userId || '')}</p>
       </div>
 
       {/* Today's Insight Card */}
@@ -802,8 +802,8 @@ export default function MentorPage() {
       {/* Moving the Needle Card */}
       <div className="card-enter" style={{
         animationDelay: '140ms',
-        background: 'white', borderRadius: 24, marginBottom: 14,
-        border: '0.5px solid #E5E5EA', overflow: 'hidden',
+        background: 'var(--c-surface)', borderRadius: 24, marginBottom: 14,
+        border: '0.5px solid var(--c-border)', overflow: 'hidden',
         boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
       }}>
         <button
@@ -825,16 +825,16 @@ export default function MentorPage() {
             </svg>
           </div>
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>
+            <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>
               How You&apos;ll Move the Needle Today
             </p>
-            <p style={{ fontSize: 13, color: '#8E8E93', margin: '2px 0 0' }}>
+            <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '2px 0 0' }}>
               {needleOpen ? 'Hide breakdown' : 'Detailed impact breakdown'}
             </p>
           </div>
           <svg
             width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="#8E8E93" strokeWidth="2" strokeLinecap="round"
+            stroke="var(--c-text-2)" strokeWidth="2" strokeLinecap="round"
             style={{ transform: needleOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}
           >
             <polyline points="6 9 12 15 18 9" />
@@ -845,15 +845,15 @@ export default function MentorPage() {
           <div style={{ padding: '0 20px 20px' }}>
             {todayTasks.length === 0 ? (
               <div style={{
-                background: '#F2F2F7', borderRadius: 12, padding: '16px',
-                textAlign: 'center', color: '#8E8E93',
+                background: 'var(--c-surface-2)', borderRadius: 12, padding: '16px',
+                textAlign: 'center', color: 'var(--c-text-2)',
               }}>
                 <p style={{ fontSize: 14, margin: 0 }}>No tasks scheduled for today.</p>
                 <p style={{ fontSize: 12, margin: '4px 0 0' }}>Head to Plan to schedule your day.</p>
               </div>
             ) : (
               <>
-                <p style={{ fontSize: 13, color: '#3C3C43', marginBottom: 14, lineHeight: 1.5 }}>
+                <p style={{ fontSize: 13, color: 'var(--c-text-mid)', marginBottom: 14, lineHeight: 1.5 }}>
                   Completing today&apos;s {todayTasks.length} task{todayTasks.length > 1 ? 's' : ''} will advance you across {catGroups.length} goal area{catGroups.length > 1 ? 's' : ''}. Here&apos;s the specific impact:
                 </p>
 
@@ -866,8 +866,8 @@ export default function MentorPage() {
                     )
                     return (
                       <div key={task.id} style={{
-                        background: '#FAFAFA', borderRadius: 16, padding: '14px',
-                        border: task.completed ? '1px solid #D1FAE5' : '0.5px solid #E5E5EA',
+                        background: 'var(--c-surface-2)', borderRadius: 16, padding: '14px',
+                        border: task.completed ? '1px solid #D1FAE5' : '0.5px solid var(--c-border)',
                         opacity: task.completed ? 0.7 : 1,
                       }}>
                         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
@@ -882,12 +882,12 @@ export default function MentorPage() {
                           </div>
                           <div style={{ flex: 1 }}>
                             <p style={{
-                              fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: 0,
+                              fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', margin: 0,
                               textDecoration: task.completed ? 'line-through' : 'none',
                             }}>
                               {task.text}
                             </p>
-                            <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>
+                            <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '2px 0 0' }}>
                               Goal: {linkedGoal?.category || task.category}
                             </p>
                           </div>
@@ -930,8 +930,8 @@ export default function MentorPage() {
       {/* Ask Your Mentor */}
       <div className="card-enter" style={{
         animationDelay: '220ms',
-        background: 'white', borderRadius: 24, marginBottom: 14,
-        border: '0.5px solid #E5E5EA', overflow: 'hidden',
+        background: 'var(--c-surface)', borderRadius: 24, marginBottom: 14,
+        border: '0.5px solid var(--c-border)', overflow: 'hidden',
         boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
       }}>
         <div style={{ padding: '18px 20px 14px', display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -947,8 +947,8 @@ export default function MentorPage() {
             </svg>
           </div>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Ask Your Mentor</h2>
-            <p style={{ fontSize: 13, color: '#8E8E93', margin: '2px 0 0' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Ask Your Mentor</h2>
+            <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '2px 0 0' }}>
               Get personalized advice anytime
             </p>
           </div>
@@ -977,13 +977,13 @@ export default function MentorPage() {
               )}
               <div style={{
                 maxWidth: '86%',
-                background: msg.role === 'user' ? '#3B7DFF' : '#F2F2F7',
+                background: msg.role === 'user' ? '#3B7DFF' : 'var(--c-surface-2)',
                 borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                 padding: '10px 13px',
               }}>
                 <p style={{
                   fontSize: 14, margin: 0, lineHeight: 1.5,
-                  color: msg.role === 'user' ? 'white' : '#1C1C1E',
+                  color: msg.role === 'user' ? 'white' : 'var(--c-text-1)',
                   whiteSpace: 'pre-line',
                 }}>
                   {msg.content}
@@ -999,7 +999,7 @@ export default function MentorPage() {
                       onClick={() => !action.applied && applyAction(action, msg.id)}
                       className={action.applied ? undefined : 'card-press'}
                       style={{
-                        background: action.applied ? '#F0FFF4' : 'white',
+                        background: action.applied ? '#F0FFF4' : 'var(--c-surface)',
                         border: action.applied ? '1px solid #A7F3D0' : '1px solid #3B7DFF',
                         borderRadius: 10, padding: '8px 12px',
                         fontSize: 13, fontWeight: 600,
@@ -1027,12 +1027,12 @@ export default function MentorPage() {
                 <span style={{ fontSize: 11, fontWeight: 600, color: '#7C3AED' }}>Mentor</span>
               </div>
               <div style={{
-                background: '#F2F2F7', borderRadius: '18px 18px 18px 4px',
+                background: 'var(--c-surface-2)', borderRadius: '18px 18px 18px 4px',
                 padding: '12px 16px', display: 'flex', gap: 5, alignItems: 'center',
               }}>
                 {[0, 1, 2].map(i => (
                   <div key={i} style={{
-                    width: 7, height: 7, borderRadius: '50%', background: '#8E8E93',
+                    width: 7, height: 7, borderRadius: '50%', background: 'var(--c-text-2)',
                     animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
                   }} />
                 ))}
@@ -1043,11 +1043,11 @@ export default function MentorPage() {
         </div>
 
         {/* Input area */}
-        <div data-tour="mentor-input" style={{ padding: '12px 14px 16px', borderTop: '0.5px solid #F2F2F7' }}>
+        <div data-tour="mentor-input" style={{ padding: '12px 14px 16px', borderTop: '0.5px solid var(--c-border-sub)' }}>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
             <div style={{
               flex: 1, display: 'flex', alignItems: 'center',
-              background: '#F2F2F7', borderRadius: 22, padding: '10px 16px',
+              background: 'var(--c-surface-2)', borderRadius: 22, padding: '10px 16px',
             }}>
               <input
                 ref={inputRef}
@@ -1058,7 +1058,7 @@ export default function MentorPage() {
                 className="cadence-input"
                 style={{
                   flex: 1, border: 'none', outline: 'none', background: 'transparent',
-                  fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit',
+                  fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit',
                 }}
               />
             </div>
@@ -1067,7 +1067,7 @@ export default function MentorPage() {
               disabled={!inputText.trim() || typing}
               style={{
                 width: 40, height: 40, borderRadius: '50%', border: 'none',
-                background: inputText.trim() && !typing ? '#3B7DFF' : '#D1D1D6',
+                background: inputText.trim() && !typing ? '#3B7DFF' : 'var(--c-text-3)',
                 cursor: inputText.trim() && !typing ? 'pointer' : 'default',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, transition: 'background 0.15s',
@@ -1079,7 +1079,7 @@ export default function MentorPage() {
               </svg>
             </button>
           </div>
-          <p style={{ fontSize: 11, color: '#8E8E93', margin: 0, paddingLeft: 4 }}>
+          <p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: 0, paddingLeft: 4 }}>
             Ask about goals, timelines, tasks, schedules, or progress
           </p>
         </div>
@@ -1091,7 +1091,7 @@ export default function MentorPage() {
           onClick={() => router.push('/dashboard/goals')}
           className="card-press"
           style={{
-            background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 16,
+            background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 16,
             padding: '16px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
             boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
           }}
@@ -1101,14 +1101,14 @@ export default function MentorPage() {
               <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
             </svg>
           </div>
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>View Goals</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>View Goals</p>
         </button>
 
         <button
           onClick={() => router.push('/dashboard/plan')}
           className="card-press"
           style={{
-            background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 16,
+            background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 16,
             padding: '16px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
             boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
           }}
@@ -1118,7 +1118,7 @@ export default function MentorPage() {
               <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
             </svg>
           </div>
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>View Schedule</p>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>View Schedule</p>
         </button>
       </div>
 

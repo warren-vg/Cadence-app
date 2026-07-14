@@ -125,16 +125,16 @@ function WaveformRhythmChart({ allTasks }: { allTasks: DBTask[] }) {
   const weekLabel = `${monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${addDays(monday, 6).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
 
   return (
-    <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+    <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Weekly Rhythm</h2>
-        <span style={{ fontSize: 11, color: '#8E8E93', fontWeight: 400 }}>{weekLabel}</span>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Weekly Rhythm</h2>
+        <span style={{ fontSize: 11, color: 'var(--c-text-2)', fontWeight: 400 }}>{weekLabel}</span>
       </div>
-      <p style={{ fontSize: 13, color: '#3C3C43', lineHeight: 1.45, margin: '0 0 12px' }}>{insight}</p>
+      <p style={{ fontSize: 13, color: 'var(--c-text-mid)', lineHeight: 1.45, margin: '0 0 12px' }}>{insight}</p>
 
       {n === 0 ? (
         <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: 13, color: '#C7C7CC' }}>Complete tasks to see your rhythm here.</span>
+          <span style={{ fontSize: 13, color: 'var(--c-text-3)' }}>Complete tasks to see your rhythm here.</span>
         </div>
       ) : (
         <svg width="100%" viewBox={`0 0 ${W} ${H}`} style={{ overflow: 'visible', display: 'block' }}>
@@ -188,7 +188,7 @@ function WaveformRhythmChart({ allTasks }: { allTasks: DBTask[] }) {
           {usedCats.map(cat => (
             <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <div style={{ width: 7, height: 7, borderRadius: '50%', background: waveColor(cat), flexShrink: 0 }} />
-              <span style={{ fontSize: 11, color: '#8E8E93' }}>
+              <span style={{ fontSize: 11, color: 'var(--c-text-2)' }}>
                 {cat.charAt(0).toUpperCase() + cat.slice(1)}
               </span>
             </div>
@@ -247,26 +247,26 @@ function ActivityCalendar({
   const isCurrentMonth = monthOffset === 0
 
   return (
-    <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+    <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <div>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Activity</h2>
-          <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Activity</h2>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '2px 0 0' }}>
             {activeDayCount} active {activeDayCount === 1 ? 'day' : 'days'} this {isCurrentMonth ? 'month' : 'period'}
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={onPrev}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#8E8E93', display: 'flex', alignItems: 'center' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--c-text-2)', display: 'flex', alignItems: 'center' }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           </button>
-          <span style={{ fontSize: 13, fontWeight: 500, color: '#1C1C1E', whiteSpace: 'nowrap' }}>{monthLabel}</span>
+          <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--c-text-1)', whiteSpace: 'nowrap' }}>{monthLabel}</span>
           <button
             onClick={onNext}
             disabled={isCurrentMonth}
-            style={{ background: 'none', border: 'none', cursor: isCurrentMonth ? 'default' : 'pointer', padding: 4, color: isCurrentMonth ? '#D1D1D6' : '#8E8E93', display: 'flex', alignItems: 'center' }}
+            style={{ background: 'none', border: 'none', cursor: isCurrentMonth ? 'default' : 'pointer', padding: 4, color: isCurrentMonth ? 'var(--c-text-3)' : 'var(--c-text-2)', display: 'flex', alignItems: 'center' }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
@@ -276,7 +276,7 @@ function ActivityCalendar({
       {/* Day-of-week headers */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 4 }}>
         {DAY_NAMES.map((d, i) => (
-          <div key={i} style={{ textAlign: 'center', fontSize: 10, fontWeight: 500, color: '#8E8E93', paddingBottom: 4 }}>{d}</div>
+          <div key={i} style={{ textAlign: 'center', fontSize: 10, fontWeight: 500, color: 'var(--c-text-2)', paddingBottom: 4 }}>{d}</div>
         ))}
       </div>
 
@@ -321,7 +321,7 @@ function ActivityCalendar({
                 fontWeight: isToday ? 700 : 400,
                 color: isToday
                   ? '#2563EB'
-                  : (isActive && dotSize >= 18 ? 'white' : '#8E8E93'),
+                  : (isActive && dotSize >= 18 ? 'white' : 'var(--c-text-2)'),
               }}>
                 {cell.day}
               </span>
@@ -334,7 +334,7 @@ function ActivityCalendar({
       <div style={{ display: 'flex', gap: 14, marginTop: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#2563EB' }} />
-          <span style={{ fontSize: 11, color: '#8E8E93' }}>Active day</span>
+          <span style={{ fontSize: 11, color: 'var(--c-text-2)' }}>Active day</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <div style={{
@@ -344,7 +344,7 @@ function ActivityCalendar({
           }}>
             <span style={{ fontSize: 9, color: '#2563EB', fontWeight: 700 }}>{today.getDate()}</span>
           </div>
-          <span style={{ fontSize: 11, color: '#8E8E93' }}>Today</span>
+          <span style={{ fontSize: 11, color: 'var(--c-text-2)' }}>Today</span>
         </div>
       </div>
     </div>
@@ -547,19 +547,19 @@ function Modal({ title, subtitle, onClose, children }: {
       onClick={onClose}
     >
       <div
-        style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', padding: '24px 20px 40px' }}
+        style={{ background: 'var(--c-surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', padding: '24px 20px 40px' }}
         onClick={e => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
           <div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>{title}</h2>
-            {subtitle && <p style={{ fontSize: 12, color: '#8E8E93', margin: '3px 0 0' }}>{subtitle}</p>}
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>{title}</h2>
+            {subtitle && <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '3px 0 0' }}>{subtitle}</p>}
           </div>
           <button
             onClick={onClose}
-            style={{ background: '#F2F2F7', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, marginLeft: 12 }}
+            style={{ background: 'var(--c-surface-2)', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, marginLeft: 12 }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-mid)" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </button>
         </div>
         {children}
@@ -586,7 +586,7 @@ function ModalLineChart({ weeks, multiSeries }: { weeks: WeekData[]; multiSeries
         {yLabels.map(v => (
           <g key={v}>
             <line x1={PL} y1={getY(v)} x2={W - PR} y2={getY(v)} stroke="#EFEFF4" strokeWidth="1" strokeDasharray="3 2" />
-            <text x={PL - 3} y={getY(v) + 3} textAnchor="end" fontSize="8" fill="#C7C7CC">{v}</text>
+            <text x={PL - 3} y={getY(v) + 3} textAnchor="end" fontSize="8" style={{ fill: 'var(--c-text-3)' }}>{v}</text>
           </g>
         ))}
         {multiSeries && taskD && <path d={taskD} fill="none" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />}
@@ -595,7 +595,7 @@ function ModalLineChart({ weeks, multiSeries }: { weeks: WeekData[]; multiSeries
         {weeks.map((w, i) => (
           <g key={i}>
             <circle cx={getX(i)} cy={getY(w.score)} r="4.5" fill="white" stroke="#3B7DFF" strokeWidth="2.5" />
-            <text x={getX(i)} y={H - 5} textAnchor="middle" fontSize="8.5" fill="#8E8E93">{w.label}</text>
+            <text x={getX(i)} y={H - 5} textAnchor="middle" fontSize="8.5" style={{ fill: 'var(--c-text-2)' }}>{w.label}</text>
           </g>
         ))}
       </svg>
@@ -617,7 +617,7 @@ function ModalAreaChart({ weeks }: { weeks: WeekData[] }) {
         {yLabels.map(v => (
           <g key={v}>
             <line x1={PL} y1={getY(v)} x2={W - PR} y2={getY(v)} stroke="#EFEFF4" strokeWidth="1" strokeDasharray="3 2" />
-            <text x={PL - 3} y={getY(v) + 3} textAnchor="end" fontSize="8" fill="#C7C7CC">{v}</text>
+            <text x={PL - 3} y={getY(v) + 3} textAnchor="end" fontSize="8" style={{ fill: 'var(--c-text-3)' }}>{v}</text>
           </g>
         ))}
         <defs>
@@ -631,7 +631,7 @@ function ModalAreaChart({ weeks }: { weeks: WeekData[] }) {
         {weeks.map((w, i) => (
           <g key={i}>
             <circle cx={getX(i)} cy={getY(w.rate)} r="4.5" fill="white" stroke="#34C759" strokeWidth="2.5" />
-            <text x={getX(i)} y={H - 5} textAnchor="middle" fontSize="8.5" fill="#8E8E93">{w.short}</text>
+            <text x={getX(i)} y={H - 5} textAnchor="middle" fontSize="8.5" style={{ fill: 'var(--c-text-2)' }}>{w.short}</text>
           </g>
         ))}
       </svg>
@@ -657,7 +657,7 @@ function ModalStackedBarChart({ weeks }: { weeks: WeekData[] }) {
         {yLabels.map(v => (
           <g key={v}>
             <line x1={PL} y1={PT + ch - toH(v)} x2={W - PR} y2={PT + ch - toH(v)} stroke="#EFEFF4" strokeWidth="1" strokeDasharray="3 2" />
-            <text x={PL - 3} y={PT + ch - toH(v) + 3} textAnchor="end" fontSize="8" fill="#C7C7CC">{v}</text>
+            <text x={PL - 3} y={PT + ch - toH(v) + 3} textAnchor="end" fontSize="8" style={{ fill: 'var(--c-text-3)' }}>{v}</text>
           </g>
         ))}
         {weeks.map((w, i) => {
@@ -670,7 +670,7 @@ function ModalStackedBarChart({ weeks }: { weeks: WeekData[] }) {
                 curY -= h
                 return <rect key={k} x={bx} y={curY} width={barW} height={h} fill={CAT_COLORS[k]} />
               })}
-              <text x={bx + barW / 2} y={H - 6} textAnchor="middle" fontSize="8.5" fill="#8E8E93">{w.short}</text>
+              <text x={bx + barW / 2} y={H - 6} textAnchor="middle" fontSize="8.5" style={{ fill: 'var(--c-text-2)' }}>{w.short}</text>
             </g>
           )
         })}
@@ -690,18 +690,18 @@ function MomentumModal({ weeks, onClose }: { weeks: WeekData[]; onClose: () => v
           {[['#3B7DFF', 'Momentum Score'], ['#34C759', 'Tasks Completed'], ['#FF9500', 'Hours Worked']].map(([color, label]) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <svg width="18" height="8"><line x1="0" y1="4" x2="12" y2="4" stroke={color} strokeWidth="2" strokeDasharray="2 2" /><circle cx="16" cy="4" r="3" fill="white" stroke={color} strokeWidth="2" /></svg>
-              <span style={{ fontSize: 10, color: '#3C3C43' }}>{label}</span>
+              <span style={{ fontSize: 10, color: 'var(--c-text-mid)' }}>{label}</span>
             </div>
           ))}
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
           {weeks.map(w => (
-            <div key={w.label} style={{ background: '#F8F8FC', borderRadius: 12, padding: '12px 14px' }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>{w.label}</p>
-              <p style={{ fontSize: 12, color: '#3C3C43', margin: '0 0 2px' }}>Score: {w.score}</p>
-              <p style={{ fontSize: 12, color: '#3C3C43', margin: '0 0 2px' }}>Completed: {w.completed}/{w.total} tasks</p>
-              <p style={{ fontSize: 12, color: '#3C3C43', margin: '0 0 2px' }}>Hours: {w.hours}h</p>
-              <p style={{ fontSize: 12, color: '#3C3C43', margin: 0 }}>Efficiency: {w.efficiency}%</p>
+            <div key={w.label} style={{ background: 'var(--c-surface-2)', borderRadius: 12, padding: '12px 14px' }}>
+              <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 6px' }}>{w.label}</p>
+              <p style={{ fontSize: 12, color: 'var(--c-text-mid)', margin: '0 0 2px' }}>Score: {w.score}</p>
+              <p style={{ fontSize: 12, color: 'var(--c-text-mid)', margin: '0 0 2px' }}>Completed: {w.completed}/{w.total} tasks</p>
+              <p style={{ fontSize: 12, color: 'var(--c-text-mid)', margin: '0 0 2px' }}>Hours: {w.hours}h</p>
+              <p style={{ fontSize: 12, color: 'var(--c-text-mid)', margin: 0 }}>Efficiency: {w.efficiency}%</p>
             </div>
           ))}
         </div>
@@ -747,7 +747,7 @@ function CategoryModal({ cats, onClose }: { cats: CatData[]; onClose: () => void
             {yLabels.map(v => (
               <g key={v}>
                 <line x1={PL} y1={getBarY(v)} x2={W - PR} y2={getBarY(v)} stroke="#EFEFF4" strokeWidth="1" strokeDasharray="3 2" />
-                <text x={PL - 3} y={getBarY(v) + 3} textAnchor="end" fontSize="8" fill="#C7C7CC">{v}</text>
+                <text x={PL - 3} y={getBarY(v) + 3} textAnchor="end" fontSize="8" style={{ fill: 'var(--c-text-3)' }}>{v}</text>
               </g>
             ))}
             {cats.map((c, i) => {
@@ -756,7 +756,7 @@ function CategoryModal({ cats, onClose }: { cats: CatData[]; onClose: () => void
                 <g key={i}>
                   <rect x={bx} y={getBarY(c.progress)} width={barW} height={getBarH(c.progress)} fill="#3B7DFF" rx="3" />
                   <rect x={bx + barW - taskBarW} y={getBarY((c.tasks / taskMax) * 100)} width={taskBarW} height={getBarH((c.tasks / taskMax) * 100)} fill="#34C759" rx="2" />
-                  <text x={bx + barW / 2} y={H - 18} textAnchor="middle" fontSize="8" fill="#8E8E93">{c.category}</text>
+                  <text x={bx + barW / 2} y={H - 18} textAnchor="middle" fontSize="8" style={{ fill: 'var(--c-text-2)' }}>{c.category}</text>
                 </g>
               )
             })}
@@ -766,21 +766,21 @@ function CategoryModal({ cats, onClose }: { cats: CatData[]; onClose: () => void
           {[['#3B7DFF', 'Progress %'], ['#34C759', 'Tasks Completed']].map(([color, label]) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} />
-              <span style={{ fontSize: 11, color: '#3C3C43' }}>{label}</span>
+              <span style={{ fontSize: 11, color: 'var(--c-text-mid)' }}>{label}</span>
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
           {cats.map(c => (
-            <div key={c.category} style={{ background: '#F8F8FC', borderRadius: 12, padding: '12px 14px' }}>
+            <div key={c.category} style={{ background: 'var(--c-surface-2)', borderRadius: 12, padding: '12px 14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#1C1C1E' }}>{c.category}</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-text-1)' }}>{c.category}</span>
                 <span style={{ fontSize: 14, fontWeight: 700, color: '#3B7DFF' }}>{c.progress}%</span>
               </div>
               <div style={{ display: 'flex', gap: 20 }}>
-                <div><p style={{ fontSize: 11, color: '#8E8E93', margin: 0 }}>Hours</p><p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>{c.hours}h</p></div>
-                <div><p style={{ fontSize: 11, color: '#8E8E93', margin: 0 }}>Tasks</p><p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>{c.tasks}</p></div>
-                <div><p style={{ fontSize: 11, color: '#8E8E93', margin: 0 }}>Efficiency</p><p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>{c.efficiency}/h</p></div>
+                <div><p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: 0 }}>Hours</p><p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>{c.hours}h</p></div>
+                <div><p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: 0 }}>Tasks</p><p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>{c.tasks}</p></div>
+                <div><p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: 0 }}>Efficiency</p><p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>{c.efficiency}/h</p></div>
               </div>
             </div>
           ))}
@@ -824,25 +824,25 @@ function TimeModal({ weeks, onClose }: { weeks: WeekData[]; onClose: () => void 
           {Object.entries(CAT_COLORS).map(([k, color]) => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} />
-              <span style={{ fontSize: 11, color: '#3C3C43', textTransform: 'capitalize' }}>{k.charAt(0).toUpperCase() + k.slice(1)}</span>
+              <span style={{ fontSize: 11, color: 'var(--c-text-mid)', textTransform: 'capitalize' }}>{k.charAt(0).toUpperCase() + k.slice(1)}</span>
             </div>
           ))}
         </div>
         <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
-          <div style={{ flex: 1, background: '#F8F8FC', borderRadius: 12, padding: '14px' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', margin: '0 0 10px' }}>Total Hours</p>
+          <div style={{ flex: 1, background: 'var(--c-surface-2)', borderRadius: 12, padding: '14px' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 10px' }}>Total Hours</p>
             {Object.entries(totals).map(([k, v]) => (
               <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 7 }}>
                 <div style={{ width: 10, height: 10, borderRadius: '50%', background: CAT_COLORS[k], flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: '#3C3C43', textTransform: 'capitalize', flex: 1 }}>{k.charAt(0).toUpperCase() + k.slice(1)}</span>
-                <span style={{ fontSize: 12, fontWeight: 600, color: '#1C1C1E' }}>{v}h</span>
+                <span style={{ fontSize: 12, color: 'var(--c-text-mid)', textTransform: 'capitalize', flex: 1 }}>{k.charAt(0).toUpperCase() + k.slice(1)}</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-1)' }}>{v}h</span>
               </div>
             ))}
           </div>
-          <div style={{ flex: 1, background: '#F8F8FC', borderRadius: 12, padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E', margin: '0 0 10px', alignSelf: 'flex-start' }}>Distribution</p>
+          <div style={{ flex: 1, background: 'var(--c-surface-2)', borderRadius: 12, padding: '14px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 10px', alignSelf: 'flex-start' }}>Distribution</p>
             <svg width={donutSize} height={donutSize} viewBox={`0 0 ${donutSize} ${donutSize}`}>
-              <circle cx={cx} cy={cy} r={r} fill="none" stroke="#F2F2F7" strokeWidth="12" />
+              <circle cx={cx} cy={cy} r={r} fill="none" stroke="var(--c-surface-3)" strokeWidth="12" />
               {donutSegs.map(s => (
                 <circle key={s.key} cx={cx} cy={cy} r={r} fill="none" stroke={s.color} strokeWidth="12" strokeDasharray={`${s.dash} ${circ - s.dash}`} strokeDashoffset={-s.offset + circ / 4} />
               ))}
@@ -878,14 +878,14 @@ function CompletionModal({ weeks, onClose }: { weeks: WeekData[]; onClose: () =>
         <ModalAreaChart weeks={weeks} />
         <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10, marginBottom: 16, alignItems: 'center' }}>
           <svg width="18" height="8"><line x1="0" y1="4" x2="12" y2="4" stroke="#34C759" strokeWidth="2" strokeDasharray="2 2" /><circle cx="16" cy="4" r="3" fill="white" stroke="#34C759" strokeWidth="2" /></svg>
-          <span style={{ fontSize: 11, color: '#3C3C43' }}>Actual Rate</span>
+          <span style={{ fontSize: 11, color: 'var(--c-text-mid)' }}>Actual Rate</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${weeks.length}, 1fr)`, gap: 8, marginBottom: 16 }}>
           {weeks.map(w => (
-            <div key={w.short} style={{ background: '#F8F8FC', borderRadius: 10, padding: '10px 6px', textAlign: 'center' }}>
-              <p style={{ fontSize: 11, color: '#8E8E93', margin: '0 0 4px' }}>{w.short}</p>
-              <p style={{ fontSize: 17, fontWeight: 800, color: '#1C1C1E', margin: '0 0 4px', lineHeight: 1 }}>{w.rate}%</p>
-              <p style={{ fontSize: 10, color: w.rate >= 80 ? '#16A34A' : '#8E8E93', margin: 0 }}>{w.rate >= 80 ? '✓ On target' : 'Below target'}</p>
+            <div key={w.short} style={{ background: 'var(--c-surface-2)', borderRadius: 10, padding: '10px 6px', textAlign: 'center' }}>
+              <p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: '0 0 4px' }}>{w.short}</p>
+              <p style={{ fontSize: 17, fontWeight: 800, color: 'var(--c-text-1)', margin: '0 0 4px', lineHeight: 1 }}>{w.rate}%</p>
+              <p style={{ fontSize: 10, color: w.rate >= 80 ? '#16A34A' : 'var(--c-text-2)', margin: 0 }}>{w.rate >= 80 ? '✓ On target' : 'Below target'}</p>
             </div>
           ))}
         </div>
@@ -1049,22 +1049,22 @@ export default function ProgressPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--c-bg)' }}>
+        <div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading...</div>
       </div>
     )
   }
 
   return (
     <div
-      style={{ padding: '56px 16px 100px' }}
+      style={{ padding: '56px 16px 100px', background: 'var(--c-bg)', minHeight: '100vh' }}
       onClick={() => { setMomentumActive(null); setCatActive(null); setTimeActive(null); setCompletionActive(null); setShowPeriodMenu(false) }}
     >
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Cadence</h1>
-          <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>Your rhythm over time.</p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Cadence</h1>
+          <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '3px 0 0' }}>Your rhythm over time.</p>
         </div>
         <button
           onClick={() => router.push('/dashboard/progress/community')}
@@ -1089,11 +1089,11 @@ export default function ProgressPage() {
       <div style={{ marginBottom: 14 }}>
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
-          background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 20,
-          padding: '7px 14px', fontSize: 14, fontWeight: 500, color: '#1C1C1E',
+          background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 20,
+          padding: '7px 14px', fontSize: 14, fontWeight: 500, color: 'var(--c-text-1)',
         }}>
           This Week
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-2)" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
         </div>
       </div>
 
@@ -1114,14 +1114,14 @@ export default function ProgressPage() {
           { icon: '🎯', label: 'Active Goals', value: activeGoals.length, iconBg: '#DBEAFE' },
           { icon: '🔥', label: 'Week Streak',  value: weekStreak,               iconBg: '#FDE68A' },
         ].map(s => (
-          <div key={s.label} style={{ background: 'white', borderRadius: 16, padding: '16px', border: '0.5px solid #E5E5EA' }}>
+          <div key={s.label} style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '16px', border: '0.5px solid var(--c-border)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: s.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>
                 {s.icon}
               </div>
               <div>
-                <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>{s.label}</p>
-                <p style={{ fontSize: 26, fontWeight: 800, color: '#1C1C1E', margin: 0, lineHeight: 1.1 }}>{s.value}</p>
+                <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: 0 }}>{s.label}</p>
+                <p style={{ fontSize: 26, fontWeight: 800, color: 'var(--c-text-1)', margin: 0, lineHeight: 1.1 }}>{s.value}</p>
               </div>
             </div>
           </div>
@@ -1135,24 +1135,24 @@ export default function ProgressPage() {
             onClick={e => { e.stopPropagation(); setShowPeriodMenu(v => !v) }}
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
-              background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 20,
-              padding: '8px 16px', fontSize: 14, fontWeight: 500, color: '#1C1C1E',
+              background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 20,
+              padding: '8px 16px', fontSize: 14, fontWeight: 500, color: 'var(--c-text-1)',
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >
             {timePeriod}
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-2)" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9" /></svg>
           </button>
           {showPeriodMenu && (
             <div
-              style={{ position: 'absolute', top: '110%', left: 0, background: 'white', borderRadius: 12, border: '0.5px solid #E5E5EA', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 50, overflow: 'hidden', minWidth: 160 }}
+              style={{ position: 'absolute', top: '110%', left: 0, background: 'var(--c-surface)', borderRadius: 12, border: '0.5px solid var(--c-border)', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', zIndex: 50, overflow: 'hidden', minWidth: 160 }}
               onClick={e => e.stopPropagation()}
             >
               {periods.map(p => (
                 <button
                   key={p}
                   onClick={() => { setTimePeriod(p); setShowPeriodMenu(false) }}
-                  style={{ width: '100%', padding: '11px 16px', textAlign: 'left', background: p === timePeriod ? '#F8F8FC' : 'none', border: 'none', fontSize: 14, fontWeight: p === timePeriod ? 600 : 400, color: p === timePeriod ? '#3B7DFF' : '#1C1C1E', cursor: 'pointer', fontFamily: 'inherit', borderBottom: '0.5px solid #F2F2F7' }}
+                  style={{ width: '100%', padding: '11px 16px', textAlign: 'left', background: p === timePeriod ? 'var(--c-surface-2)' : 'none', border: 'none', fontSize: 14, fontWeight: p === timePeriod ? 600 : 400, color: p === timePeriod ? '#3B7DFF' : 'var(--c-text-1)', cursor: 'pointer', fontFamily: 'inherit', borderBottom: '0.5px solid var(--c-border-sub)' }}
                 >
                   {p}
                 </button>
@@ -1161,18 +1161,18 @@ export default function ProgressPage() {
           )}
         </div>
         {periodLabel && (
-          <span style={{ fontSize: 13, color: '#8E8E93', fontWeight: 400 }}>{periodLabel}</span>
+          <span style={{ fontSize: 13, color: 'var(--c-text-2)', fontWeight: 400 }}>{periodLabel}</span>
         )}
       </div>
 
       {/* ── Momentum Score ───────────────────────────────────────────────── */}
-      <div data-tour="progress-momentum-chart" style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div data-tour="progress-momentum-chart" style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Momentum Score</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Momentum Score</h2>
           <button onClick={() => setActiveModal('momentum')} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /></svg>
             <span style={{ fontSize: 12, color: '#16A34A', fontWeight: 600 }}>{trend.pct >= 0 ? '+' : ''}{trend.pct}% {trend.label}</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-3)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         </div>
         <svg
@@ -1191,7 +1191,7 @@ export default function ProgressPage() {
           {[0, 20, 40, 60, 80].map(v => (
             <g key={v}>
               <line x1={PAD} y1={getScoreY(v)} x2={W - PAD} y2={getScoreY(v)} stroke="#F0F0F5" strokeWidth="1" strokeDasharray="3 2" />
-              <text x={PAD - 3} y={getScoreY(v) + 3} textAnchor="end" fontSize="8" fill="#C7C7CC">{v}</text>
+              <text x={PAD - 3} y={getScoreY(v) + 3} textAnchor="end" fontSize="8" style={{ fill: 'var(--c-text-3)' }}>{v}</text>
             </g>
           ))}
           <path d={momentumArea} fill="url(#momGrad)" />
@@ -1200,13 +1200,13 @@ export default function ProgressPage() {
             <g key={i} onClick={e => { e.stopPropagation(); setMomentumActive(momentumActive === i ? null : i) }} style={{ cursor: 'pointer' }}>
               <circle cx={getX(i)} cy={getScoreY(w.score)} r="14" fill="transparent" />
               <circle cx={getX(i)} cy={getScoreY(w.score)} r={momentumActive === i ? 6 : 4.5} fill={momentumActive === i ? '#3B7DFF' : 'white'} stroke="#3B7DFF" strokeWidth="2.5" />
-              <text x={getX(i)} y={H - 4} textAnchor="middle" fontSize="9" fill="#8E8E93">{w.label}</text>
+              <text x={getX(i)} y={H - 4} textAnchor="middle" fontSize="9" style={{ fill: 'var(--c-text-2)' }}>{w.label}</text>
             </g>
           ))}
         </svg>
         {momentumActive !== null && (
-          <div style={{ background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '6px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', display: 'inline-block', marginTop: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#1C1C1E' }}>{displayWeeks[momentumActive].label}</span>
+          <div style={{ background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '6px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', display: 'inline-block', marginTop: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-1)' }}>{displayWeeks[momentumActive].label}</span>
             <span style={{ fontSize: 12, color: '#3B7DFF', marginLeft: 6 }}>score : {displayWeeks[momentumActive].score}</span>
           </div>
         )}
@@ -1216,11 +1216,11 @@ export default function ProgressPage() {
       </div>
 
       {/* ── Progress by Category ─────────────────────────────────────────── */}
-      <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Progress by Category</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Progress by Category</h2>
           <button onClick={() => setActiveModal('category')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-3)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         </div>
         <div style={{ position: 'relative', width: '100%', paddingBottom: `${(CBH / CBW) * 100}%`, height: 0 }} onClick={e => e.stopPropagation()}>
@@ -1228,7 +1228,7 @@ export default function ProgressPage() {
             {cbYLabels.map(v => (
               <g key={v}>
                 <line x1={CBPL} y1={getCBBarY(v)} x2={CBW - CBPR} y2={getCBBarY(v)} stroke="#F0F0F5" strokeWidth="1" strokeDasharray="3 2" />
-                <text x={CBPL - 1} y={getCBBarY(v) + 3} textAnchor="end" fontSize="7.5" fill="#C7C7CC">{v}</text>
+                <text x={CBPL - 1} y={getCBBarY(v) + 3} textAnchor="end" fontSize="7.5" style={{ fill: 'var(--c-text-3)' }}>{v}</text>
               </g>
             ))}
             {displayCats.map((c, i) => {
@@ -1237,16 +1237,16 @@ export default function ProgressPage() {
               const by = getCBBarY(c.progress)
               return (
                 <g key={c.category} onClick={e => { e.stopPropagation(); setCatActive(catActive === i ? null : i) }} style={{ cursor: 'pointer' }}>
-                  {catActive === i && <rect x={bx - 3} y={CBPT} width={cbBarW + 6} height={cbCH} fill="#F8F8FC" rx="3" />}
+                  {catActive === i && <rect x={bx - 3} y={CBPT} width={cbBarW + 6} height={cbCH} style={{ fill: 'var(--c-surface-2)' }} rx="3" />}
                   <rect x={bx} y={by} width={cbBarW} height={bh} fill={catActive === i ? '#2D6AE8' : '#3B7DFF'} rx="4" />
-                  <text x={bx + cbBarW / 2} y={CBH - 6} textAnchor="middle" fontSize="8.5" fill="#8E8E93">{c.category}</text>
+                  <text x={bx + cbBarW / 2} y={CBH - 6} textAnchor="middle" fontSize="8.5" style={{ fill: 'var(--c-text-2)' }}>{c.category}</text>
                 </g>
               )
             })}
           </svg>
           {catActive !== null && (
-            <div style={{ position: 'absolute', right: 0, top: '10%', background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '6px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', zIndex: 5, pointerEvents: 'none' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#1C1C1E' }}>{displayCats[catActive].category}</div>
+            <div style={{ position: 'absolute', right: 0, top: '10%', background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '6px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', zIndex: 5, pointerEvents: 'none' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-1)' }}>{displayCats[catActive].category}</div>
               <div style={{ fontSize: 12, color: '#3B7DFF' }}>progress : {displayCats[catActive].progress}</div>
             </div>
           )}
@@ -1257,11 +1257,11 @@ export default function ProgressPage() {
       </div>
 
       {/* ── Time Investment (Hours) ───────────────────────────────────────── */}
-      <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Time Investment (Hours)</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Time Investment (Hours)</h2>
           <button onClick={() => setActiveModal('time')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-3)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         </div>
         <div style={{ position: 'relative', width: '100%', height: SBH + 4 }} onClick={e => e.stopPropagation()}>
@@ -1269,7 +1269,7 @@ export default function ProgressPage() {
             {sbYLabels.map(v => (
               <g key={v}>
                 <line x1={SBPAD} y1={getSBY(v)} x2={SBW - SBPAD} y2={getSBY(v)} stroke="#F0F0F5" strokeWidth="1" strokeDasharray="3 2" />
-                <text x={SBPAD - 2} y={getSBY(v) + 3} textAnchor="end" fontSize="7.5" fill="#C7C7CC">{v}</text>
+                <text x={SBPAD - 2} y={getSBY(v) + 3} textAnchor="end" fontSize="7.5" style={{ fill: 'var(--c-text-3)' }}>{v}</text>
               </g>
             ))}
             {displayWeeks.map((w, i) => {
@@ -1283,14 +1283,14 @@ export default function ProgressPage() {
                     curY -= h
                     return <rect key={k} x={bx} y={curY} width={sbBarW} height={h} fill={CAT_COLORS[k]} />
                   })}
-                  <text x={bx + sbBarW / 2} y={SBH - 4} textAnchor="middle" fontSize="8.5" fill="#8E8E93">{w.short}</text>
+                  <text x={bx + sbBarW / 2} y={SBH - 4} textAnchor="middle" fontSize="8.5" style={{ fill: 'var(--c-text-2)' }}>{w.short}</text>
                 </g>
               )
             })}
           </svg>
           {timeActive !== null && (
-            <div style={{ position: 'absolute', right: 4, top: SBPAD, background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '7px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', zIndex: 5, pointerEvents: 'none' }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: '#1C1C1E', marginBottom: 3 }}>{displayWeeks[timeActive].short}</div>
+            <div style={{ position: 'absolute', right: 4, top: SBPAD, background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '7px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', zIndex: 5, pointerEvents: 'none' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-1)', marginBottom: 3 }}>{displayWeeks[timeActive].short}</div>
               {(['career', 'health', 'finance', 'creative'] as const).map(k => (
                 <div key={k} style={{ fontSize: 11, color: CAT_COLORS[k] }}>{k} : {displayWeeks[timeActive][k]}</div>
               ))}
@@ -1301,7 +1301,7 @@ export default function ProgressPage() {
           {Object.entries(CAT_COLORS).map(([k, color]) => (
             <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} />
-              <span style={{ fontSize: 11, color: '#3C3C43', textTransform: 'capitalize' }}>{k}</span>
+              <span style={{ fontSize: 11, color: 'var(--c-text-mid)', textTransform: 'capitalize' }}>{k}</span>
             </div>
           ))}
         </div>
@@ -1311,11 +1311,11 @@ export default function ProgressPage() {
       </div>
 
       {/* ── Weekly Completion Rate ────────────────────────────────────────── */}
-      <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '16px 18px 14px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Weekly Completion Rate</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Weekly Completion Rate</h2>
           <button onClick={() => setActiveModal('completion')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-3)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         </div>
         <svg width="100%" viewBox={`0 0 ${compW} ${compH + 20}`} style={{ overflow: 'visible' }} onClick={e => e.stopPropagation()}>
@@ -1328,7 +1328,7 @@ export default function ProgressPage() {
           {[0, 20, 40, 60, 80].map(v => (
             <g key={v}>
               <line x1={16} y1={getCompY(v)} x2={compW - 16} y2={getCompY(v)} stroke="#F0F0F5" strokeWidth="1" strokeDasharray="3 2" />
-              <text x={14} y={getCompY(v) + 3} textAnchor="end" fontSize="8" fill="#C7C7CC">{v}</text>
+              <text x={14} y={getCompY(v) + 3} textAnchor="end" fontSize="8" style={{ fill: 'var(--c-text-3)' }}>{v}</text>
             </g>
           ))}
           <path d={compArea} fill="url(#compGrad2)" />
@@ -1337,13 +1337,13 @@ export default function ProgressPage() {
             <g key={i} onClick={e => { e.stopPropagation(); setCompletionActive(completionActive === i ? null : i) }} style={{ cursor: 'pointer' }}>
               <circle cx={getCompX(i)} cy={getCompY(w.rate)} r="14" fill="transparent" />
               <circle cx={getCompX(i)} cy={getCompY(w.rate)} r={completionActive === i ? 6 : 4.5} fill={completionActive === i ? '#34C759' : 'white'} stroke="#34C759" strokeWidth="2.5" />
-              <text x={getCompX(i)} y={compH + 14} textAnchor="middle" fontSize="9" fill="#8E8E93">{w.short}</text>
+              <text x={getCompX(i)} y={compH + 14} textAnchor="middle" fontSize="9" style={{ fill: 'var(--c-text-2)' }}>{w.short}</text>
             </g>
           ))}
         </svg>
         {completionActive !== null && (
-          <div style={{ background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '6px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', display: 'inline-block', marginTop: 4 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#1C1C1E' }}>{displayWeeks[completionActive].short}</span>
+          <div style={{ background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '6px 10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', display: 'inline-block', marginTop: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-1)' }}>{displayWeeks[completionActive].short}</span>
             <span style={{ fontSize: 12, color: '#34C759', marginLeft: 6 }}>rate : {displayWeeks[completionActive].rate}%</span>
           </div>
         )}
@@ -1353,9 +1353,9 @@ export default function ProgressPage() {
       </div>
 
       {/* ── Goal Progress ─────────────────────────────────────────────────── */}
-      <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 16px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '16px 18px 16px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Goal Progress</h2>
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Goal Progress</h2>
           <button onClick={() => router.push('/dashboard/goals')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
             View All
           </button>
@@ -1373,10 +1373,10 @@ export default function ProgressPage() {
           ) : activeGoals.slice(0, 5).map(goal => (
             <button key={goal.id} onClick={() => router.push(`/dashboard/goals/${goal.id}`)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', fontFamily: 'inherit', width: '100%' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, flex: 1, paddingRight: 8, lineHeight: 1.3 }}>{goal.text}</p>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#1C1C1E', flexShrink: 0 }}>{goal.progress}%</span>
+                <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--c-text-1)', margin: 0, flex: 1, paddingRight: 8, lineHeight: 1.3 }}>{goal.text}</p>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-text-1)', flexShrink: 0 }}>{goal.progress}%</span>
               </div>
-              <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--c-surface-3)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${goal.progress}%`, background: '#3B7DFF', borderRadius: 4, transition: 'width 0.4s ease' }} />
               </div>
             </button>
@@ -1385,8 +1385,8 @@ export default function ProgressPage() {
       </div>
 
       {/* ── Dynamic Insights ─────────────────────────────────────────────── */}
-      <div style={{ background: 'white', borderRadius: 18, padding: '16px 18px 16px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px' }}>{getInsightTitle(timePeriod)}</h2>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '16px 18px 16px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 12px' }}>{getInsightTitle(timePeriod)}</h2>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div style={{ background: '#F0FDF4', borderRadius: 12, padding: '12px 14px' }}>
             <p style={{ fontSize: 13, fontWeight: 700, color: '#15803D', margin: '0 0 10px' }}>Wins</p>
@@ -1412,13 +1412,13 @@ export default function ProgressPage() {
       {/* ── Action buttons ────────────────────────────────────────────────── */}
       <button
         onClick={() => router.push('/dashboard/check-in/weekly')}
-        style={{ width: '100%', padding: '15px', borderRadius: 14, marginBottom: 10, background: '#1C1C1E', border: 'none', color: 'white', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+        style={{ width: '100%', padding: '15px', borderRadius: 14, marginBottom: 10, background: 'var(--c-text-1)', border: 'none', color: 'var(--c-surface)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
       >
         Run Check-In
       </button>
       <button
         onClick={() => router.push('/dashboard/progress/report')}
-        style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'white', border: '1.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+        style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'var(--c-surface)', border: '1.5px solid var(--c-border)', color: 'var(--c-text-1)', fontSize: 15, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
       >
         Export Report
       </button>

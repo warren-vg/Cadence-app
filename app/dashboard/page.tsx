@@ -70,7 +70,19 @@ function getMomentumText(score: number, userId: string) {
   return dailyVariant(COPY.momentum_zero, userId)
 }
 
-function CircularProgress({ pct, size = 52 }: { pct: number; size?: number }) {
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return isDark
+}
+
+function CircularProgress({ pct, size = 52, textFill = '#1C1C1E' }: { pct: number; size?: number; textFill?: string }) {
   const strokeWidth = 5
   const r = (size - strokeWidth * 2) / 2
   const cx = size / 2
@@ -84,14 +96,14 @@ function CircularProgress({ pct, size = 52 }: { pct: number; size?: number }) {
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#3B7DFF" strokeWidth={strokeWidth}
           strokeDasharray={`${circ}`} strokeDashoffset={offset} strokeLinecap="round" />
       </svg>
-      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#1C1C1E' }}>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: textFill }}>
         {pct}%
       </div>
     </div>
   )
 }
 
-function DonutChart({ planned, total, size = 96 }: { planned: number; total: number; size?: number }) {
+function DonutChart({ planned, total, size = 96, trackColor = '#E5E5EA', textFill = '#1C1C1E' }: { planned: number; total: number; size?: number; trackColor?: string; textFill?: string }) {
   const strokeWidth = 10
   const r = (size - strokeWidth * 2) / 2
   const cx = size / 2
@@ -102,13 +114,13 @@ function DonutChart({ planned, total, size = 96 }: { planned: number; total: num
 
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      <circle cx={cx} cy={cy} r={r} fill="none" stroke="#E5E5EA" strokeWidth={strokeWidth} />
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={trackColor} strokeWidth={strokeWidth} />
       {ratio > 0 && (
         <circle cx={cx} cy={cy} r={r} fill="none" stroke="#3B7DFF" strokeWidth={strokeWidth}
           strokeDasharray={`${dash} ${circ - dash}`} strokeLinecap="butt"
           transform={`rotate(-90 ${cx} ${cy})`} />
       )}
-      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="14" fontWeight="700" fill="#1C1C1E">
+      <text x={cx} y={cy - 4} textAnchor="middle" fontSize="14" fontWeight="700" fill={textFill}>
         {planned}h
       </text>
       <text x={cx} y={cy + 10} textAnchor="middle" fontSize="9" fill="#8E8E93">planned</text>
@@ -165,6 +177,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const { startTour } = useTour()
   const { queueRewards, loadUnseenRewards } = useRewards()
+  const isDark = useIsDark()
 
   // ── Core data ──────────────────────────────────────────────────────────────
   const [userId, setUserId] = useState<string | null>(null)
@@ -377,15 +390,12 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading...</div>
+        <div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading...</div>
       </div>
     )
   }
 
   const firstName   = profile?.full_name?.split(' ')[0] || 'there'
-  const capacityPct = weekSummary.totalHours > 0
-    ? Math.min(100, Math.round((weekSummary.totalHours / weeklyCapacity) * 100))
-    : 0
   const reviewState  = getReviewState(hasThisWeekReflection)
   const showCarousel = !meaningfulMove && !moveSkipped && todayTasks.length > 0
   const moveTask     = meaningfulMove ? (todayTasks.find(t => t.id === meaningfulMove.taskId) ?? null) : null
@@ -393,15 +403,15 @@ export default function DashboardPage() {
   const selectedTask = todayTasks[carouselIndex] ?? null
 
   return (
-    <div style={{ padding: '56px 16px 16px' }}>
+    <div style={{ padding: '56px 16px 16px', background: 'var(--c-bg)', minHeight: '100vh' }}>
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0, letterSpacing: '-0.4px' }}>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0, letterSpacing: '-0.4px' }}>
             {greeting}, {firstName}
           </h1>
-          <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3 }}>
+          <p style={{ fontSize: 14, color: 'var(--c-text-2)', marginTop: 3 }}>
             {dateLabel}
           </p>
         </div>
@@ -412,7 +422,7 @@ export default function DashboardPage() {
             className="card-press"
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
           >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z" />
             </svg>
@@ -428,15 +438,15 @@ export default function DashboardPage() {
           { label: 'DAY STREAK',  value: streak > 0 ? `${animStreak} 🔥` : '—', glow: streak > 0 },
         ].map(card => (
           <div key={card.label} style={{
-            background: 'white', borderRadius: 16, padding: '12px 8px',
-            border: '0.5px solid #E5E5EA', textAlign: 'center',
+            background: 'var(--c-surface)', borderRadius: 16, padding: '12px 8px',
+            border: '0.5px solid var(--c-border)', textAlign: 'center',
             boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
           }}>
-            <p style={{ fontSize: 9, fontWeight: 600, color: '#8E8E93', letterSpacing: 0.5, margin: 0, textTransform: 'uppercase' }}>
+            <p style={{ fontSize: 9, fontWeight: 600, color: 'var(--c-text-2)', letterSpacing: 0.5, margin: 0, textTransform: 'uppercase' }}>
               {card.label}
             </p>
             <p style={{
-              fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '4px 0 0', lineHeight: 1,
+              fontSize: 20, fontWeight: 700, color: 'var(--c-text-1)', margin: '4px 0 0', lineHeight: 1,
               fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.3px',
               textShadow: card.glow ? '0 0 14px rgba(255,149,0,0.45), 0 0 28px rgba(255,149,0,0.20)' : undefined,
             }}>
@@ -449,7 +459,7 @@ export default function DashboardPage() {
       {/* ── Choose Your Move carousel (inline below stat cards) ──────────── */}
       {showCarousel && (
         <>
-          <p style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', margin: '0 0 14px' }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--c-text-2)', letterSpacing: 1, textTransform: 'uppercase', textAlign: 'center', margin: '0 0 14px' }}>
             Choose your move
           </p>
 
@@ -493,10 +503,10 @@ export default function DashboardPage() {
                       maxWidth: 'calc(88% - 6px)',
                       scrollSnapAlign: 'center',
                       flexShrink: 0,
-                      background: 'white',
+                      background: 'var(--c-surface)',
                       borderRadius: 24,
                       padding: '20px 18px 18px',
-                      border: isActive ? '2px solid #3B7DFF' : '1.5px solid #E5E5EA',
+                      border: isActive ? '2px solid #3B7DFF' : `1.5px solid var(--c-border)`,
                       boxShadow: isActive ? '0 4px 20px rgba(59,125,255,0.12)' : '0 2px 8px rgba(0,0,0,0.04)',
                       cursor: 'pointer',
                       transition: 'border-color 0.2s, box-shadow 0.2s',
@@ -508,15 +518,15 @@ export default function DashboardPage() {
                     }}>
                       {task.category || 'Task'}
                     </span>
-                    <p style={{ fontSize: 17, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px', lineHeight: 1.35 }}>
+                    <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 12px', lineHeight: 1.35 }}>
                       {task.text}
                     </p>
                     {task.scheduled_time && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-2)" strokeWidth="2" strokeLinecap="round">
                           <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                         </svg>
-                        <span style={{ fontSize: 13, color: '#8E8E93' }}>
+                        <span style={{ fontSize: 13, color: 'var(--c-text-2)' }}>
                           {formatTime(task.scheduled_time)}
                           {endTime ? ` – ${formatTime(endTime)}` : ''}
                         </span>
@@ -524,7 +534,7 @@ export default function DashboardPage() {
                     )}
                     <div style={{
                       height: 3, borderRadius: 2,
-                      background: isActive ? '#3B7DFF' : '#E5E5EA',
+                      background: isActive ? '#3B7DFF' : 'var(--c-border)',
                       width: isActive ? '40%' : '20%',
                       transition: 'width 0.3s ease, background 0.3s ease',
                     }} />
@@ -552,9 +562,9 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <p style={{ fontSize: 15, color: '#3C3C43', textAlign: 'center', lineHeight: 1.65, margin: '0 0 16px' }}>
+          <p style={{ fontSize: 15, color: 'var(--c-text-mid)', textAlign: 'center', lineHeight: 1.65, margin: '0 0 16px' }}>
             {dailyVariant(COPY.carousel_prompt_main, userId || '')}{' '}
-            <span style={{ color: '#8E8E93' }}>{dailyVariant(COPY.carousel_prompt_sub, userId || '')}</span>
+            <span style={{ color: 'var(--c-text-2)' }}>{dailyVariant(COPY.carousel_prompt_sub, userId || '')}</span>
           </p>
 
           <button
@@ -575,7 +585,7 @@ export default function DashboardPage() {
             onClick={skipMove}
             style={{
               width: '100%', background: 'none', border: 'none',
-              color: '#8E8E93', fontSize: 14, cursor: 'pointer',
+              color: 'var(--c-text-2)', fontSize: 14, cursor: 'pointer',
               fontFamily: 'inherit', padding: '8px', marginBottom: 6,
             }}
           >
@@ -589,7 +599,7 @@ export default function DashboardPage() {
         <div
           data-tour="home-meaningful-move"
           style={{
-            background: 'white', borderRadius: 24, padding: '20px 20px 20px 24px',
+            background: 'var(--c-surface)', borderRadius: 24, padding: '20px 20px 20px 24px',
             marginBottom: 14, border: '1.5px solid #3B7DFF',
             boxShadow: '0 4px 20px rgba(59,125,255,0.10)',
             position: 'relative', overflow: 'hidden',
@@ -615,14 +625,14 @@ export default function DashboardPage() {
           </div>
 
           <h2 style={{
-            fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px',
+            fontSize: 20, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 6px',
             textDecoration: meaningfulMove.completed ? 'line-through' : 'none',
             opacity: meaningfulMove.completed ? 0.45 : 1,
           }}>
             {meaningfulMove.taskText}
           </h2>
 
-          <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 16px' }}>
+          <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '0 0 16px' }}>
             {dailyVariant(COPY.move_card_subtitle, userId || '')}
           </p>
 
@@ -660,318 +670,310 @@ export default function DashboardPage() {
       )}
 
 
-          {/* ── Today's Focus Card ──────────────────────────────────────────── */}
-          <div
-            data-tour="home-today-card"
-            className="card-enter"
-            style={{
-              animationDelay: '80ms',
-              background: 'linear-gradient(135deg, #3B52FF 0%, #2D7DFF 100%)',
-              borderRadius: 24, padding: '20px', marginBottom: 14, color: 'white',
-              position: 'relative', overflow: 'hidden',
-              border: '1px solid rgba(255,255,255,0.18)',
-              boxShadow: '0 4px 24px rgba(59,82,255,0.22), 0 1px 4px rgba(59,82,255,0.12)',
-            }}
-          >
-            <div className="card-glass-shimmer" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-              <div>
-                <p style={{ fontSize: 12, opacity: 0.8, margin: 0 }}>{dateLabel}</p>
-                <h2 style={{ fontSize: 18, fontWeight: 700, margin: '2px 0 0' }}>Today&apos;s Focus</h2>
-              </div>
-              <span style={{
-                background: 'rgba(255,255,255,0.2)', borderRadius: 24,
-                padding: '4px 10px', fontSize: 12, fontWeight: 600,
-              }}>
-                {completedToday}/{totalToday} Done
-              </span>
-            </div>
+      {/* ── Today's Focus Card ──────────────────────────────────────────── */}
+      <div
+        data-tour="home-today-card"
+        className="card-enter"
+        style={{
+          animationDelay: '80ms',
+          background: 'linear-gradient(135deg, #3B52FF 0%, #2D7DFF 100%)',
+          borderRadius: 24, padding: '20px', marginBottom: 14, color: 'white',
+          position: 'relative', overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.18)',
+          boxShadow: '0 4px 24px rgba(59,82,255,0.22), 0 1px 4px rgba(59,82,255,0.12)',
+        }}
+      >
+        <div className="card-glass-shimmer" />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+          <div>
+            <p style={{ fontSize: 12, opacity: 0.8, margin: 0 }}>{dateLabel}</p>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: '2px 0 0' }}>Today&apos;s Focus</h2>
+          </div>
+          <span style={{
+            background: 'rgba(255,255,255,0.2)', borderRadius: 24,
+            padding: '4px 10px', fontSize: 12, fontWeight: 600,
+          }}>
+            {completedToday}/{totalToday} Done
+          </span>
+        </div>
 
-            {totalToday === 0 ? (
-              <div style={{
-                background: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: '14px 16px',
-                marginBottom: 12, textAlign: 'center',
-              }}>
-                <p style={{ fontSize: 13, opacity: 0.85, margin: 0 }}>No tasks scheduled yet.</p>
-                <p style={{ fontSize: 12, opacity: 0.65, margin: '4px 0 0' }}>Build your daily plan in the Plan tab.</p>
-              </div>
-            ) : (
-              <div style={{ marginBottom: 12 }}>
-                {todayTasks.slice(0, 4).map((task, i) => (
-                  <div
-                    key={task.id}
-                    onClick={() => handleToggleTask(task)}
-                    className="row-tap-dark"
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      paddingTop: i > 0 ? 10 : 0,
-                      paddingBottom: i < Math.min(todayTasks.length, 4) - 1 ? 10 : 0,
-                      borderBottom: i < Math.min(todayTasks.length, 4) - 1 ? '1px solid rgba(255,255,255,0.12)' : 'none',
-                      cursor: 'pointer', borderRadius: 8,
-                    }}
-                  >
-                    <button
-                      onClick={e => { e.stopPropagation(); handleToggleTask(task) }}
-                      className={`card-press${completingTaskIds.has(task.id) ? ' check-bounce' : ''}`}
-                      style={{
-                        width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                        background: task.completed ? 'white' : 'transparent',
-                        border: task.completed ? 'none' : '2px solid rgba(255,255,255,0.5)',
-                        cursor: 'pointer', padding: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}
-                    >
-                      {task.completed && (
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
-                      )}
-                    </button>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{
-                        fontSize: 14, fontWeight: 500, margin: 0,
-                        color: 'white', opacity: task.completed ? 0.5 : 1,
-                        textDecoration: task.completed ? 'line-through' : 'none',
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {task.text}
-                      </p>
-                    </div>
-                    <span style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>{formatTime(task.scheduled_time)}</span>
-                  </div>
-                ))}
-                {todayTasks.length > 4 && (
-                  <p style={{ fontSize: 12, opacity: 0.65, margin: '10px 0 0', textAlign: 'center' }}>
-                    +{todayTasks.length - 4} more tasks
+        {totalToday === 0 ? (
+          <div style={{
+            background: 'rgba(255,255,255,0.12)', borderRadius: 12, padding: '14px 16px',
+            marginBottom: 12, textAlign: 'center',
+          }}>
+            <p style={{ fontSize: 13, opacity: 0.85, margin: 0 }}>No tasks scheduled yet.</p>
+            <p style={{ fontSize: 12, opacity: 0.65, margin: '4px 0 0' }}>Build your daily plan in the Plan tab.</p>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 12 }}>
+            {todayTasks.slice(0, 4).map((task, i) => (
+              <div
+                key={task.id}
+                onClick={() => handleToggleTask(task)}
+                className="row-tap-dark"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  paddingTop: i > 0 ? 10 : 0,
+                  paddingBottom: i < Math.min(todayTasks.length, 4) - 1 ? 10 : 0,
+                  borderBottom: i < Math.min(todayTasks.length, 4) - 1 ? '1px solid rgba(255,255,255,0.12)' : 'none',
+                  cursor: 'pointer', borderRadius: 8,
+                }}
+              >
+                <button
+                  onClick={e => { e.stopPropagation(); handleToggleTask(task) }}
+                  className={`card-press${completingTaskIds.has(task.id) ? ' check-bounce' : ''}`}
+                  style={{
+                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    background: task.completed ? 'white' : 'transparent',
+                    border: task.completed ? 'none' : '2px solid rgba(255,255,255,0.5)',
+                    cursor: 'pointer', padding: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  {task.completed && (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  )}
+                </button>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{
+                    fontSize: 14, fontWeight: 500, margin: 0,
+                    color: 'white', opacity: task.completed ? 0.5 : 1,
+                    textDecoration: task.completed ? 'line-through' : 'none',
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {task.text}
                   </p>
-                )}
+                </div>
+                <span style={{ fontSize: 11, opacity: 0.7, flexShrink: 0 }}>{formatTime(task.scheduled_time)}</span>
               </div>
+            ))}
+            {todayTasks.length > 4 && (
+              <p style={{ fontSize: 12, opacity: 0.65, margin: '10px 0 0', textAlign: 'center' }}>
+                +{todayTasks.length - 4} more tasks
+              </p>
             )}
+          </div>
+        )}
 
-            <button
-              onClick={() => router.push(`/dashboard/plan/daily?date=${toDateStr(new Date())}`)}
-              className="card-press"
+        <button
+          onClick={() => router.push(`/dashboard/plan/daily?date=${toDateStr(new Date())}`)}
+          className="card-press"
+          style={{
+            width: '100%', background: 'rgba(255,255,255,0.15)', border: 'none',
+            borderRadius: 12, padding: '10px', color: 'white', fontSize: 13, fontWeight: 600,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 6, fontFamily: 'inherit',
+          }}
+        >
+          View Full Day
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+        </button>
+      </div>
+
+      {/* ── Momentum + This Week Row ──────────────────────────────────────── */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'stretch' }}>
+
+        {/* Momentum Score Card — LEFT */}
+        <div
+          className="card-enter card-press card-hover"
+          onClick={() => router.push('/dashboard/progress')}
+          style={{
+            flex: 1, animationDelay: '160ms', background: 'var(--c-surface)',
+            borderRadius: 20, padding: '16px 14px', border: '0.5px solid var(--c-border)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
+            cursor: 'pointer', display: 'flex', flexDirection: 'column',
+          }}
+        >
+          {/* Header row: icon+title left, score right */}
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(255,149,0,0.20), 0 1px 2px rgba(0,0,0,0.06)' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="#FF9500" stroke="none">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              </div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>Momentum</p>
+              <p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: 0 }}>vs planned</p>
+            </div>
+            <span style={{ fontSize: 24, fontWeight: 700, color: '#FF9500', fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px' }}>
+              {animMomentumScore}
+            </span>
+          </div>
+
+          <div style={{ background: 'var(--c-surface-3)', borderRadius: 4, height: 6, marginBottom: 8, overflow: 'hidden' }}>
+            <div
+              className="progress-fill-shimmer"
               style={{
-                width: '100%', background: 'rgba(255,255,255,0.15)', border: 'none',
-                borderRadius: 12, padding: '10px', color: 'white', fontSize: 13, fontWeight: 600,
-                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                gap: 6, fontFamily: 'inherit',
+                height: '100%', width: `${momentumScore}%`,
+                background: momentumScore >= 60
+                  ? 'linear-gradient(90deg, #22C55E, #34C759)'
+                  : momentumScore >= 30
+                  ? 'linear-gradient(90deg, #F59E0B, #FF9500)'
+                  : 'linear-gradient(90deg, #EF4444, #FF3B30)',
+                borderRadius: 4, transition: 'width 0.6s ease',
               }}
+            />
+          </div>
+
+          <p style={{
+            fontSize: 11, color: 'var(--c-text-mid)', margin: 0,
+            overflow: 'hidden', textOverflow: 'ellipsis',
+            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any,
+          }}>
+            {getMomentumText(momentumScore, userId || '')}
+          </p>
+        </div>
+
+        {/* This Week Card — RIGHT */}
+        <div
+          className="card-enter"
+          style={{
+            flex: 1, animationDelay: '200ms', background: 'var(--c-surface)',
+            borderRadius: 20, padding: '16px 14px', border: '0.5px solid var(--c-border)',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
+            display: 'flex', flexDirection: 'column',
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>This Week</h2>
+            <button
+              onClick={() => router.push('/dashboard/plan')}
+              className="card-press"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}
             >
-              View Full Day
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+              Edit Plan
             </button>
           </div>
 
-          {/* ── Momentum Score Card ─────────────────────────────────────────── */}
-          <div
-            className="card-enter card-press card-hover"
-            onClick={() => router.push('/dashboard/progress')}
-            style={{ animationDelay: '160ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)', cursor: 'pointer' }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 38, height: 38, borderRadius: '50%', background: '#FFF3E0', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(255,149,0,0.20), 0 1px 2px rgba(0,0,0,0.06)' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="#FF9500" stroke="none">
-                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                  </svg>
-                </div>
-                <div>
-                  <p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>Momentum Score</p>
-                  <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>Tasks completed vs planned</p>
-                </div>
+          {/* Donut + stats */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, flex: 1 }}>
+            <DonutChart
+              planned={weekSummary.totalHours}
+              total={weeklyCapacity}
+              size={80}
+              trackColor={isDark ? '#2C2C2E' : '#E5E5EA'}
+              textFill={isDark ? '#FFFFFF' : '#1C1C1E'}
+            />
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--c-text-2)' }}>Planned</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-1)' }}>
+                  {weekSummary.totalTasks > 0 ? `${weekSummary.totalTasks}t` : '—'}
+                </span>
               </div>
-              <span style={{ fontSize: 28, fontWeight: 700, color: '#FF9500', fontFamily: 'var(--font-geist-sans)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px' }}>{animMomentumScore}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--c-text-2)' }}>Done</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-1)' }}>
+                  {weekSummary.completedTasks}t
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 11, color: 'var(--c-text-2)' }}>Hours</span>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-1)' }}>
+                  {weekSummary.totalHours > 0 ? `${weekSummary.totalHours}h` : '—'}
+                </span>
+              </div>
             </div>
-
-            <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, marginBottom: 10, overflow: 'hidden' }}>
-              <div
-                className="progress-fill-shimmer"
-                style={{
-                  height: '100%', width: `${momentumScore}%`,
-                  background: momentumScore >= 60
-                    ? 'linear-gradient(90deg, #22C55E, #34C759)'
-                    : momentumScore >= 30
-                    ? 'linear-gradient(90deg, #F59E0B, #FF9500)'
-                    : 'linear-gradient(90deg, #EF4444, #FF3B30)',
-                  borderRadius: 4, transition: 'width 0.6s ease',
-                }}
-              />
-            </div>
-
-            <p style={{ fontSize: 13, color: '#3C3C43', margin: 0 }}>{getMomentumText(momentumScore, userId || '')}</p>
           </div>
+        </div>
 
-          {/* ── Top Priorities ──────────────────────────────────────────────── */}
-          {activeGoals.length === 0 ? (
-            <div style={{ marginBottom: 14 }}>
-              <EmptyState
-                icon={
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
-                  </svg>
-                }
-                iconBg="#EFF6FF"
-                title="Set your first goal"
-                body={dailyVariant(COPY.goals_empty_body, userId || '')}
-                ctaLabel="Create My First Goal"
-                onCta={() => router.push('/dashboard/goals')}
-              />
+      </div>
+
+      {/* ── Top Priorities ──────────────────────────────────────────────────── */}
+      {activeGoals.length === 0 ? (
+        <div style={{ marginBottom: 14 }}>
+          <EmptyState
+            icon={
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
+              </svg>
+            }
+            iconBg="#EFF6FF"
+            title="Set your first goal"
+            body={dailyVariant(COPY.goals_empty_body, userId || '')}
+            ctaLabel="Create My First Goal"
+            onCta={() => router.push('/dashboard/goals')}
+          />
+        </div>
+      ) : (
+        <div className="card-enter" style={{ animationDelay: '240ms', background: 'var(--c-surface)', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid var(--c-border)', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
+              </svg>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Top Priorities</h2>
             </div>
-          ) : (
-            <div className="card-enter" style={{ animationDelay: '240ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
-                  </svg>
-                  <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Top Priorities</h2>
+            <button onClick={() => router.push('/dashboard/goals')} className="card-press" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
+              View All
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {topPriorities.map(goal => (
+              <button
+                key={goal.id}
+                onClick={() => router.push(`/dashboard/goals/${goal.id}`)}
+                style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', width: '100%', fontFamily: 'inherit' }}
+              >
+                <CircularProgress pct={goal.progress || 0} textFill={isDark ? '#FFFFFF' : '#1C1C1E'} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--c-text-1)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {goal.text}
+                  </p>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: '#3B7DFF', background: '#EFF6FF', padding: '2px 8px', borderRadius: 20 }}>
+                      {goal.category}
+                    </span>
+                  </div>
                 </div>
-                <button onClick={() => router.push('/dashboard/goals')} className="card-press" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
-                  View All
-                </button>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {topPriorities.map(goal => (
-                  <button
-                    key={goal.id}
-                    onClick={() => router.push(`/dashboard/goals/${goal.id}`)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textAlign: 'left', width: '100%', fontFamily: 'inherit' }}
-                  >
-                    <CircularProgress pct={goal.progress || 0} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {goal.text}
-                      </p>
-                      <div style={{ display: 'flex', gap: 6, marginTop: 4, alignItems: 'center' }}>
-                        <span style={{ fontSize: 11, color: '#3B7DFF', background: '#EFF6FF', padding: '2px 8px', borderRadius: 20 }}>
-                          {goal.category}
-                        </span>
-                      </div>
-                    </div>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-3)" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
-          {/* ── This Week Card ──────────────────────────────────────────────── */}
-          <div className="card-enter" style={{ animationDelay: '320ms', background: 'white', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA', boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
-                </svg>
-                <h2 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>This Week</h2>
-              </div>
-              <button onClick={() => router.push('/dashboard/plan')} className="card-press" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#3B7DFF', fontFamily: 'inherit', padding: 0 }}>
-                Edit Plan
+      {/* ── Weekly Review Card ──────────────────────────────────────────────── */}
+      {reviewState.state === 'countdown' && (
+        <div style={{ background: 'var(--c-surface-2)', borderRadius: 24, padding: '14px 18px', marginBottom: 14, border: '0.5px solid var(--c-border)', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+          </svg>
+          <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>
+            Weekly Review opens in <strong style={{ color: 'var(--c-text-1)' }}>{reviewState.daysUntilFriday} day{reviewState.daysUntilFriday !== 1 ? 's' : ''}</strong>
+          </p>
+        </div>
+      )}
+      {reviewState.state === 'open' && (
+        <div style={{ background: '#FFFBEB', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '1px solid #FDE68A' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
+              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <div style={{ flex: 1 }}>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#92400E', margin: 0 }}>Weekly Review Open</p>
+              <p style={{ fontSize: 13, color: '#B45309', margin: '4px 0 12px' }}>Reflect on this week&apos;s progress and set your focus for next week.</p>
+              <button
+                onClick={() => router.push('/dashboard/check-in/weekly')}
+                className="card-press"
+                style={{ background: 'white', border: '1px solid #D97706', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#D97706', cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                Start Review
               </button>
             </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-              <DonutChart planned={weekSummary.totalHours} total={weeklyCapacity} />
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B7DFF' }} />
-                    <span style={{ fontSize: 13, color: '#3C3C43' }}>Tasks Planned</span>
-                  </div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>
-                    {weekSummary.totalTasks > 0 ? `${weekSummary.totalTasks} tasks` : '—'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#34C759' }} />
-                    <span style={{ fontSize: 13, color: '#3C3C43' }}>Completed</span>
-                  </div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>
-                    {weekSummary.completedTasks} tasks
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: '#3C3C43' }}>Hours Planned</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>
-                    {weekSummary.totalHours > 0 ? `${weekSummary.totalHours}h` : '—'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {weekSummary.totalTasks > 0 && (
-              <div style={{ background: '#F0FFF4', borderRadius: 10, padding: '10px 12px', marginTop: 14 }}>
-                <p style={{ fontSize: 12, color: '#16A34A', margin: 0 }}>
-                  {weekSummary.completedTasks}/{weekSummary.totalTasks} tasks done · {capacityPct}% of weekly capacity used
-                </p>
-              </div>
-            )}
-
-            {weekSummary.totalTasks === 0 && (
-              <div style={{ background: '#F0FFF4', borderRadius: 10, padding: '10px 12px', marginTop: 14 }}>
-                <p style={{ fontSize: 12, color: '#16A34A', margin: 0 }}>
-                  No tasks planned yet. Build your weekly plan to stay on track.
-                </p>
-              </div>
-            )}
-
-            <button
-              onClick={() => router.push('/dashboard/mentor')}
-              className="card-press"
-              style={{
-                width: '100%', marginTop: 14, padding: '12px',
-                borderRadius: 14, background: '#F5F3FF',
-                border: '1px solid rgba(139,92,246,0.18)',
-                color: '#7C3AED', fontSize: 14, fontWeight: 600,
-                cursor: 'pointer', fontFamily: 'inherit',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
-              </svg>
-              Meet with my Mentor
-            </button>
           </div>
-
-          {/* ── Weekly Review Card ──────────────────────────────────────────── */}
-          {reviewState.state === 'countdown' && (
-            <div style={{ background: '#F8F8FC', borderRadius: 24, padding: '14px 18px', marginBottom: 14, border: '0.5px solid #E5E5EA', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
-              </svg>
-              <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>
-                Weekly Review opens in <strong style={{ color: '#1C1C1E' }}>{reviewState.daysUntilFriday} day{reviewState.daysUntilFriday !== 1 ? 's' : ''}</strong>
-              </p>
-            </div>
-          )}
-          {reviewState.state === 'open' && (
-            <div style={{ background: '#FFFBEB', borderRadius: 24, padding: '18px 20px', marginBottom: 14, border: '1px solid #FDE68A' }}>
-              <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, marginTop: 1 }}>
-                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: '#92400E', margin: 0 }}>Weekly Review Open</p>
-                  <p style={{ fontSize: 13, color: '#B45309', margin: '4px 0 12px' }}>Reflect on this week&apos;s progress and set your focus for next week.</p>
-                  <button
-                    onClick={() => router.push('/dashboard/check-in/weekly')}
-                    className="card-press"
-                    style={{ background: 'white', border: '1px solid #D97706', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#D97706', cursor: 'pointer', fontFamily: 'inherit' }}
-                  >
-                    Start Review
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          {reviewState.state === 'complete' && (
-            <div style={{ background: '#F0FFF4', borderRadius: 24, padding: '14px 18px', marginBottom: 14, border: '0.5px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: 12 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-              <p style={{ fontSize: 13, color: '#16A34A', fontWeight: 600, margin: 0 }}>Weekly Review complete</p>
-            </div>
-          )}
+        </div>
+      )}
+      {reviewState.state === 'complete' && (
+        <div style={{ background: '#F0FFF4', borderRadius: 24, padding: '14px 18px', marginBottom: 14, border: '0.5px solid #BBF7D0', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          <p style={{ fontSize: 13, color: '#16A34A', fontWeight: 600, margin: 0 }}>Weekly Review complete</p>
+        </div>
+      )}
 
       {/* ── FAB ──────────────────────────────────────────────────────────────── */}
       <button
@@ -997,12 +999,12 @@ export default function DashboardPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', background: 'white', borderRadius: '20px 20px 0 0', padding: '0 16px 40px' }}
+            style={{ width: '100%', background: 'var(--c-surface)', borderRadius: '20px 20px 0 0', padding: '0 16px 40px' }}
           >
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 8 }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#E5E5EA' }} />
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--c-border)' }} />
             </div>
-            <p style={{ fontSize: 13, color: '#8E8E93', textAlign: 'center', margin: '0 0 16px' }}>What would you like to add?</p>
+            <p style={{ fontSize: 13, color: 'var(--c-text-2)', textAlign: 'center', margin: '0 0 16px' }}>What would you like to add?</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
                 {
@@ -1047,7 +1049,7 @@ export default function DashboardPage() {
                   style={{
                     display: 'flex', alignItems: 'center', gap: 14,
                     padding: '14px 16px', borderRadius: 16,
-                    background: 'white', border: '0.5px solid #E5E5EA',
+                    background: 'var(--c-surface)', border: '0.5px solid var(--c-border)',
                     cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', width: '100%',
                   }}
                 >
@@ -1055,8 +1057,8 @@ export default function DashboardPage() {
                     {item.icon}
                   </div>
                   <div>
-                    <p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>{item.label}</p>
-                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>{item.sub}</p>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>{item.label}</p>
+                    <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '2px 0 0' }}>{item.sub}</p>
                   </div>
                 </button>
               ))}

@@ -119,7 +119,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 
 function SectionLabel({ label }: { label: string }) {
   return (
-    <p style={{ fontSize: 12, fontWeight: 600, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5, margin: '24px 0 8px 4px' }}>
+    <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-2)', textTransform: 'uppercase', letterSpacing: 0.5, margin: '24px 0 8px 4px' }}>
       {label}
     </p>
   )
@@ -128,7 +128,7 @@ function SectionLabel({ label }: { label: string }) {
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
     <div style={{
-      background: 'white', borderRadius: 16, border: '0.5px solid #E5E5EA',
+      background: 'var(--c-surface)', borderRadius: 16, border: '0.5px solid var(--c-border)',
       overflow: 'hidden', ...style,
     }}>
       {children}
@@ -153,9 +153,9 @@ function RowItem({
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         padding: '13px 16px',
-        borderBottom: noBorder ? 'none' : '0.5px solid #F2F2F7',
+        borderBottom: noBorder ? 'none' : '0.5px solid var(--c-border-sub)',
         cursor: onClick ? 'pointer' : 'default',
-        background: 'white',
+        background: 'var(--c-surface)',
       }}
     >
       {icon && (
@@ -164,15 +164,15 @@ function RowItem({
         </div>
       )}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 15, fontWeight: 500, color: danger ? '#FF3B30' : '#1C1C1E', margin: 0 }}>{label}</p>
-        {sublabel && <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>{sublabel}</p>}
+        <p style={{ fontSize: 15, fontWeight: 500, color: danger ? '#FF3B30' : 'var(--c-text-1)', margin: 0 }}>{label}</p>
+        {sublabel && <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '2px 0 0' }}>{sublabel}</p>}
       </div>
       {right}
     </div>
   )
 }
 
-function ChevronRight({ color = '#C7C7CC' }: { color?: string }) {
+function ChevronRight({ color = 'var(--c-text-3)' }: { color?: string }) {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0 }}>
       <polyline points="9 18 15 12 9 6" />
@@ -390,13 +390,13 @@ export default function SettingsPage() {
   if (!mounted || loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading...</div>
+        <div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading...</div>
       </div>
     )
   }
 
   return (
-    <div style={{ padding: '56px 16px 32px', minHeight: '100vh' }}>
+    <div style={{ padding: '56px 16px 32px', minHeight: '100vh', background: 'var(--c-bg)' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
@@ -409,8 +409,8 @@ export default function SettingsPage() {
           </svg>
         </button>
         <div>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>More</h1>
-          <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>Quick access and settings</p>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>More</h1>
+          <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>Quick access and settings</p>
         </div>
       </div>
 
@@ -424,8 +424,8 @@ export default function SettingsPage() {
           <span style={{ fontSize: 20, fontWeight: 700, color: 'white' }}>{initials}</span>
         </div>
         <div>
-          <p style={{ fontSize: 17, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>{name || 'Your Name'}</p>
-          <p style={{ fontSize: 13, color: '#8E8E93', margin: '2px 0 0' }}>{profile?.email}</p>
+          <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>{name || 'Your Name'}</p>
+          <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '2px 0 0' }}>{profile?.email}</p>
         </div>
       </div>
 
@@ -468,28 +468,28 @@ export default function SettingsPage() {
       <Card>
         <div style={{ padding: '4px 16px 0' }}>
           {/* Name */}
-          <div style={{ padding: '12px 0', borderBottom: '0.5px solid #F2F2F7' }}>
-            <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px' }}>Name</p>
+          <div style={{ padding: '12px 0', borderBottom: '0.5px solid var(--c-border-sub)' }}>
+            <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 4px' }}>Name</p>
             <input
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Your name"
               style={{
                 width: '100%', border: 'none', outline: 'none', fontSize: 15,
-                color: '#1C1C1E', background: 'transparent', fontFamily: 'inherit',
+                color: 'var(--c-text-1)', background: 'transparent', fontFamily: 'inherit',
                 padding: 0,
               }}
             />
           </div>
 
           {/* Username */}
-          <div style={{ padding: '12px 0', borderBottom: '0.5px solid #F2F2F7' }}>
-            <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 6px' }}>Username</p>
+          <div style={{ padding: '12px 0', borderBottom: '0.5px solid var(--c-border-sub)' }}>
+            <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 6px' }}>Username</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{
-                flex: 1, fontSize: 15, color: currentUsername ? '#1C1C1E' : '#C7C7CC',
-                background: '#F8F8FC', borderRadius: 10, padding: '10px 12px',
-                border: '0.5px solid #E5E5EA',
+                flex: 1, fontSize: 15, color: currentUsername ? 'var(--c-text-1)' : 'var(--c-text-3)',
+                background: 'var(--c-surface-2)', borderRadius: 10, padding: '10px 12px',
+                border: '0.5px solid var(--c-border)',
               }}>
                 {currentUsername ? `@${currentUsername}` : 'Not set'}
               </div>
@@ -505,7 +505,7 @@ export default function SettingsPage() {
               </button>
             </div>
             {usernameNextChange && (
-              <p style={{ fontSize: 12, color: '#8E8E93', margin: '6px 0 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '6px 0 0' }}>
                 You can change your username again on{' '}
                 {usernameNextChange.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
@@ -513,9 +513,9 @@ export default function SettingsPage() {
           </div>
 
           {/* Email */}
-          <div style={{ padding: '12px 0', borderBottom: '0.5px solid #F2F2F7' }}>
-            <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px' }}>Email</p>
-            <p style={{ fontSize: 15, color: '#3C3C43', margin: 0 }}>{profile?.email}</p>
+          <div style={{ padding: '12px 0', borderBottom: '0.5px solid var(--c-border-sub)' }}>
+            <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 4px' }}>Email</p>
+            <p style={{ fontSize: 15, color: 'var(--c-text-mid)', margin: 0 }}>{profile?.email}</p>
           </div>
 
           {/* Save name button — slides in when name is dirty */}
@@ -682,7 +682,7 @@ export default function SettingsPage() {
           label="Theme"
           right={
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: 14, color: '#8E8E93' }}>{themeLabel}</span>
+              <span style={{ fontSize: 14, color: 'var(--c-text-2)' }}>{themeLabel}</span>
               <ChevronRight />
             </div>
           }
@@ -757,7 +757,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Version */}
-      <p style={{ textAlign: 'center', fontSize: 12, color: '#C7C7CC', marginTop: 24 }}>Cadence v1.0.0</p>
+      <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--c-text-3)', marginTop: 24 }}>Cadence v1.0.0</p>
 
       {/* Username edit modal */}
       {showUsernameModal && (() => {
@@ -770,27 +770,27 @@ export default function SettingsPage() {
           >
             <div
               onClick={e => e.stopPropagation()}
-              style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '20px 16px 40px', width: '100%', maxWidth: 480 }}
+              style={{ background: 'var(--c-surface)', borderRadius: '20px 20px 0 0', padding: '20px 16px 40px', width: '100%', maxWidth: 480 }}
             >
               {/* Drag handle */}
               <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D1D6', margin: '0 auto 20px' }} />
 
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 4px' }}>Edit username</h3>
-              <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 20px' }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 4px' }}>Edit username</h3>
+              <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '0 0 20px' }}>
                 3–20 chars · letters, numbers, underscores · must start with a letter
               </p>
 
               {/* Input */}
               <div style={{
-                background: 'white', borderRadius: 14, padding: '14px',
+                background: 'var(--c-surface)', borderRadius: 14, padding: '14px',
                 border: `1.5px solid ${ui.borderColor}`, transition: 'border-color 0.15s', marginBottom: 16,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ color: '#8E8E93', fontSize: 17, fontWeight: 500, flexShrink: 0 }}>@</span>
+                  <span style={{ color: 'var(--c-text-2)', fontSize: 17, fontWeight: 500, flexShrink: 0 }}>@</span>
                   <input
                     type="text" value={modalValue} onChange={e => handleModalChange(e.target.value)}
                     placeholder="your_username" autoComplete="off" autoCapitalize="none" spellCheck={false}
-                    style={{ flex: 1, border: 'none', outline: 'none', background: 'none', fontSize: 16, color: '#1C1C1E', fontFamily: 'inherit', padding: '2px 0' }}
+                    style={{ flex: 1, border: 'none', outline: 'none', background: 'none', fontSize: 16, color: 'var(--c-text-1)', fontFamily: 'inherit', padding: '2px 0' }}
                   />
                   {ui.icon === 'check' && (
                     <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -819,10 +819,10 @@ export default function SettingsPage() {
 
               {/* Suggestions */}
               {modalLoadingSuggs ? (
-                <p style={{ fontSize: 13, color: '#C7C7CC', marginBottom: 20 }}>Finding available names…</p>
+                <p style={{ fontSize: 13, color: 'var(--c-text-3)', marginBottom: 20 }}>Finding available names…</p>
               ) : modalSuggestions.length > 0 && (
                 <div style={{ marginBottom: 20 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-2)', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
                     <span>✦</span> Try these suggestions
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
@@ -876,23 +876,29 @@ export default function SettingsPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: 'white', borderRadius: '20px 20px 0 0', padding: '20px 16px 36px', width: '100%', maxWidth: 480 }}
+            style={{ background: 'var(--c-surface)', borderRadius: '20px 20px 0 0', padding: '20px 16px 36px', width: '100%', maxWidth: 480 }}
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D1D6', margin: '0 auto 20px' }} />
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 16px' }}>Appearance</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 16px' }}>Appearance</h3>
             {(['automatic', 'light', 'dark'] as ThemeOption[]).map(opt => (
               <button
                 key={opt}
-                onClick={() => { setTheme(opt); setShowThemePicker(false) }}
+                onClick={() => {
+                  setTheme(opt)
+                  setShowThemePicker(false)
+                  const isDark = opt === 'dark' || (opt === 'automatic' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+                  document.documentElement.classList.toggle('dark', isDark)
+                  saveTheme(opt)
+                }}
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   width: '100%', padding: '14px 16px', marginBottom: 8,
-                  borderRadius: 12, border: theme === opt ? '2px solid #3B7DFF' : '2px solid #F2F2F7',
-                  background: theme === opt ? '#EFF6FF' : 'white', cursor: 'pointer',
+                  borderRadius: 12, border: theme === opt ? '2px solid #3B7DFF' : '2px solid var(--c-border-sub)',
+                  background: theme === opt ? '#EFF6FF' : 'var(--c-surface)', cursor: 'pointer',
                   fontFamily: 'inherit',
                 }}
               >
-                <span style={{ fontSize: 15, fontWeight: 500, color: '#1C1C1E', textTransform: 'capitalize' }}>{opt}</span>
+                <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--c-text-1)', textTransform: 'capitalize' }}>{opt}</span>
                 {theme === opt && (
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
                 )}
@@ -913,14 +919,14 @@ export default function SettingsPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ background: 'white', borderRadius: 20, padding: 24, width: '100%', maxWidth: 340 }}
+            style={{ background: 'var(--c-surface)', borderRadius: 20, padding: 24, width: '100%', maxWidth: 340 }}
           >
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               <div style={{ width: 52, height: 52, borderRadius: '50%', background: '#FFF0F0', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               </div>
-              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px' }}>Delete Account?</h3>
-              <p style={{ fontSize: 14, color: '#8E8E93', margin: 0, lineHeight: 1.5 }}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 8px' }}>Delete Account?</h3>
+              <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: 0, lineHeight: 1.5 }}>
                 This will permanently delete your account and all associated data. This action cannot be undone.
               </p>
             </div>
@@ -928,8 +934,8 @@ export default function SettingsPage() {
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 style={{
-                  flex: 1, padding: '12px', borderRadius: 12, border: '1px solid #E5E5EA',
-                  background: 'white', fontSize: 15, fontWeight: 600, color: '#1C1C1E',
+                  flex: 1, padding: '12px', borderRadius: 12, border: '1px solid var(--c-border)',
+                  background: 'var(--c-surface)', fontSize: 15, fontWeight: 600, color: 'var(--c-text-1)',
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >

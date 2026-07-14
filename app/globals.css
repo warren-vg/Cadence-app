@@ -3,6 +3,39 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* Theme tokens */
+  --c-bg:          #F2F2F7;
+  --c-surface:     #FFFFFF;
+  --c-surface-2:   #F8F8FC;
+  --c-surface-3:   #F2F2F7;
+  --c-border:      #E5E5EA;
+  --c-border-sub:  #F2F2F7;
+  --c-text-1:      #1C1C1E;
+  --c-text-2:      #8E8E93;
+  --c-text-3:      #C7C7CC;
+  --c-text-mid:    #3C3C43;
+  --c-nav:         rgba(255,255,255,0.60);
+  --c-nav-border:  rgba(255,255,255,0.80);
+  --c-layout-bg:   radial-gradient(ellipse at 50% -8%, #E8EAF6 0%, #F2F2F7 58%);
+  --c-shadow:      rgba(0,0,0,0.08);
+}
+
+html.dark {
+  --c-bg:          #0D0D0F;
+  --c-surface:     #1A1A1C;
+  --c-surface-2:   #242426;
+  --c-surface-3:   #2C2C2E;
+  --c-border:      #2C2C2E;
+  --c-border-sub:  #1E1E20;
+  --c-text-1:      #FFFFFF;
+  --c-text-2:      #98989D;
+  --c-text-3:      #48484A;
+  --c-text-mid:    #EBEBF0;
+  --c-nav:         rgba(18,18,20,0.88);
+  --c-nav-border:  rgba(255,255,255,0.06);
+  --c-layout-bg:   radial-gradient(ellipse at 50% -8%, #1C1C2E 0%, #0D0D0F 58%);
+  --c-shadow:      rgba(0,0,0,0.35);
 }
 
 @theme inline {
@@ -26,6 +59,16 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+}
+
+.theme-layout {
+  background: var(--c-layout-bg);
+  min-height: 100vh;
+}
+
+/* ── Dark mode row tap override ── */
+html.dark .row-tap:active {
+  background: rgba(255,255,255,0.06) !important;
 }
 
 /* ── Glass shimmer overlay for dark gradient cards ── */

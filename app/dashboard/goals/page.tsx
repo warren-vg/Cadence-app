@@ -35,7 +35,7 @@ const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
 }
 
 function getCatStyle(cat: string) {
-  return CATEGORY_COLORS[cat] || { bg: '#F2F2F7', color: '#8E8E93' }
+  return CATEGORY_COLORS[cat] || { bg: 'var(--c-surface-3)', color: 'var(--c-text-2)' }
 }
 
 function mapStatus(status: string): TabType {
@@ -91,8 +91,8 @@ function ActionBtn({
         flex: wide ? 1 : 1,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
         padding: '9px 12px',
-        background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 12,
-        fontSize: 13, fontWeight: 500, color: '#3C3C43',
+        background: 'var(--c-surface-2)', border: '0.5px solid var(--c-border)', borderRadius: 12,
+        fontSize: 13, fontWeight: 500, color: 'var(--c-text-mid)',
         cursor: 'pointer', fontFamily: 'inherit',
       }}
     >
@@ -113,8 +113,8 @@ function GoalCard({
   const catStyle = getCatStyle(goal.category)
   return (
     <div style={{
-      background: 'white', borderRadius: 20, padding: '16px',
-      border: '0.5px solid #E5E5EA',
+      background: 'var(--c-surface)', borderRadius: 20, padding: '16px',
+      border: '0.5px solid var(--c-border)',
       boxShadow: '0 1px 2px rgba(0,0,0,0.06), 0 8px 28px rgba(0,0,0,0.08)',
     }}>
       {/* Badges row */}
@@ -129,8 +129,8 @@ function GoalCard({
           </span>
           {goal.quarter && (
             <span style={{
-              fontSize: 12, color: '#8E8E93',
-              background: '#F2F2F7', padding: '3px 8px', borderRadius: 20,
+              fontSize: 12, color: 'var(--c-text-2)',
+              background: 'var(--c-surface-3)', padding: '3px 8px', borderRadius: 20,
             }}>
               {goal.quarter}
             </span>
@@ -141,20 +141,20 @@ function GoalCard({
           className="card-press"
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D1D1D6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-3)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="9 18 15 12 9 6" />
           </svg>
         </button>
       </div>
 
       {/* Title */}
-      <p style={{ fontSize: 16, fontWeight: 600, color: '#1C1C1E', margin: '0 0 4px' }}>
+      <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 4px' }}>
         {goal.text}
       </p>
 
       {/* Subtitle */}
       {goal.refined_goal && (
-        <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 10px', lineHeight: 1.4 }}>
+        <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '0 0 10px', lineHeight: 1.4 }}>
           {goal.refined_goal}
         </p>
       )}
@@ -163,9 +163,9 @@ function GoalCard({
       {tab === 'active' && (
         <div style={{ marginTop: goal.refined_goal ? 0 : 8, marginBottom: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
-            <span style={{ fontSize: 12, color: '#8E8E93' }}>{goal.progress || 0}%</span>
+            <span style={{ fontSize: 12, color: 'var(--c-text-2)' }}>{goal.progress || 0}%</span>
           </div>
-          <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+          <div style={{ background: 'var(--c-surface-3)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
             <div
               className="progress-fill-shimmer"
               style={{
@@ -346,8 +346,8 @@ export default function GoalsPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading...</div>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--c-bg)' }}>
+        <div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading...</div>
       </div>
     )
   }
@@ -355,12 +355,12 @@ export default function GoalsPage() {
   const tabs: TabType[] = ['inbox', 'active', 'parked', 'archived']
 
   return (
-    <div style={{ padding: '56px 16px 16px' }}>
+    <div style={{ padding: '56px 16px 16px', background: 'var(--c-bg)', minHeight: '100vh' }}>
 
       {/* Header */}
       <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: 0, letterSpacing: '-0.4px' }}>Goals</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', marginTop: 3, marginBottom: 0 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--c-text-1)', margin: 0, letterSpacing: '-0.4px' }}>Goals</h1>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', marginTop: 3, marginBottom: 0 }}>
           {dailyVariant(COPY.goals_subtitle, userId || '')}
         </p>
       </div>
@@ -369,10 +369,10 @@ export default function GoalsPage() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
         <div style={{
           flex: 1, display: 'flex', alignItems: 'center', gap: 8,
-          background: 'white', borderRadius: 14, border: '0.5px solid #E5E5EA',
+          background: 'var(--c-surface)', borderRadius: 14, border: '0.5px solid var(--c-border)',
           padding: '10px 14px',
         }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-2)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
           <input
@@ -381,7 +381,7 @@ export default function GoalsPage() {
             onChange={e => setSearch(e.target.value)}
             style={{
               flex: 1, border: 'none', outline: 'none',
-              fontSize: 15, color: '#1C1C1E', background: 'transparent',
+              fontSize: 15, color: 'var(--c-text-1)', background: 'transparent',
               fontFamily: 'inherit',
             }}
           />
@@ -389,12 +389,12 @@ export default function GoalsPage() {
         <button
           style={{
             width: 44, height: 44, borderRadius: 14,
-            background: 'white', border: '0.5px solid #E5E5EA',
+            background: 'var(--c-surface)', border: '0.5px solid var(--c-border)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', flexShrink: 0,
           }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-mid)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="4" y1="6" x2="20" y2="6" />
             <line x1="8" y1="12" x2="16" y2="12" />
             <line x1="11" y1="18" x2="13" y2="18" />
@@ -432,8 +432,8 @@ export default function GoalsPage() {
       {/* Tabs */}
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-        background: 'white', borderRadius: 16, padding: '4px',
-        border: '0.5px solid #E5E5EA', marginBottom: 16,
+        background: 'var(--c-surface)', borderRadius: 16, padding: '4px',
+        border: '0.5px solid var(--c-border)', marginBottom: 16,
       }}>
         {tabs.map(tab => (
           <button
@@ -444,7 +444,7 @@ export default function GoalsPage() {
               border: 'none',
               background: activeTab === tab ? '#3B7DFF' : 'transparent',
               fontSize: 13, fontWeight: activeTab === tab ? 600 : 400,
-              color: activeTab === tab ? 'white' : '#8E8E93',
+              color: activeTab === tab ? 'white' : 'var(--c-text-2)',
               cursor: 'pointer', fontFamily: 'inherit',
               borderRadius: 12,
               boxShadow: activeTab === tab ? '0 2px 10px rgba(59,125,255,0.28), 0 1px 3px rgba(0,0,0,0.10)' : 'none',
@@ -521,22 +521,22 @@ export default function GoalsPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            style={{ width: '100%', background: 'white', borderRadius: '28px 28px 0 0', maxHeight: '92vh', overflowY: 'auto', paddingBottom: 40 }}
+            style={{ width: '100%', background: 'var(--c-surface)', borderRadius: '28px 28px 0 0', maxHeight: '92vh', overflowY: 'auto', paddingBottom: 40 }}
           >
             {/* Drag handle */}
             <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 12, paddingBottom: 4 }}>
-              <div style={{ width: 36, height: 4, borderRadius: 2, background: '#E5E5EA' }} />
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: 'var(--c-border)' }} />
             </div>
 
             {/* Header */}
             <div style={{ position: 'relative', textAlign: 'center', padding: '12px 20px 4px' }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>New Goal</h2>
-              <p style={{ fontSize: 13, color: '#8E8E93', margin: '4px 0 0' }}>Create a new goal to track your progress</p>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>New Goal</h2>
+              <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '4px 0 0' }}>Create a new goal to track your progress</p>
               <button
                 onClick={() => setShowNewGoal(false)}
                 style={{ position: 'absolute', top: 12, right: 20, background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--c-text-2)" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
@@ -546,7 +546,7 @@ export default function GoalsPage() {
 
               {/* Goal Title */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>Goal Title</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', display: 'block', marginBottom: 8 }}>Goal Title</label>
                 <input
                   autoFocus
                   placeholder="e.g. Launch a new podcast in 6 months with 10 episodes"
@@ -555,15 +555,15 @@ export default function GoalsPage() {
                   className="cadence-input"
                   style={{
                     width: '100%', padding: '12px 14px', borderRadius: 14,
-                    border: '1px solid #E5E5EA', fontSize: 15, color: '#1C1C1E',
-                    fontFamily: 'inherit', outline: 'none', background: '#F9F9F9', boxSizing: 'border-box',
+                    border: '1px solid var(--c-border)', fontSize: 15, color: 'var(--c-text-1)',
+                    fontFamily: 'inherit', outline: 'none', background: 'var(--c-surface-3)', boxSizing: 'border-box',
                   }}
                 />
               </div>
 
               {/* Category - 3×3 grid */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>Category</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', display: 'block', marginBottom: 8 }}>Category</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
                   {GOAL_CATEGORIES.map(cat => {
                     const cs = getCatStyle(cat)
@@ -574,13 +574,13 @@ export default function GoalsPage() {
                         onClick={() => setNewCategory(cat)}
                         style={{
                           padding: '10px 8px', borderRadius: 16, border: 'none',
-                          background: selected ? cs.color : '#F2F2F7',
+                          background: selected ? cs.color : 'var(--c-surface-3)',
                           cursor: 'pointer', fontFamily: 'inherit',
                           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                         }}
                       >
                         <span style={{ width: 8, height: 8, borderRadius: '50%', flexShrink: 0, background: selected ? 'rgba(255,255,255,0.7)' : cs.color }} />
-                        <span style={{ fontSize: 12, fontWeight: selected ? 600 : 400, color: selected ? 'white' : '#3C3C43', whiteSpace: 'nowrap' }}>{cat}</span>
+                        <span style={{ fontSize: 12, fontWeight: selected ? 600 : 400, color: selected ? 'white' : 'var(--c-text-mid)', whiteSpace: 'nowrap' }}>{cat}</span>
                       </button>
                     )
                   })}
@@ -589,8 +589,8 @@ export default function GoalsPage() {
 
               {/* Milestones */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
-                  Milestones <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', display: 'block', marginBottom: 8 }}>
+                  Milestones <span style={{ fontWeight: 400, color: 'var(--c-text-2)' }}>(optional)</span>
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {newMilestones.map((m, i) => (
@@ -601,14 +601,14 @@ export default function GoalsPage() {
                         onChange={e => { const next = [...newMilestones]; next[i] = e.target.value; setNewMilestones(next) }}
                         style={{
                           flex: 1, padding: '10px 12px', borderRadius: 10,
-                          border: '1px solid #E5E5EA', fontSize: 14, color: '#1C1C1E',
-                          fontFamily: 'inherit', outline: 'none', background: '#F9F9F9',
+                          border: '1px solid var(--c-border)', fontSize: 14, color: 'var(--c-text-1)',
+                          fontFamily: 'inherit', outline: 'none', background: 'var(--c-surface-3)',
                         }}
                       />
                       {newMilestones.length > 1 && (
                         <button
                           onClick={() => setNewMilestones(prev => prev.filter((_, j) => j !== i))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#8E8E93', flexShrink: 0 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--c-text-2)', flexShrink: 0 }}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -620,7 +620,7 @@ export default function GoalsPage() {
                   {newMilestones.length < 5 && (
                     <button
                       onClick={() => setNewMilestones(prev => [...prev, ''])}
-                      style={{ padding: '10px', borderRadius: 10, border: '1.5px dashed #D1D1D6', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: '#8E8E93' }}
+                      style={{ padding: '10px', borderRadius: 10, border: '1.5px dashed var(--c-text-3)', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: 'var(--c-text-2)' }}
                     >
                       + Add Milestone ({newMilestones.length}/5)
                     </button>
@@ -630,8 +630,8 @@ export default function GoalsPage() {
 
               {/* Action Steps */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
-                  Action Steps <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', display: 'block', marginBottom: 8 }}>
+                  Action Steps <span style={{ fontWeight: 400, color: 'var(--c-text-2)' }}>(optional)</span>
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {newSteps.map((s, i) => (
@@ -642,14 +642,14 @@ export default function GoalsPage() {
                         onChange={e => { const next = [...newSteps]; next[i] = e.target.value; setNewSteps(next) }}
                         style={{
                           flex: 1, padding: '10px 12px', borderRadius: 10,
-                          border: '1px solid #E5E5EA', fontSize: 14, color: '#1C1C1E',
-                          fontFamily: 'inherit', outline: 'none', background: '#F9F9F9',
+                          border: '1px solid var(--c-border)', fontSize: 14, color: 'var(--c-text-1)',
+                          fontFamily: 'inherit', outline: 'none', background: 'var(--c-surface-3)',
                         }}
                       />
                       {newSteps.length > 1 && (
                         <button
                           onClick={() => setNewSteps(prev => prev.filter((_, j) => j !== i))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#8E8E93', flexShrink: 0 }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--c-text-2)', flexShrink: 0 }}
                         >
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                             <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -661,7 +661,7 @@ export default function GoalsPage() {
                   {newSteps.length < 15 && (
                     <button
                       onClick={() => setNewSteps(prev => [...prev, ''])}
-                      style={{ padding: '10px', borderRadius: 10, border: '1.5px dashed #D1D1D6', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: '#8E8E93' }}
+                      style={{ padding: '10px', borderRadius: 10, border: '1.5px dashed var(--c-text-3)', background: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 13, color: 'var(--c-text-2)' }}
                     >
                       + Add Action Step ({newSteps.length}/15)
                     </button>
@@ -672,8 +672,8 @@ export default function GoalsPage() {
               {/* Linked Projects */}
               {availableProjects.length > 0 && (
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
-                    Linked Project <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', display: 'block', marginBottom: 8 }}>
+                    Linked Project <span style={{ fontWeight: 400, color: 'var(--c-text-2)' }}>(optional)</span>
                   </label>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                     {availableProjects.map(proj => {
@@ -685,12 +685,12 @@ export default function GoalsPage() {
                           style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                             padding: '12px 14px', borderRadius: 12,
-                            border: linked ? '1.5px solid #3B7DFF' : '1px solid #E5E5EA',
-                            background: linked ? '#EFF6FF' : 'white',
+                            border: linked ? '1.5px solid #3B7DFF' : '1px solid var(--c-border)',
+                            background: linked ? '#EFF6FF' : 'var(--c-surface)',
                             cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
                           }}
                         >
-                          <span style={{ fontSize: 14, color: linked ? '#3B7DFF' : '#1C1C1E', fontWeight: linked ? 500 : 400 }}>{proj.title}</span>
+                          <span style={{ fontSize: 14, color: linked ? '#3B7DFF' : 'var(--c-text-1)', fontWeight: linked ? 500 : 400 }}>{proj.title}</span>
                           {linked && (
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                               <polyline points="20 6 9 17 4 12" />
@@ -710,33 +710,33 @@ export default function GoalsPage() {
 
               {/* Timeline */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
-                  Timeline <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', display: 'block', marginBottom: 8 }}>
+                  Timeline <span style={{ fontWeight: 400, color: 'var(--c-text-2)' }}>(optional)</span>
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div>
-                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 5px' }}>Start</p>
+                    <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 5px' }}>Start</p>
                     <input
                       type="date"
                       value={newStartDate}
                       onChange={e => setNewStartDate(e.target.value)}
                       style={{
                         width: '100%', padding: '10px 12px', borderRadius: 10,
-                        border: '1px solid #E5E5EA', fontSize: 14, color: newStartDate ? '#1C1C1E' : '#8E8E93',
-                        fontFamily: 'inherit', outline: 'none', background: '#F9F9F9', boxSizing: 'border-box',
+                        border: '1px solid var(--c-border)', fontSize: 14, color: newStartDate ? 'var(--c-text-1)' : 'var(--c-text-2)',
+                        fontFamily: 'inherit', outline: 'none', background: 'var(--c-surface-3)', boxSizing: 'border-box',
                       }}
                     />
                   </div>
                   <div>
-                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 5px' }}>End</p>
+                    <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 5px' }}>End</p>
                     <input
                       type="date"
                       value={newEndDate}
                       onChange={e => setNewEndDate(e.target.value)}
                       style={{
                         width: '100%', padding: '10px 12px', borderRadius: 10,
-                        border: '1px solid #E5E5EA', fontSize: 14, color: newEndDate ? '#1C1C1E' : '#8E8E93',
-                        fontFamily: 'inherit', outline: 'none', background: '#F9F9F9', boxSizing: 'border-box',
+                        border: '1px solid var(--c-border)', fontSize: 14, color: newEndDate ? 'var(--c-text-1)' : 'var(--c-text-2)',
+                        fontFamily: 'inherit', outline: 'none', background: 'var(--c-surface-3)', boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -745,7 +745,7 @@ export default function GoalsPage() {
 
               {/* Priority */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>Priority</label>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', display: 'block', marginBottom: 8 }}>Priority</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(['high', 'medium', 'low'] as const).map(p => (
                     <button
@@ -753,9 +753,9 @@ export default function GoalsPage() {
                       onClick={() => setNewPriority(p)}
                       style={{
                         flex: 1, padding: '10px 0', borderRadius: 12,
-                        border: newPriority === p ? `1.5px solid ${PRIORITY_COLORS[p]}` : '1.5px solid #E5E5EA',
-                        background: newPriority === p ? `${PRIORITY_COLORS[p]}15` : 'white',
-                        color: newPriority === p ? PRIORITY_COLORS[p] : '#8E8E93',
+                        border: newPriority === p ? `1.5px solid ${PRIORITY_COLORS[p]}` : '1.5px solid var(--c-border)',
+                        background: newPriority === p ? `${PRIORITY_COLORS[p]}15` : 'var(--c-surface)',
+                        color: newPriority === p ? PRIORITY_COLORS[p] : 'var(--c-text-2)',
                         fontSize: 13, fontWeight: newPriority === p ? 600 : 400,
                         cursor: 'pointer', fontFamily: 'inherit', textTransform: 'capitalize',
                       }}
@@ -768,8 +768,8 @@ export default function GoalsPage() {
 
               {/* Notes */}
               <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', display: 'block', marginBottom: 8 }}>
-                  Notes <span style={{ fontWeight: 400, color: '#8E8E93' }}>(optional)</span>
+                <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', display: 'block', marginBottom: 8 }}>
+                  Notes <span style={{ fontWeight: 400, color: 'var(--c-text-2)' }}>(optional)</span>
                 </label>
                 <textarea
                   placeholder="What's this goal about?"
@@ -779,8 +779,8 @@ export default function GoalsPage() {
                   className="cadence-input"
                   style={{
                     width: '100%', padding: '12px 14px', borderRadius: 14,
-                    border: '1px solid #E5E5EA', fontSize: 15, color: '#1C1C1E',
-                    fontFamily: 'inherit', outline: 'none', background: '#F9F9F9',
+                    border: '1px solid var(--c-border)', fontSize: 15, color: 'var(--c-text-1)',
+                    fontFamily: 'inherit', outline: 'none', background: 'var(--c-surface-3)',
                     resize: 'none', boxSizing: 'border-box',
                   }}
                 />
@@ -792,7 +792,7 @@ export default function GoalsPage() {
                 disabled={!newTitle.trim() || creatingGoal}
                 style={{
                   width: '100%', padding: '15px 0', borderRadius: 16,
-                  background: !newTitle.trim() || creatingGoal ? '#D1D1D6' : '#3B7DFF',
+                  background: !newTitle.trim() || creatingGoal ? 'var(--c-text-3)' : '#3B7DFF',
                   border: 'none', color: 'white', fontSize: 16, fontWeight: 600,
                   cursor: !newTitle.trim() || creatingGoal ? 'default' : 'pointer',
                   fontFamily: 'inherit',
