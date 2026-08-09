@@ -200,7 +200,7 @@ export default function MiddayTouchpointPage() {
           onClick={() => router.push('/dashboard/plan/daily')}
           style={{
             width: '100%', padding: '18px', border: 'none', borderRadius: 16,
-            background: 'white', color: '#3B7DFF',
+            background: 'var(--c-surface)', color: '#3B7DFF',
             fontSize: 17, fontWeight: 700, cursor: 'pointer',
             fontFamily: 'inherit',
             animation: visible ? '_tp_pulse 2.5s ease-in-out 1s infinite' : 'none',

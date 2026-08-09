@@ -56,6 +56,18 @@ const EVENT_STYLE: Record<string, { bg: string; border: string; title: string; s
   block:    { bg: '#FEF2F2', border: '#FECACA', title: '#991B1B', sub: '#DC2626' },
 }
 
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return isDark
+}
+
 function getCurrentQuarter(): Quarter {
   const m = new Date().getMonth()
   if (m < 3) return 'Q1'
@@ -86,6 +98,7 @@ export default function QuarterlyPlannerPage() {
   const [suggestions, setSuggestions]         = useState<GoalRow[]>([])
   const [showSuggestModal, setShowSuggestModal] = useState(false)
   const [generatingPlan, setGeneratingPlan]   = useState(false)
+  const isDark = useIsDark()
 
   // Initial load: goals + lock state
   useEffect(() => {
@@ -203,21 +216,21 @@ export default function QuarterlyPlannerPage() {
     <div style={{ padding: '0 0 16px' }}>
 
       {/* Header */}
-      <div style={{ padding: '56px 16px 16px', background: 'white', borderBottom: '0.5px solid #E5E5EA' }}>
+      <div style={{ padding: '56px 16px 16px', background: 'var(--c-surface)', borderBottom: '0.5px solid var(--c-border)' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4, color: '#3B7DFF', fontSize: 14, fontFamily: 'inherit' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           Home
         </button>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Quarterly Planner</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>Map your goals across the year</p>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Quarterly Planner</h1>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '3px 0 0' }}>Map your goals across the year</p>
       </div>
 
       <div style={{ padding: '16px' }}>
 
         {/* Quarter Tabs */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: 'white', borderRadius: 14, padding: '4px', border: '0.5px solid #E5E5EA', marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', background: 'var(--c-surface)', borderRadius: 14, padding: '4px', border: '0.5px solid var(--c-border)', marginBottom: 16 }}>
           {(['Q1', 'Q2', 'Q3', 'Q4'] as Quarter[]).map(q => (
-            <button key={q} onClick={() => setActiveQ(q)} style={{ padding: '9px 4px', borderRadius: 10, background: activeQ === q ? '#3B7DFF' : 'transparent', border: 'none', fontSize: 13, fontWeight: activeQ === q ? 600 : 400, color: activeQ === q ? 'white' : '#8E8E93', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
+            <button key={q} onClick={() => setActiveQ(q)} style={{ padding: '9px 4px', borderRadius: 10, background: activeQ === q ? '#3B7DFF' : 'transparent', border: 'none', fontSize: 13, fontWeight: activeQ === q ? 600 : 400, color: activeQ === q ? 'white' : 'var(--c-text-2)', cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.15s' }}>
               {QUARTER_DATES[q].label.split(' ')[0]}<br /><span style={{ fontSize: 10 }}>2026</span>
             </button>
           ))}
@@ -237,9 +250,9 @@ export default function QuarterlyPlannerPage() {
         </div>
 
         {/* Goals */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
+        <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '18px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Goals</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Goals</p>
             {/* D2: Add Goal hidden when locked */}
             {!locked[activeQ] && (
               <button onClick={() => router.push('/dashboard/goals/evaluate')} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: '#3B7DFF', fontFamily: 'inherit', padding: 0, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -263,21 +276,21 @@ export default function QuarterlyPlannerPage() {
               {quarterGoals.map((goal, i) => {
                 const cs = getCatStyle(goal.category)
                 return (
-                  <div key={goal.id} style={{ background: '#F8F8FC', borderRadius: 12, padding: '14px' }}>
+                  <div key={goal.id} style={{ background: 'var(--c-surface-2)', borderRadius: 12, padding: '14px' }}>
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <p style={{ fontSize: 15, fontWeight: 500, color: '#1C1C1E', margin: 0, flex: 1, paddingRight: 8 }}>{goal.text}</p>
+                      <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--c-text-1)', margin: 0, flex: 1, paddingRight: 8 }}>{goal.text}</p>
                       {/* D3: X button hidden when locked */}
                       {!locked[activeQ] && (
-                        <button onClick={() => handleRemoveGoal(goal)} title="Remove from quarter" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: '#C7C7CC', flexShrink: 0 }}>
+                        <button onClick={() => handleRemoveGoal(goal)} title="Remove from quarter" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--c-text-3)', flexShrink: 0 }}>
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
                       <span style={{ fontSize: 12, fontWeight: 500, background: cs.bg, color: cs.color, padding: '2px 8px', borderRadius: 20 }}>{goal.category}</span>
-                      <span style={{ fontSize: 12, color: '#8E8E93', background: '#F2F2F7', padding: '2px 8px', borderRadius: 20 }}>Priority #{i + 1}</span>
+                      <span style={{ fontSize: 12, color: 'var(--c-text-2)', background: 'var(--c-border-sub)', padding: '2px 8px', borderRadius: 20 }}>Priority #{i + 1}</span>
                     </div>
-                    <div style={{ background: '#E5E5EA', borderRadius: 4, height: 5, overflow: 'hidden' }}>
+                    <div style={{ background: 'var(--c-border)', borderRadius: 4, height: 5, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${goal.progress || 0}%`, background: '#3B7DFF', borderRadius: 4 }} />
                     </div>
                   </div>
@@ -288,11 +301,11 @@ export default function QuarterlyPlannerPage() {
         </div>
 
         {/* D4: Key Events & Blocks — DB-backed */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
-          <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Key Events & Blocks</p>
+        <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '18px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
+          <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 14px' }}>Key Events & Blocks</p>
 
           {events.length === 0 && !addingEvent && (
-            <p style={{ fontSize: 14, color: '#8E8E93', textAlign: 'center', padding: '8px 0', margin: '0 0 10px' }}>No events for {quarterLabel}.</p>
+            <p style={{ fontSize: 14, color: 'var(--c-text-2)', textAlign: 'center', padding: '8px 0', margin: '0 0 10px' }}>No events for {quarterLabel}.</p>
           )}
 
           {events.map(ev => {
@@ -309,7 +322,7 @@ export default function QuarterlyPlannerPage() {
                   </p>
                 </div>
                 {!locked[activeQ] && (
-                  <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: '#C7C7CC' }}>
+                  <button onClick={() => handleDeleteEvent(ev.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '2px 4px', color: 'var(--c-text-3)' }}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 )}
@@ -319,35 +332,35 @@ export default function QuarterlyPlannerPage() {
 
           {!locked[activeQ] && (
             addingEvent ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4, padding: '14px', background: '#F8F8FC', borderRadius: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4, padding: '14px', background: 'var(--c-surface-2)', borderRadius: 12 }}>
                 <input
                   value={newTitle} onChange={e => setNewTitle(e.target.value)}
                   placeholder="Event title…" autoFocus
-                  style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '10px 12px', fontSize: 14, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box' }}
                 />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <div>
-                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px' }}>Start date</p>
-                    <input type="date" value={newStart} onChange={e => setNewStart(e.target.value)} style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '9px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'white' }} />
+                    <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 4px' }}>Start date</p>
+                    <input type="date" value={newStart} onChange={e => setNewStart(e.target.value)} style={{ width: '100%', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '9px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface)' }} />
                   </div>
                   <div>
-                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px' }}>End date</p>
-                    <input type="date" value={newEnd} onChange={e => setNewEnd(e.target.value)} style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '9px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'white' }} />
+                    <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 4px' }}>End date</p>
+                    <input type="date" value={newEnd} onChange={e => setNewEnd(e.target.value)} style={{ width: '100%', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '9px 10px', fontSize: 13, fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface)' }} />
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   {(['event', 'vacation', 'block'] as const).map(t => (
-                    <button key={t} onClick={() => setNewType(t)} style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 500, background: newType === t ? '#1C1C1E' : '#F2F2F7', color: newType === t ? 'white' : '#3C3C43', textTransform: 'capitalize' }}>{t}</button>
+                    <button key={t} onClick={() => setNewType(t)} style={{ flex: 1, padding: '8px', borderRadius: 8, border: 'none', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, fontWeight: 500, background: newType === t ? '#1C1C1E' : 'var(--c-border-sub)', color: newType === t ? 'white' : 'var(--c-text-mid)', textTransform: 'capitalize' }}>{t}</button>
                   ))}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button onClick={handleAddEvent} disabled={!newTitle.trim()} style={{ flex: 1, padding: '11px', borderRadius: 10, background: newTitle.trim() ? '#3B7DFF' : '#D1D1D6', border: 'none', color: 'white', fontSize: 14, fontWeight: 600, cursor: newTitle.trim() ? 'pointer' : 'default', fontFamily: 'inherit' }}>Save Event</button>
-                  <button onClick={() => { setAddingEvent(false); setNewTitle(''); setNewStart(''); setNewEnd(''); setNewType('event') }} style={{ padding: '11px 16px', borderRadius: 10, background: '#F2F2F7', border: 'none', color: '#3C3C43', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                  <button onClick={() => { setAddingEvent(false); setNewTitle(''); setNewStart(''); setNewEnd(''); setNewType('event') }} style={{ padding: '11px 16px', borderRadius: 10, background: 'var(--c-border-sub)', border: 'none', color: 'var(--c-text-mid)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                 </div>
               </div>
             ) : (
-              <button onClick={() => setAddingEvent(true)} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: events.length > 0 ? 4 : 0, background: 'none', border: '0.5px dashed #D1D1D6', color: '#8E8E93', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+              <button onClick={() => setAddingEvent(true)} style={{ width: '100%', padding: '12px', borderRadius: 10, marginTop: events.length > 0 ? 4 : 0, background: 'none', border: '0.5px dashed #D1D1D6', color: 'var(--c-text-2)', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#EBEBF5' : '#8E8E93'} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
                 Add Event
               </button>
             )
@@ -360,9 +373,9 @@ export default function QuarterlyPlannerPage() {
           {!locked[activeQ] && (
             <button
               onClick={handleGeneratePlan} disabled={generatingPlan}
-              style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 14, fontWeight: 600, cursor: generatingPlan ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: generatingPlan ? 0.6 : 1 }}
+              style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: 'var(--c-text-1)', fontSize: 14, fontWeight: 600, cursor: generatingPlan ? 'default' : 'pointer', fontFamily: 'inherit', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, opacity: generatingPlan ? 0.6 : 1 }}
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1C1C1E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#FFFFFF' : '#1C1C1E'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
               {generatingPlan ? 'Generating…' : 'Generate Plan'}
             </button>
           )}
@@ -382,39 +395,39 @@ export default function QuarterlyPlannerPage() {
       {/* D1: Suggestions bottom-sheet */}
       {showSuggestModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-end', justifyContent: 'center', zIndex: 200 }} onClick={() => setShowSuggestModal(false)}>
-          <div style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, maxHeight: '80vh', overflowY: 'auto', padding: '24px 20px 40px' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--c-surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, maxHeight: '80vh', overflowY: 'auto', padding: '24px 20px 40px' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Suggested for {quarterLabel}</h2>
-                <p style={{ fontSize: 13, color: '#8E8E93', margin: '4px 0 0' }}>Based on your priority stack and carry-forwards. Accept or skip each.</p>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Suggested for {quarterLabel}</h2>
+                <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '4px 0 0' }}>Based on your priority stack and carry-forwards. Accept or skip each.</p>
               </div>
-              <button onClick={() => setShowSuggestModal(false)} style={{ background: '#F2F2F7', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              <button onClick={() => setShowSuggestModal(false)} style={{ background: 'var(--c-border-sub)', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#EBEBF5' : '#3C3C43'} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
 
             {suggestions.length === 0 ? (
-              <p style={{ fontSize: 15, color: '#8E8E93', textAlign: 'center', padding: '20px 0' }}>All your active goals are already committed to {quarterLabel}.</p>
+              <p style={{ fontSize: 15, color: 'var(--c-text-2)', textAlign: 'center', padding: '20px 0' }}>All your active goals are already committed to {quarterLabel}.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {suggestions.map(goal => {
                   const cs = getCatStyle(goal.category)
                   const isCarryForward = goal.quarter === QUARTER_DATES[PREV_QUARTER[activeQ]].label
                   return (
-                    <div key={goal.id} style={{ background: '#F8F8FC', borderRadius: 14, padding: '14px 16px' }}>
+                    <div key={goal.id} style={{ background: 'var(--c-surface-2)', borderRadius: 14, padding: '14px 16px' }}>
                       <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
                         <span style={{ fontSize: 11, fontWeight: 500, background: cs.bg, color: cs.color, padding: '2px 8px', borderRadius: 20 }}>{goal.category}</span>
                         {isCarryForward && <span style={{ fontSize: 11, fontWeight: 500, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 20 }}>Carry-forward</span>}
                       </div>
-                      <p style={{ fontSize: 15, fontWeight: 500, color: '#1C1C1E', margin: '0 0 10px' }}>{goal.text}</p>
+                      <p style={{ fontSize: 15, fontWeight: 500, color: 'var(--c-text-1)', margin: '0 0 10px' }}>{goal.text}</p>
                       {(goal.progress || 0) > 0 && (
-                        <div style={{ background: '#E5E5EA', borderRadius: 4, height: 4, overflow: 'hidden', marginBottom: 10 }}>
+                        <div style={{ background: 'var(--c-border)', borderRadius: 4, height: 4, overflow: 'hidden', marginBottom: 10 }}>
                           <div style={{ height: '100%', width: `${goal.progress}%`, background: '#3B7DFF', borderRadius: 4 }} />
                         </div>
                       )}
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button onClick={() => handleAcceptSuggestion(goal)} style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#3B7DFF', border: 'none', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Add to {quarterLabel}</button>
-                        <button onClick={() => setSuggestions(prev => prev.filter(g => g.id !== goal.id))} style={{ padding: '10px 16px', borderRadius: 10, background: '#F2F2F7', border: 'none', color: '#3C3C43', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
+                        <button onClick={() => setSuggestions(prev => prev.filter(g => g.id !== goal.id))} style={{ padding: '10px 16px', borderRadius: 10, background: 'var(--c-border-sub)', border: 'none', color: 'var(--c-text-mid)', fontSize: 13, cursor: 'pointer', fontFamily: 'inherit' }}>Skip</button>
                       </div>
                     </div>
                   )

@@ -1,5 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react'
+
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return isDark
+}
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import {
@@ -31,6 +43,7 @@ interface EditState {
 
 export default function ScheduleManagerPage() {
   const router = useRouter()
+  const isDark = useIsDark()
   const [items, setItems]     = useState<DBScheduleItem[]>([])
   const [userId, setUserId]   = useState<string | null>(null)
   const [editId, setEditId]   = useState<string | null>(null)
@@ -120,7 +133,7 @@ export default function ScheduleManagerPage() {
     <div style={{ padding: '0 0 16px' }}>
 
       {/* Header */}
-      <div style={{ padding: '56px 16px 16px', background: 'white', borderBottom: '0.5px solid #E5E5EA' }}>
+      <div style={{ padding: '56px 16px 16px', background: 'var(--c-surface)', borderBottom: '0.5px solid var(--c-border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
             <button
@@ -130,8 +143,8 @@ export default function ScheduleManagerPage() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
               Plan
             </button>
-            <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Schedule Manager</h1>
-            <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>Adjust your daily rhythm</p>
+            <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Schedule Manager</h1>
+            <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '3px 0 0' }}>Adjust your daily rhythm</p>
           </div>
           <div style={{ paddingTop: 36 }}>
             <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -143,13 +156,13 @@ export default function ScheduleManagerPage() {
         {/* Date Nav */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
           <button onClick={() => setDateOffset(o => o - 1)} style={navBtnStyle}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#EBEBF5' : '#3C3C43'} strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           </button>
-          <span style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E', flex: 1, textAlign: 'center' }}>
-            {displayDate} <span style={{ fontWeight: 400, color: '#8E8E93', fontSize: 13 }}>· {fullDate.split(',').slice(1).join(',').trim()}</span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text-1)', flex: 1, textAlign: 'center' }}>
+            {displayDate} <span style={{ fontWeight: 400, color: 'var(--c-text-2)', fontSize: 13 }}>· {fullDate.split(',').slice(1).join(',').trim()}</span>
           </span>
           <button onClick={() => setDateOffset(o => o + 1)} style={navBtnStyle}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#EBEBF5' : '#3C3C43'} strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
           </button>
         </div>
       </div>
@@ -174,10 +187,10 @@ export default function ScheduleManagerPage() {
         {/* Schedule Items */}
         {items.length === 0 ? (
           <div style={{
-            background: 'white', borderRadius: 16, padding: '40px 20px', textAlign: 'center',
-            border: '0.5px solid #E5E5EA', marginBottom: 14, color: '#8E8E93',
+            background: 'var(--c-surface)', borderRadius: 16, padding: '40px 20px', textAlign: 'center',
+            border: '0.5px solid var(--c-border)', marginBottom: 14, color: 'var(--c-text-2)',
           }}>
-            <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: '#3C3C43' }}>No schedule blocks</p>
+            <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: 'var(--c-text-mid)' }}>No schedule blocks</p>
             <p style={{ fontSize: 13, margin: 0 }}>Add time blocks to structure your day.</p>
           </div>
         ) : (
@@ -190,42 +203,42 @@ export default function ScheduleManagerPage() {
               if (editId === item.id && edit) {
                 return (
                   <div key={item.id} style={{
-                    background: 'white', borderRadius: 16, padding: '16px',
+                    background: 'var(--c-surface)', borderRadius: 16, padding: '16px',
                     border: '2px solid #3B7DFF',
                   }}>
                     <input
                       value={edit.title}
                       onChange={e => setEdit(v => v ? { ...v, title: e.target.value } : v)}
                       style={{
-                        width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 8,
+                        width: '100%', border: '0.5px solid var(--c-border)', borderRadius: 8,
                         padding: '10px 12px', fontSize: 15, fontFamily: 'inherit',
                         marginBottom: 10, boxSizing: 'border-box', outline: 'none',
                       }}
                     />
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
                       <div>
-                        <label style={{ fontSize: 12, color: '#8E8E93', display: 'block', marginBottom: 4 }}>Start Time</label>
+                        <label style={{ fontSize: 12, color: 'var(--c-text-2)', display: 'block', marginBottom: 4 }}>Start Time</label>
                         <input
                           type="time"
                           value={edit.start_time}
                           onChange={e => setEdit(v => v ? { ...v, start_time: e.target.value } : v)}
-                          style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
+                          style={{ width: '100%', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: 12, color: '#8E8E93', display: 'block', marginBottom: 4 }}>Duration (min)</label>
+                        <label style={{ fontSize: 12, color: 'var(--c-text-2)', display: 'block', marginBottom: 4 }}>Duration (min)</label>
                         <input
                           type="number"
                           value={edit.duration_minutes}
                           onChange={e => setEdit(v => v ? { ...v, duration_minutes: parseInt(e.target.value) || 30 } : v)}
-                          style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
+                          style={{ width: '100%', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '8px 10px', fontSize: 14, fontFamily: 'inherit', boxSizing: 'border-box', outline: 'none' }}
                         />
                       </div>
                     </div>
                     <select
                       value={edit.category}
                       onChange={e => setEdit(v => v ? { ...v, category: e.target.value } : v)}
-                      style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: 'inherit', marginBottom: 10, boxSizing: 'border-box', outline: 'none' }}
+                      style={{ width: '100%', border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '8px 12px', fontSize: 14, fontFamily: 'inherit', marginBottom: 10, boxSizing: 'border-box', outline: 'none' }}
                     >
                       {Object.entries(CAT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </select>
@@ -237,11 +250,11 @@ export default function ScheduleManagerPage() {
                         onChange={e => setEdit(v => v ? { ...v, is_flexible: e.target.checked } : v)}
                         style={{ width: 16, height: 16, cursor: 'pointer' }}
                       />
-                      <label htmlFor={`flex-${item.id}`} style={{ fontSize: 14, color: '#3C3C43', cursor: 'pointer' }}>Flexible (auto-adjusts)</label>
+                      <label htmlFor={`flex-${item.id}`} style={{ fontSize: 14, color: 'var(--c-text-mid)', cursor: 'pointer' }}>Flexible (auto-adjusts)</label>
                     </div>
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={saveEdit} style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#3B7DFF', border: 'none', color: 'white', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
-                      <button onClick={() => { setEditId(null); setEdit(null) }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#F2F2F7', border: 'none', color: '#3C3C43', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                      <button onClick={() => { setEditId(null); setEdit(null) }} style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'var(--c-surface-3)', border: 'none', color: 'var(--c-text-mid)', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                       <button onClick={() => deleteItem(item.id)} style={{ padding: '10px 14px', borderRadius: 10, background: '#FFF0F0', border: 'none', color: '#FF3B30', fontSize: 14, cursor: 'pointer', fontFamily: 'inherit' }}>Delete</button>
                     </div>
                   </div>
@@ -250,8 +263,8 @@ export default function ScheduleManagerPage() {
 
               return (
                 <div key={item.id} style={{
-                  background: 'white', borderRadius: 16, padding: '16px 18px',
-                  border: '0.5px solid #E5E5EA',
+                  background: 'var(--c-surface)', borderRadius: 16, padding: '16px 18px',
+                  border: '0.5px solid var(--c-border)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
                 }}>
                   <div style={{ flex: 1 }}>
@@ -259,15 +272,15 @@ export default function ScheduleManagerPage() {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
                       </svg>
-                      <span style={{ fontSize: 13, color: '#8E8E93' }}>
+                      <span style={{ fontSize: 13, color: 'var(--c-text-2)' }}>
                         {formatTime(item.start_time)} - {formatTime(endTime)}
                       </span>
-                      <span style={{ fontSize: 12, color: '#8E8E93' }}>({durationHrs % 1 === 0 ? durationHrs : durationHrs.toFixed(1)} {durationHrs <= 1 ? 'hr' : 'hrs'})</span>
+                      <span style={{ fontSize: 12, color: 'var(--c-text-2)' }}>({durationHrs % 1 === 0 ? durationHrs : durationHrs.toFixed(1)} {durationHrs <= 1 ? 'hr' : 'hrs'})</span>
                       {item.is_flexible && (
                         <span style={{ fontSize: 11, fontWeight: 500, color: '#3B7DFF', background: '#EFF6FF', borderRadius: 20, padding: '1px 7px' }}>Flexible</span>
                       )}
                     </div>
-                    <p style={{ fontSize: 16, fontWeight: 600, color: '#1C1C1E', margin: '0 0 6px' }}>{item.title}</p>
+                    <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 6px' }}>{item.title}</p>
                     <span style={{
                       fontSize: 12, fontWeight: 500,
                       background: catStyle.bg, color: catStyle.color,
@@ -292,20 +305,20 @@ export default function ScheduleManagerPage() {
 
         {/* Daily Summary */}
         <div style={{
-          background: 'white', borderRadius: 16, padding: '18px',
-          border: '0.5px solid #E5E5EA', marginBottom: 14,
+          background: 'var(--c-surface)', borderRadius: 16, padding: '18px',
+          border: '0.5px solid var(--c-border)', marginBottom: 14,
         }}>
-          <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Daily Summary</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 14px' }}>Daily Summary</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
-            <div style={{ background: '#F8F8FC', borderRadius: 12, padding: '14px' }}>
-              <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px' }}>Total Scheduled</p>
-              <p style={{ fontSize: 22, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>
+            <div style={{ background: 'var(--c-surface-2)', borderRadius: 12, padding: '14px' }}>
+              <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 4px' }}>Total Scheduled</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>
                 {Math.floor(totalMinutes / 60)}h {totalMinutes % 60 > 0 ? `${totalMinutes % 60}m` : '0m'}
               </p>
             </div>
-            <div style={{ background: '#F8F8FC', borderRadius: 12, padding: '14px' }}>
-              <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px' }}>Flexible Blocks</p>
-              <p style={{ fontSize: 22, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>{flexCount}</p>
+            <div style={{ background: 'var(--c-surface-2)', borderRadius: 12, padding: '14px' }}>
+              <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 4px' }}>Flexible Blocks</p>
+              <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>{flexCount}</p>
             </div>
           </div>
         </div>
@@ -336,7 +349,7 @@ export default function ScheduleManagerPage() {
 }
 
 const navBtnStyle: React.CSSProperties = {
-  background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 8,
+  background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 8,
   width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
   cursor: 'pointer', padding: 0,
 }

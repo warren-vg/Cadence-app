@@ -144,29 +144,29 @@ export default function MorningTouchpointPage() {
           </p>
           {oneTask ? (
             <>
-              <p style={{ fontSize: 19, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px', lineHeight: 1.3 }}>
+              <p style={{ fontSize: 19, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 12px', lineHeight: 1.3 }}>
                 {oneTask.text}
               </p>
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                 {oneTask.scheduled_time && (
-                  <span style={{ fontSize: 13, color: '#8E8E93', background: '#F2F2F7', borderRadius: 8, padding: '4px 10px' }}>
+                  <span style={{ fontSize: 13, color: 'var(--c-text-2)', background: 'var(--c-surface-3)', borderRadius: 8, padding: '4px 10px' }}>
                     {oneTask.scheduled_time}
                   </span>
                 )}
                 {oneTask.duration > 0 && (
-                  <span style={{ fontSize: 13, color: '#8E8E93', background: '#F2F2F7', borderRadius: 8, padding: '4px 10px' }}>
+                  <span style={{ fontSize: 13, color: 'var(--c-text-2)', background: 'var(--c-surface-3)', borderRadius: 8, padding: '4px 10px' }}>
                     {oneTask.duration}h
                   </span>
                 )}
                 {oneTask.category && (
-                  <span style={{ fontSize: 13, color: '#8E8E93', background: '#F2F2F7', borderRadius: 8, padding: '4px 10px' }}>
+                  <span style={{ fontSize: 13, color: 'var(--c-text-2)', background: 'var(--c-surface-3)', borderRadius: 8, padding: '4px 10px' }}>
                     {oneTask.category}
                   </span>
                 )}
               </div>
             </>
           ) : (
-            <p style={{ fontSize: 16, color: '#8E8E93', margin: 0 }}>
+            <p style={{ fontSize: 16, color: 'var(--c-text-2)', margin: 0 }}>
               No tasks scheduled yet — add some from your daily plan.
             </p>
           )}
@@ -218,7 +218,7 @@ export default function MorningTouchpointPage() {
           disabled={submitting}
           style={{
             width: '100%', padding: '18px', border: 'none', borderRadius: 16,
-            background: 'white', color: '#FF6B35',
+            background: 'var(--c-surface)', color: '#FF6B35',
             fontSize: 17, fontWeight: 700, cursor: 'pointer',
             fontFamily: 'inherit',
             opacity: submitting ? 0.7 : 1,

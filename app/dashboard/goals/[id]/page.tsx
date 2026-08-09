@@ -42,7 +42,7 @@ function statusLabel(status: string): string {
 function statusColors(status: string): { bg: string; color: string } {
   if (status === 'active')   return { bg: '#F0FFF4', color: '#16A34A' }
   if (status === 'parking' || status === 'parked') return { bg: '#FFFBEB', color: '#D97706' }
-  if (status === 'archived') return { bg: '#F5F5F5', color: '#8E8E93' }
+  if (status === 'archived') return { bg: '#F5F5F5', color: 'var(--c-text-2)' }
   return { bg: '#EFF6FF', color: '#3B7DFF' }
 }
 
@@ -111,20 +111,20 @@ function MilestoneRow({ milestone, onToggle, onEdit }: {
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <span style={{
-          fontSize: 14, color: milestone.completed ? '#8E8E93' : '#1C1C1E',
+          fontSize: 14, color: milestone.completed ? 'var(--c-text-2)' : 'var(--c-text-1)',
           textDecoration: milestone.completed ? 'line-through' : 'none',
         }}>
           {milestone.text}
         </span>
         {milestone.target_date && (
-          <p style={{ fontSize: 12, color: '#8E8E93', margin: '2px 0 0' }}>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '2px 0 0' }}>
             Due {new Date(milestone.target_date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
           </p>
         )}
       </div>
       <button
         onClick={() => onEdit(milestone)}
-        style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', flexShrink: 0, color: '#C7C7CC' }}
+        style={{ background: 'none', border: 'none', padding: '4px', cursor: 'pointer', flexShrink: 0, color: 'var(--c-text-3)' }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -422,7 +422,7 @@ export default function GoalDetailPage() {
   if (loading || !goal) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading...</div>
+        <div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading...</div>
       </div>
     )
   }
@@ -441,10 +441,10 @@ export default function GoalDetailPage() {
           background: 'none', border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 6,
           marginBottom: 16, padding: 0,
-          color: '#3C3C43', fontFamily: 'inherit', fontSize: 15,
+          color: 'var(--c-text-mid)', fontFamily: 'inherit', fontSize: 15,
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6" />
         </svg>
         Goals
@@ -456,7 +456,7 @@ export default function GoalDetailPage() {
           {goal.category}
         </span>
         {goal.quarter && (
-          <span style={{ fontSize: 12, color: '#8E8E93', background: '#F2F2F7', padding: '4px 8px', borderRadius: 20 }}>
+          <span style={{ fontSize: 12, color: 'var(--c-text-2)', background: 'var(--c-surface-3)', padding: '4px 8px', borderRadius: 20 }}>
             {goal.quarter}
           </span>
         )}
@@ -466,29 +466,29 @@ export default function GoalDetailPage() {
       </div>
 
       {/* Goal title */}
-      <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: '0 0 20px', lineHeight: 1.25 }}>
+      <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 20px', lineHeight: 1.25 }}>
         {goal.text}
       </h1>
 
       {/* Progress card */}
-      <div style={{ background: 'white', borderRadius: 16, padding: '18px 20px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '18px 20px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Progress</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)' }}>Progress</span>
           <span style={{ fontSize: 20, fontWeight: 700, color: '#3B7DFF' }}>{goal.progress || 0}%</span>
         </div>
-        <div style={{ background: '#E5E5EA', borderRadius: 6, height: 8, overflow: 'hidden' }}>
+        <div style={{ background: 'var(--c-border)', borderRadius: 6, height: 8, overflow: 'hidden' }}>
           <div style={{
             height: '100%', width: `${goal.progress || 0}%`,
-            background: '#1C1C1E', borderRadius: 6,
+            background: 'var(--c-text-1)', borderRadius: 6,
             transition: 'width 0.4s ease',
           }} />
         </div>
       </div>
 
       {/* Refined Goal card */}
-      <div style={{ background: 'white', borderRadius: 16, padding: '18px 20px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '18px 20px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Refined Goal</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)' }}>Refined Goal</span>
           <SectionActions
             onEdit={() => { setEditRefinedVal(refinedGoal); setEditingRefined(true) }}
             onRegenerate={regenerateRefined}
@@ -501,8 +501,8 @@ export default function GoalDetailPage() {
               value={editRefinedVal}
               onChange={e => setEditRefinedVal(e.target.value)}
               style={{
-                width: '100%', minHeight: 72, border: '0.5px solid #E5E5EA',
-                borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E',
+                width: '100%', minHeight: 72, border: '0.5px solid var(--c-border)',
+                borderRadius: 10, padding: '10px 12px', fontSize: 14, color: 'var(--c-text-1)',
                 fontFamily: 'inherit', resize: 'none', outline: 'none',
                 lineHeight: 1.5, boxSizing: 'border-box',
               }}
@@ -516,15 +516,15 @@ export default function GoalDetailPage() {
           <p style={{ fontSize: 14, color: '#3B7DFF', margin: '0 0 14px', lineHeight: 1.5 }}>{refinedGoal}</p>
         )}
 
-        <div style={{ borderTop: '0.5px solid #F2F2F7', paddingTop: 12 }}>
+        <div style={{ borderTop: '0.5px solid var(--c-border-sub)', paddingTop: 12 }}>
           {/* Success Metric */}
-          <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px', fontWeight: 500 }}>Success Metric</p>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 4px', fontWeight: 500 }}>Success Metric</p>
           {editingMetric ? (
             <>
               <textarea
                 value={editMetricVal}
                 onChange={e => setEditMetricVal(e.target.value)}
-                style={{ width: '100%', minHeight: 54, border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '8px 10px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', minHeight: 54, border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '8px 10px', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 6, marginBottom: 12 }}>
                 <button onClick={saveMetric} style={saveBtn}>Save</button>
@@ -533,7 +533,7 @@ export default function GoalDetailPage() {
             </>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-              <p style={{ fontSize: 14, color: '#1C1C1E', margin: 0, lineHeight: 1.5, flex: 1 }}>{metric}</p>
+              <p style={{ fontSize: 14, color: 'var(--c-text-1)', margin: 0, lineHeight: 1.5, flex: 1 }}>{metric}</p>
               <button onClick={() => { setEditMetricVal(metric); setEditingMetric(true) }} style={{ ...actionBtnStyle, marginLeft: 8, flexShrink: 0 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -544,13 +544,13 @@ export default function GoalDetailPage() {
           )}
 
           {/* Purpose */}
-          <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 4px', fontWeight: 500 }}>Purpose</p>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 4px', fontWeight: 500 }}>Purpose</p>
           {editingPurpose ? (
             <>
               <textarea
                 value={editPurposeVal}
                 onChange={e => setEditPurposeVal(e.target.value)}
-                style={{ width: '100%', minHeight: 54, border: '0.5px solid #E5E5EA', borderRadius: 8, padding: '8px 10px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', minHeight: 54, border: '0.5px solid var(--c-border)', borderRadius: 8, padding: '8px 10px', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
               />
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button onClick={savePurpose} style={saveBtn}>Save</button>
@@ -559,7 +559,7 @@ export default function GoalDetailPage() {
             </>
           ) : (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <p style={{ fontSize: 14, color: '#1C1C1E', margin: 0, lineHeight: 1.5, flex: 1 }}>{purpose}</p>
+              <p style={{ fontSize: 14, color: 'var(--c-text-1)', margin: 0, lineHeight: 1.5, flex: 1 }}>{purpose}</p>
               <button onClick={() => { setEditPurposeVal(purpose); setEditingPurpose(true) }} style={{ ...actionBtnStyle, marginLeft: 8, flexShrink: 0 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
@@ -572,16 +572,16 @@ export default function GoalDetailPage() {
       </div>
 
       {/* Milestones card */}
-      <div style={{ background: 'white', borderRadius: 16, padding: '18px 20px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '18px 20px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Milestones</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)' }}>Milestones</span>
           <SectionActions
             onAdd={openAddMilestone}
             onRegenerate={regenerateMilestones}
           />
         </div>
         {milestones.length === 0 ? (
-          <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>No milestones yet.</p>
+          <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: 0 }}>No milestones yet.</p>
         ) : (
           milestones.map(m => (
             <MilestoneRow key={m.id} milestone={m} onToggle={toggleMilestone} onEdit={openEditMilestone} />
@@ -590,9 +590,9 @@ export default function GoalDetailPage() {
       </div>
 
       {/* Action Steps card */}
-      <div style={{ background: 'white', borderRadius: 16, padding: '18px 20px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '18px 20px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Action Steps</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)' }}>Action Steps</span>
           <SectionActions
             onAdd={() => {
               const text = prompt('New action step:')
@@ -615,8 +615,8 @@ export default function GoalDetailPage() {
               value={editStepsVal}
               onChange={e => setEditStepsVal(e.target.value)}
               style={{
-                width: '100%', minHeight: 140, border: '0.5px solid #E5E5EA',
-                borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E',
+                width: '100%', minHeight: 140, border: '0.5px solid var(--c-border)',
+                borderRadius: 10, padding: '10px 12px', fontSize: 14, color: 'var(--c-text-1)',
                 fontFamily: 'inherit', resize: 'none', outline: 'none',
                 lineHeight: 1.6, boxSizing: 'border-box',
               }}
@@ -627,7 +627,7 @@ export default function GoalDetailPage() {
             </div>
           </>
         ) : steps.length === 0 ? (
-          <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>No action steps yet.</p>
+          <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: 0 }}>No action steps yet.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {steps.map((step, i) => (
@@ -640,7 +640,7 @@ export default function GoalDetailPage() {
                 }}>
                   {i + 1}
                 </div>
-                <p style={{ fontSize: 14, color: '#1C1C1E', margin: 0, lineHeight: 1.5 }}>{step}</p>
+                <p style={{ fontSize: 14, color: 'var(--c-text-1)', margin: 0, lineHeight: 1.5 }}>{step}</p>
               </div>
             ))}
           </div>
@@ -648,9 +648,9 @@ export default function GoalDetailPage() {
       </div>
 
       {/* Details card */}
-      <div style={{ background: 'white', borderRadius: 16, padding: '18px 20px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '18px 20px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E' }}>Details</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)' }}>Details</span>
           {!editingDetails ? (
             <button
               onClick={() => {
@@ -674,16 +674,16 @@ export default function GoalDetailPage() {
           <>
             {/* Category dropdown */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, color: 'var(--c-text-2)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" />
                 </svg>
-                <span style={{ fontSize: 13, color: '#8E8E93' }}>Category</span>
+                <span style={{ fontSize: 13, color: 'var(--c-text-2)' }}>Category</span>
               </div>
               <select
                 value={editCategory}
                 onChange={e => setEditCategory(e.target.value)}
-                style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', background: '#F9F9FB', appearance: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: '1px solid var(--c-border)', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', background: '#F9F9FB', appearance: 'none', boxSizing: 'border-box' }}
               >
                 {['Career','Finance','Health','Creative','Travel','Relationships','Business','Personal Growth','Education'].map(c => (
                   <option key={c} value={c}>{c}</option>
@@ -693,16 +693,16 @@ export default function GoalDetailPage() {
 
             {/* Timeline / Quarter dropdown */}
             <div style={{ marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, color: 'var(--c-text-2)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
                 </svg>
-                <span style={{ fontSize: 13, color: '#8E8E93' }}>Timeline / Quarter</span>
+                <span style={{ fontSize: 13, color: 'var(--c-text-2)' }}>Timeline / Quarter</span>
               </div>
               <select
                 value={editQuarter}
                 onChange={e => setEditQuarter(e.target.value)}
-                style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', background: '#F9F9FB', appearance: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: '1px solid var(--c-border)', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', background: '#F9F9FB', appearance: 'none', boxSizing: 'border-box' }}
               >
                 {['Q1 2026','Q2 2026','Q3 2026','Q4 2026','Q1 2027','Q2 2027'].map(q => (
                   <option key={q} value={q}>{q}</option>
@@ -712,16 +712,16 @@ export default function GoalDetailPage() {
 
             {/* Project dropdown */}
             <div style={{ marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, color: 'var(--c-text-2)' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="3" width="6" height="6" rx="1"/><rect x="2" y="15" width="6" height="6" rx="1"/><rect x="10" y="3" width="12" height="6" rx="1"/><rect x="10" y="15" width="12" height="6" rx="1"/>
                 </svg>
-                <span style={{ fontSize: 13, color: '#8E8E93' }}>Project</span>
+                <span style={{ fontSize: 13, color: 'var(--c-text-2)' }}>Project</span>
               </div>
               <select
                 value={editProjectId}
                 onChange={e => setEditProjectId(e.target.value)}
-                style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', background: '#F9F9FB', appearance: 'none', boxSizing: 'border-box' }}
+                style={{ width: '100%', border: '1px solid var(--c-border)', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', background: '#F9F9FB', appearance: 'none', boxSizing: 'border-box' }}
               >
                 <option value="">None</option>
                 {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
@@ -758,33 +758,33 @@ export default function GoalDetailPage() {
           </>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '0.5px solid #F2F2F7' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12, borderBottom: '0.5px solid var(--c-border-sub)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--c-text-2)' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
                   <line x1="7" y1="7" x2="7.01" y2="7" />
                 </svg>
-                <span style={{ fontSize: 14, color: '#8E8E93' }}>Category</span>
+                <span style={{ fontSize: 14, color: 'var(--c-text-2)' }}>Category</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>{goal.category}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)' }}>{goal.category}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, paddingBottom: 12, borderBottom: '0.5px solid #F2F2F7' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12, paddingBottom: 12, borderBottom: '0.5px solid var(--c-border-sub)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--c-text-2)' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
                 </svg>
-                <span style={{ fontSize: 14, color: '#8E8E93' }}>Timeline</span>
+                <span style={{ fontSize: 14, color: 'var(--c-text-2)' }}>Timeline</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>{quarter}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)' }}>{quarter}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--c-text-2)' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="2" y="3" width="6" height="6" rx="1"/><rect x="2" y="15" width="6" height="6" rx="1"/><rect x="10" y="3" width="12" height="6" rx="1"/><rect x="10" y="15" width="12" height="6" rx="1"/>
                 </svg>
-                <span style={{ fontSize: 14, color: '#8E8E93' }}>Project</span>
+                <span style={{ fontSize: 14, color: 'var(--c-text-2)' }}>Project</span>
               </div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)' }}>
                 {linkedProject?.title || '—'}
               </span>
             </div>
@@ -793,13 +793,13 @@ export default function GoalDetailPage() {
       </div>
 
       {/* Goal Status card */}
-      <div style={{ background: 'white', borderRadius: 16, padding: '18px 20px', border: '0.5px solid #E5E5EA', marginBottom: 12 }}>
-        <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Goal Status</p>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '18px 20px', border: '0.5px solid var(--c-border)', marginBottom: 12 }}>
+        <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 14px' }}>Goal Status</p>
         <div style={{ display: 'flex', gap: 8 }}>
           {(goal.status === 'active') && (
             <button
               onClick={() => updateStatus('parked')}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 10, fontSize: 13, fontWeight: 500, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--c-text-mid)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>
               Pause Goal
@@ -808,7 +808,7 @@ export default function GoalDetailPage() {
           {(goal.status === 'parking' || goal.status === 'parked') && (
             <button
               onClick={() => updateStatus('active')}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 10, fontSize: 13, fontWeight: 500, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--c-text-mid)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3" /></svg>
               Activate Goal
@@ -817,7 +817,7 @@ export default function GoalDetailPage() {
           {goal.status !== 'archived' && (
             <button
               onClick={() => updateStatus('archived')}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 10, fontSize: 13, fontWeight: 500, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--c-text-mid)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="21 8 21 21 3 21 3 8" /><rect x="1" y="3" width="22" height="5" /><line x1="10" y1="12" x2="14" y2="12" /></svg>
               Archive
@@ -826,7 +826,7 @@ export default function GoalDetailPage() {
           {goal.status === 'archived' && (
             <button
               onClick={() => updateStatus('active')}
-              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 10, fontSize: 13, fontWeight: 500, color: '#16A34A', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '10px', background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: '#16A34A', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Restore to Active
             </button>
@@ -839,8 +839,8 @@ export default function GoalDetailPage() {
         <button
           onClick={() => setShowDeleteConfirm(true)}
           style={{
-            width: '100%', padding: '14px', background: 'white',
-            border: '0.5px solid #E5E5EA', borderRadius: 14,
+            width: '100%', padding: '14px', background: 'var(--c-surface)',
+            border: '0.5px solid var(--c-border)', borderRadius: 14,
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
             fontSize: 14, fontWeight: 500, color: '#DC2626',
             cursor: 'pointer', fontFamily: 'inherit',
@@ -865,7 +865,7 @@ export default function GoalDetailPage() {
             </button>
             <button
               onClick={() => setShowDeleteConfirm(false)}
-              style={{ flex: 1, padding: '10px', background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 10, fontSize: 13, fontWeight: 500, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ flex: 1, padding: '10px', background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 10, fontSize: 13, fontWeight: 500, color: 'var(--c-text-mid)', cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Cancel
             </button>
@@ -880,42 +880,42 @@ export default function GoalDetailPage() {
           onClick={closeMilestoneModal}
         >
           <div
-            style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '24px 20px 44px' }}
+            style={{ background: 'var(--c-surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '24px 20px 44px' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D1D6', margin: '0 auto 20px' }} />
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>
                 {milestoneModal.mode === 'add' ? 'Add Milestone' : 'Edit Milestone'}
               </h2>
               <button
                 onClick={closeMilestoneModal}
-                style={{ background: '#F2F2F7', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                style={{ background: 'var(--c-surface-3)', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--c-text-mid)' }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Milestone</p>
+              <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 6 }}>Milestone</p>
               <input
                 value={milestoneText}
                 onChange={e => setMilestoneText(e.target.value)}
                 placeholder="e.g. First client signed"
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 15, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface-2)' }}
               />
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>
-                Target date <span style={{ fontWeight: 400, color: '#C7C7CC' }}>(optional)</span>
+              <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 6 }}>
+                Target date <span style={{ fontWeight: 400, color: 'var(--c-text-3)' }}>(optional)</span>
               </p>
               <input
                 type="date"
                 value={milestoneDate}
                 onChange={e => setMilestoneDate(e.target.value)}
-                style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+                style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface-2)' }}
               />
             </div>
 
@@ -924,8 +924,8 @@ export default function GoalDetailPage() {
               disabled={!milestoneText.trim() || savingMilestone}
               style={{
                 width: '100%', padding: '14px', borderRadius: 14, border: 'none',
-                background: milestoneText.trim() ? '#1C1C1E' : '#D1D1D6',
-                color: 'white', fontSize: 15, fontWeight: 600,
+                background: milestoneText.trim() ? 'var(--c-text-1)' : '#D1D1D6',
+                color: 'var(--c-surface)', fontSize: 15, fontWeight: 600,
                 cursor: milestoneText.trim() ? 'pointer' : 'default',
                 fontFamily: 'inherit', marginBottom: 10,
                 opacity: savingMilestone ? 0.6 : 1,
@@ -938,7 +938,7 @@ export default function GoalDetailPage() {
               <button
                 onClick={handleDeleteMilestone}
                 disabled={savingMilestone}
-                style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'white', border: '0.5px solid #FECACA', color: '#DC2626', fontSize: 15, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ width: '100%', padding: '14px', borderRadius: 14, background: 'var(--c-surface)', border: '0.5px solid #FECACA', color: '#DC2626', fontSize: 15, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Delete Milestone
               </button>
@@ -952,10 +952,10 @@ export default function GoalDetailPage() {
 }
 
 const saveBtn: React.CSSProperties = {
-  padding: '7px 16px', background: '#1C1C1E', border: 'none', borderRadius: 8,
-  fontSize: 13, fontWeight: 600, color: 'white', cursor: 'pointer', fontFamily: 'inherit',
+  padding: '7px 16px', background: 'var(--c-text-1)', border: 'none', borderRadius: 8,
+  fontSize: 13, fontWeight: 600, color: 'var(--c-surface)', cursor: 'pointer', fontFamily: 'inherit',
 }
 const cancelBtn: React.CSSProperties = {
-  padding: '7px 16px', background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 8,
-  fontSize: 13, fontWeight: 500, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit',
+  padding: '7px 16px', background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 8,
+  fontSize: 13, fontWeight: 500, color: 'var(--c-text-mid)', cursor: 'pointer', fontFamily: 'inherit',
 }

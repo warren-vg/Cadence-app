@@ -180,10 +180,10 @@ export default function EveningTouchpointPage() {
               placeholder="What did today teach you?"
               rows={3}
               style={{
-                width: '100%', border: '1.5px solid #E5E5EA', borderRadius: 12,
-                padding: '12px', fontSize: 15, color: '#1C1C1E',
+                width: '100%', border: '1.5px solid var(--c-border)', borderRadius: 12,
+                padding: '12px', fontSize: 15, color: 'var(--c-text-1)',
                 fontFamily: 'inherit', resize: 'none', outline: 'none',
-                background: submitted ? '#F9F9F9' : 'white',
+                background: submitted ? '#F9F9F9' : 'var(--c-surface)',
                 boxSizing: 'border-box',
               }}
             />
@@ -199,10 +199,10 @@ export default function EveningTouchpointPage() {
               placeholder="What matters most tomorrow?"
               rows={3}
               style={{
-                width: '100%', border: '1.5px solid #E5E5EA', borderRadius: 12,
-                padding: '12px', fontSize: 15, color: '#1C1C1E',
+                width: '100%', border: '1.5px solid var(--c-border)', borderRadius: 12,
+                padding: '12px', fontSize: 15, color: 'var(--c-text-1)',
                 fontFamily: 'inherit', resize: 'none', outline: 'none',
-                background: submitted ? '#F9F9F9' : 'white',
+                background: submitted ? '#F9F9F9' : 'var(--c-surface)',
                 boxSizing: 'border-box',
               }}
             />
@@ -227,7 +227,7 @@ export default function EveningTouchpointPage() {
             disabled={submitting}
             style={{
               width: '100%', padding: '18px', border: 'none', borderRadius: 16,
-              background: 'white', color: '#9333EA',
+              background: 'var(--c-surface)', color: '#9333EA',
               fontSize: 17, fontWeight: 700, cursor: submitting ? 'default' : 'pointer',
               fontFamily: 'inherit', opacity: submitting ? 0.7 : 1,
               animation: visible ? '_tp_pulse 2.5s ease-in-out 1s infinite' : 'none',

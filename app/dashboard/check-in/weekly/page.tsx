@@ -166,7 +166,7 @@ export default function WeeklyReviewPage() {
   if (submitted) {
     return (
       <div style={{ padding: '0 0 16px' }}>
-        <div style={{ padding: '56px 16px 16px', background: 'white', borderBottom: '0.5px solid #E5E5EA' }}>
+        <div style={{ padding: '56px 16px 16px', background: 'var(--c-surface)', borderBottom: '0.5px solid var(--c-border)' }}>
           <button
             onClick={() => router.back()}
             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4, color: '#3B7DFF', fontSize: 14, fontFamily: 'inherit' }}
@@ -176,7 +176,7 @@ export default function WeeklyReviewPage() {
             </svg>
             Back
           </button>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Review Saved</h1>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Review Saved</h1>
         </div>
         <div style={{ padding: '60px 20px', textAlign: 'center' }}>
           <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#F0FFF4', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
@@ -184,8 +184,8 @@ export default function WeeklyReviewPage() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <p style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px' }}>Week logged!</p>
-          <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 6px' }}>Your reflection has been saved.</p>
+          <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 8px' }}>Week logged!</p>
+          <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '0 0 6px' }}>Your reflection has been saved.</p>
           {streak > 0 && (
             <p style={{ fontSize: 14, color: '#D97706', fontWeight: 600, margin: '0 0 32px' }}>
               🔥 {streak} week streak — keep it going!
@@ -210,7 +210,7 @@ export default function WeeklyReviewPage() {
     <div style={{ padding: '0 0 16px' }}>
 
       {/* Header */}
-      <div style={{ padding: '56px 16px 16px', background: 'white', borderBottom: '0.5px solid #E5E5EA' }}>
+      <div style={{ padding: '56px 16px 16px', background: 'var(--c-surface)', borderBottom: '0.5px solid var(--c-border)' }}>
         <button
           onClick={() => router.back()}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4, color: '#3B7DFF', fontSize: 14, fontFamily: 'inherit' }}
@@ -220,8 +220,8 @@ export default function WeeklyReviewPage() {
           </svg>
           Plan
         </button>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Weekly Review</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Weekly Review</h1>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '3px 0 0' }}>
           Week of {monday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} –{' '}
           {sunday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </p>
@@ -266,20 +266,20 @@ export default function WeeklyReviewPage() {
         {/* Per-day Capacity Adherence */}
         {perDayAdherence && (
           <div style={{
-            background: 'white', borderRadius: 14, padding: '16px',
-            border: '0.5px solid #E5E5EA', marginBottom: 14,
+            background: 'var(--c-surface)', borderRadius: 14, padding: '16px',
+            border: '0.5px solid var(--c-border)', marginBottom: 14,
           }}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: '0 0 12px' }}>Capacity Adherence</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 12px' }}>Capacity Adherence</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {perDayAdherence.map(d => {
                 const over     = d.planned > 0 && d.actual > d.planned
                 const pct      = d.planned > 0 ? Math.min(100, Math.round((d.actual / d.planned) * 100)) : 0
                 const barColor = over ? '#EA580C' : '#16A34A'
-                const valColor = d.planned > 0 ? (over ? '#EA580C' : '#16A34A') : '#8E8E93'
+                const valColor = d.planned > 0 ? (over ? '#EA580C' : '#16A34A') : 'var(--c-text-2)'
                 return (
                   <div key={d.label} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#3C3C43', width: 28, flexShrink: 0 }}>{d.label}</span>
-                    <div style={{ flex: 1, background: '#F2F2F7', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--c-text-mid)', width: 28, flexShrink: 0 }}>{d.label}</span>
+                    <div style={{ flex: 1, background: 'var(--c-border-sub)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
                       <div style={{ width: `${pct}%`, height: '100%', background: barColor, borderRadius: 4, transition: 'width 0.3s ease' }} />
                     </div>
                     <span style={{ fontSize: 12, color: valColor, width: 52, textAlign: 'right', flexShrink: 0 }}>
@@ -300,10 +300,10 @@ export default function WeeklyReviewPage() {
           { label: 'Next week focus',              placeholder: "What's the one thing to prioritize?",   value: nextFocus,  setter: setNextFocus  },
         ].map(field => (
           <div key={field.label} style={{
-            background: 'white', borderRadius: 14, padding: '16px',
-            border: '0.5px solid #E5E5EA', marginBottom: 10,
+            background: 'var(--c-surface)', borderRadius: 14, padding: '16px',
+            border: '0.5px solid var(--c-border)', marginBottom: 10,
           }}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: '0 0 10px' }}>{field.label}</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 10px' }}>{field.label}</p>
             <textarea
               value={field.value}
               onChange={e => field.setter(e.target.value)}
@@ -311,10 +311,10 @@ export default function WeeklyReviewPage() {
               rows={3}
               maxLength={2000}
               style={{
-                width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 10,
-                padding: '12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit',
+                width: '100%', border: '0.5px solid var(--c-border)', borderRadius: 10,
+                padding: '12px', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit',
                 resize: 'none', outline: 'none', boxSizing: 'border-box',
-                background: '#F8F8FC',
+                background: 'var(--c-surface-2)',
               }}
             />
           </div>
@@ -345,7 +345,7 @@ export default function WeeklyReviewPage() {
           onClick={() => setShowInsights(v => !v)}
           style={{
             width: '100%', padding: '13px', borderRadius: 12, marginBottom: 10,
-            background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E',
+            background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: 'var(--c-text-1)',
             fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           }}
@@ -358,7 +358,7 @@ export default function WeeklyReviewPage() {
           <button
             style={{
               flex: 1, padding: '13px', borderRadius: 12,
-              background: 'white', border: '0.5px solid #E5E5EA', color: '#3C3C43',
+              background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: 'var(--c-text-mid)',
               fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
             }}
             onClick={() => router.back()}

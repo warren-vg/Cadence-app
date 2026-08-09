@@ -90,7 +90,7 @@ export default function GoalRefinePage() {
   if (loading || !goal) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading...</div>
+        <div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading...</div>
       </div>
     )
   }
@@ -105,10 +105,10 @@ export default function GoalRefinePage() {
           background: 'none', border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 6,
           marginBottom: 20, padding: 0,
-          color: '#3C3C43', fontFamily: 'inherit', fontSize: 15,
+          color: 'var(--c-text-mid)', fontFamily: 'inherit', fontSize: 15,
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6" />
         </svg>
         Back
@@ -122,31 +122,31 @@ export default function GoalRefinePage() {
         <span style={{ fontSize: 13, fontWeight: 600, color: '#3B7DFF' }}>AI-Generated Refinement</span>
       </div>
 
-      <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>Refine Your Goal</h1>
-      <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 24px' }}>
+      <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 6px' }}>Refine Your Goal</h1>
+      <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '0 0 24px' }}>
         We've analyzed your goal and suggested improvements
       </p>
 
       {/* Original Goal (read-only) */}
-      <div style={{ background: 'white', borderRadius: 14, padding: '14px 16px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
-        <p style={{ fontSize: 12, color: '#8E8E93', fontWeight: 500, margin: '0 0 6px' }}>Original Goal</p>
-        <p style={{ fontSize: 14, color: '#3C3C43', margin: 0, lineHeight: 1.5 }}>{goal.text}</p>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 14, padding: '14px 16px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
+        <p style={{ fontSize: 12, color: 'var(--c-text-2)', fontWeight: 500, margin: '0 0 6px' }}>Original Goal</p>
+        <p style={{ fontSize: 14, color: 'var(--c-text-mid)', margin: 0, lineHeight: 1.5 }}>{goal.text}</p>
       </div>
 
       {/* Editable refinement card */}
-      <div style={{ background: 'white', borderRadius: 14, padding: '18px 16px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 14, padding: '18px 16px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
 
         {/* Refined Goal Statement */}
         <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 12, color: '#8E8E93', fontWeight: 500, margin: '0 0 8px' }}>Refined Goal Statement</p>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', fontWeight: 500, margin: '0 0 8px' }}>Refined Goal Statement</p>
           <textarea
             value={refinedGoal}
             onChange={e => setRefinedGoal(e.target.value)}
             style={{
               width: '100%', minHeight: 72,
-              background: '#F9F9F9', border: '1px solid #E5E5EA',
+              background: '#F9F9F9', border: '1px solid var(--c-border)',
               borderRadius: 10, padding: '12px',
-              fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit',
+              fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit',
               resize: 'none', outline: 'none', lineHeight: 1.5,
               boxSizing: 'border-box',
             }}
@@ -155,15 +155,15 @@ export default function GoalRefinePage() {
 
         {/* Success Metric */}
         <div style={{ marginBottom: 16 }}>
-          <p style={{ fontSize: 12, color: '#8E8E93', fontWeight: 500, margin: '0 0 8px' }}>Success Metric</p>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', fontWeight: 500, margin: '0 0 8px' }}>Success Metric</p>
           <textarea
             value={metric}
             onChange={e => setMetric(e.target.value)}
             style={{
               width: '100%', minHeight: 54,
-              background: '#F9F9F9', border: '1px solid #E5E5EA',
+              background: '#F9F9F9', border: '1px solid var(--c-border)',
               borderRadius: 10, padding: '12px',
-              fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit',
+              fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit',
               resize: 'none', outline: 'none', lineHeight: 1.5,
               boxSizing: 'border-box',
             }}
@@ -172,15 +172,15 @@ export default function GoalRefinePage() {
 
         {/* Purpose */}
         <div>
-          <p style={{ fontSize: 12, color: '#8E8E93', fontWeight: 500, margin: '0 0 8px' }}>Purpose</p>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', fontWeight: 500, margin: '0 0 8px' }}>Purpose</p>
           <textarea
             value={purpose}
             onChange={e => setPurpose(e.target.value)}
             style={{
               width: '100%', minHeight: 54,
-              background: '#F9F9F9', border: '1px solid #E5E5EA',
+              background: '#F9F9F9', border: '1px solid var(--c-border)',
               borderRadius: 10, padding: '12px',
-              fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit',
+              fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit',
               resize: 'none', outline: 'none', lineHeight: 1.5,
               boxSizing: 'border-box',
             }}
@@ -218,9 +218,9 @@ export default function GoalRefinePage() {
         onClick={handleGenerateDifferent}
         style={{
           width: '100%', padding: '14px',
-          background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 14,
+          background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 14,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          fontSize: 14, fontWeight: 500, color: '#3C3C43',
+          fontSize: 14, fontWeight: 500, color: 'var(--c-text-mid)',
           cursor: 'pointer', fontFamily: 'inherit', marginBottom: 14,
         }}
       >
@@ -237,8 +237,8 @@ export default function GoalRefinePage() {
           onClick={() => router.push(`/dashboard/goals/${id}`)}
           style={{
             flex: 1, padding: '15px',
-            background: 'white', border: '0.5px solid #E5E5EA', borderRadius: 14,
-            fontSize: 15, fontWeight: 500, color: '#3C3C43',
+            background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', borderRadius: 14,
+            fontSize: 15, fontWeight: 500, color: 'var(--c-text-mid)',
             cursor: 'pointer', fontFamily: 'inherit',
           }}
         >

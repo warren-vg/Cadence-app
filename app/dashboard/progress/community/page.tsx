@@ -11,6 +11,18 @@ import {
 import QRCodeModal from './QRCodeModal'
 import FriendPreviewModal from './FriendPreviewModal'
 
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return isDark
+}
+
 function timeAgo(iso: string): string {
   const secs = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
   if (secs < 60) return 'just now'
@@ -44,7 +56,7 @@ const CAT_BADGE: Record<string, { bg: string; color: string }> = {
   Community:         { bg: '#F0FDF4', color: '#15803D' },
 }
 function getCatBadge(cat: string) {
-  return CAT_BADGE[cat] || { bg: '#F2F2F7', color: '#8E8E93' }
+  return CAT_BADGE[cat] || { bg: 'var(--c-surface-3)', color: 'var(--c-text-2)' }
 }
 
 const AVATAR_COLORS = ['#3B7DFF', '#7C3AED', '#16A34A', '#EA580C', '#EC4899', '#0284C7']
@@ -65,36 +77,37 @@ function FriendCard({ friend, goals, hyped, nudged, cooldownMsg, onHype, onNudge
   onNudge: () => void
   onRemove: () => void
 }) {
+  const isDark = useIsDark()
   const [showGoals, setShowGoals] = useState(true)
   const initial = friend.username.charAt(0).toUpperCase()
   const bg      = avatarBg(friend.friend_id)
   const topProgress = goals.length > 0 ? Math.round(goals.reduce((s, g) => s + g.progress, 0) / goals.length) : 0
 
   return (
-    <div style={{ background: 'white', borderRadius: 20, padding: '18px', border: '0.5px solid #E5E5EA' }}>
+    <div style={{ background: 'var(--c-surface)', borderRadius: 20, padding: '18px', border: '0.5px solid var(--c-border)' }}>
       {/* Friend header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
         <div style={{ width: 44, height: 44, borderRadius: '50%', background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 18, fontWeight: 700, flexShrink: 0 }}>
           {initial}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{friend.username}</p>
-          <p style={{ fontSize: 12, color: '#8E8E93', margin: '1px 0 0' }}>@{friend.username}</p>
+          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text-1)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{friend.username}</p>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '1px 0 0' }}>@{friend.username}</p>
         </div>
         <button onClick={onRemove} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, flexShrink: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#636366' : '#C7C7CC'} strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
         </button>
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 14, padding: '12px 8px', background: '#F8F8FC', borderRadius: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 14, padding: '12px 8px', background: 'var(--c-surface-2)', borderRadius: 12 }}>
         {[
           { label: 'Active Goals', value: goals.length },
           { label: 'Avg Progress', value: goals.length > 0 ? `${topProgress}%` : '—' },
         ].map(s => (
           <div key={s.label} style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: 14, fontWeight: 700, color: '#1C1C1E', margin: '0 0 2px' }}>{s.value}</p>
-            <p style={{ fontSize: 11, color: '#8E8E93', margin: 0 }}>{s.label}</p>
+            <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 2px' }}>{s.value}</p>
+            <p style={{ fontSize: 11, color: 'var(--c-text-2)', margin: 0 }}>{s.label}</p>
           </div>
         ))}
       </div>
@@ -112,14 +125,14 @@ function FriendCard({ friend, goals, hyped, nudged, cooldownMsg, onHype, onNudge
           onClick={onHype}
           style={{
             flex: 1, padding: '10px', borderRadius: 10,
-            background: hyped ? '#FFF7ED' : 'white',
-            border: hyped ? '1px solid #FDE68A' : '0.5px solid #E5E5EA',
-            color: hyped ? '#D97706' : '#3C3C43',
+            background: hyped ? '#FFF7ED' : 'var(--c-surface)',
+            border: hyped ? '1px solid #FDE68A' : '0.5px solid var(--c-border)',
+            color: hyped ? '#D97706' : 'var(--c-text-mid)',
             fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill={hyped ? '#FF9500' : 'none'} stroke={hyped ? '#D97706' : '#8E8E93'} strokeWidth="2" strokeLinecap="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill={hyped ? '#FF9500' : 'none'} stroke={hyped ? '#D97706' : (isDark ? '#AEAEB2' : '#8E8E93')} strokeWidth="2" strokeLinecap="round">
             <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
           </svg>
           {hyped ? 'Hyped!' : 'Hype Up'}
@@ -128,14 +141,14 @@ function FriendCard({ friend, goals, hyped, nudged, cooldownMsg, onHype, onNudge
           onClick={onNudge}
           style={{
             flex: 1, padding: '10px', borderRadius: 10,
-            background: nudged ? '#EFF6FF' : 'white',
-            border: nudged ? '1px solid #DBEAFE' : '0.5px solid #E5E5EA',
-            color: nudged ? '#1D4ED8' : '#3C3C43',
+            background: nudged ? '#EFF6FF' : 'var(--c-surface)',
+            border: nudged ? '1px solid #DBEAFE' : '0.5px solid var(--c-border)',
+            color: nudged ? '#1D4ED8' : 'var(--c-text-mid)',
             fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
           }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={nudged ? '#3B7DFF' : '#8E8E93'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={nudged ? '#3B7DFF' : (isDark ? '#AEAEB2' : '#8E8E93')} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 01-3.46 0" />
           </svg>
           {nudged ? 'Nudged!' : 'Nudge'}
@@ -152,8 +165,8 @@ function FriendCard({ friend, goals, hyped, nudged, cooldownMsg, onHype, onNudge
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="1" fill="#3B7DFF" />
             </svg>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', flex: 1, textAlign: 'left' }}>Active Goals</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round">
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', flex: 1, textAlign: 'left' }}>Active Goals</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#AEAEB2' : '#8E8E93'} strokeWidth="2.5" strokeLinecap="round">
               {showGoals ? <polyline points="18 15 12 9 6 15" /> : <polyline points="6 9 12 15 18 9" />}
             </svg>
           </button>
@@ -162,15 +175,15 @@ function FriendCard({ friend, goals, hyped, nudged, cooldownMsg, onHype, onNudge
               {goals.map(goal => {
                 const badge = getCatBadge(goal.category)
                 return (
-                  <div key={goal.id} style={{ background: '#F8F8FC', borderRadius: 12, padding: '12px 14px' }}>
+                  <div key={goal.id} style={{ background: 'var(--c-surface-2)', borderRadius: 12, padding: '12px 14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
-                      <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', margin: 0, flex: 1, paddingRight: 8, lineHeight: 1.3 }}>{goal.text}</p>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', margin: 0, flex: 1, paddingRight: 8, lineHeight: 1.3 }}>{goal.text}</p>
                       <span style={{ fontSize: 14, fontWeight: 700, color: '#3B7DFF', flexShrink: 0 }}>{goal.progress}%</span>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                       <span style={{ fontSize: 11, fontWeight: 500, background: badge.bg, color: badge.color, padding: '2px 8px', borderRadius: 20 }}>{goal.category}</span>
                     </div>
-                    <div style={{ background: '#E5E5EA', borderRadius: 4, height: 5, overflow: 'hidden' }}>
+                    <div style={{ background: 'var(--c-border)', borderRadius: 4, height: 5, overflow: 'hidden' }}>
                       <div style={{ height: '100%', width: `${goal.progress}%`, background: 'linear-gradient(90deg, #3B7DFF 0%, #8B5CF6 100%)', borderRadius: 4 }} />
                     </div>
                   </div>
@@ -325,7 +338,7 @@ function CommunityPageInner() {
   return (
     <div style={{ padding: '0 0 16px' }}>
       {/* Header */}
-      <div style={{ padding: '56px 16px 16px', background: 'white', borderBottom: '0.5px solid #E5E5EA' }}>
+      <div style={{ padding: '56px 16px 16px', background: 'var(--c-surface)', borderBottom: '0.5px solid var(--c-border)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <button
@@ -335,8 +348,8 @@ function CommunityPageInner() {
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
               Progress
             </button>
-            <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Community</h1>
-            <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>Connect and grow together</p>
+            <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Community</h1>
+            <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '3px 0 0' }}>Connect and grow together</p>
           </div>
           <button
             data-tour="community-add-friend"
@@ -381,7 +394,7 @@ function CommunityPageInner() {
               <button
                 onClick={handleAdd}
                 disabled={addSending}
-                style={{ padding: '11px 18px', borderRadius: 10, background: 'white', border: 'none', fontSize: 14, fontWeight: 700, color: '#3B52FF', cursor: addSending ? 'default' : 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: addSending ? 0.7 : 1 }}
+                style={{ padding: '11px 18px', borderRadius: 10, background: 'var(--c-surface)', border: 'none', fontSize: 14, fontWeight: 700, color: '#3B52FF', cursor: addSending ? 'default' : 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: addSending ? 0.7 : 1 }}
               >
                 {addSending ? 'Sending…' : 'Send'}
               </button>
@@ -416,25 +429,25 @@ function CommunityPageInner() {
         {/* Pending requests */}
         {pending.length > 0 && (
           <div style={{ marginBottom: 16 }}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#3C3C43', marginBottom: 10 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-mid)', marginBottom: 10 }}>
               Pending Requests {incomingCount > 0 && <span style={{ background: '#FF3B30', color: 'white', fontSize: 11, fontWeight: 700, borderRadius: 20, padding: '1px 7px', marginLeft: 6 }}>{incomingCount}</span>}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {pending.map(req => (
-                <div key={req.id} style={{ background: 'white', borderRadius: 16, padding: '14px 16px', border: '0.5px solid #E5E5EA', display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div key={req.id} style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '14px 16px', border: '0.5px solid var(--c-border)', display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ width: 38, height: 38, borderRadius: '50%', background: avatarBg(req.from_id), display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 16, fontWeight: 700, flexShrink: 0 }}>
                     {req.username.charAt(0).toUpperCase()}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>{req.username}</p>
-                    <p style={{ fontSize: 12, color: '#8E8E93', margin: '1px 0 0' }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>{req.username}</p>
+                    <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '1px 0 0' }}>
                       {req.direction === 'incoming' ? 'Wants to connect' : 'Request sent'} · {timeAgo(req.created_at)}
                     </p>
                   </div>
                   {req.direction === 'incoming' ? (
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button onClick={() => handleRespond(req.id, true)} style={{ padding: '7px 14px', borderRadius: 8, background: '#3B7DFF', border: 'none', fontSize: 13, fontWeight: 600, color: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>Accept</button>
-                      <button onClick={() => handleRespond(req.id, false)} style={{ padding: '7px 14px', borderRadius: 8, background: '#F2F2F7', border: 'none', fontSize: 13, fontWeight: 500, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}>Decline</button>
+                      <button onClick={() => handleRespond(req.id, false)} style={{ padding: '7px 14px', borderRadius: 8, background: 'var(--c-surface-3)', border: 'none', fontSize: 13, fontWeight: 500, color: 'var(--c-text-mid)', cursor: 'pointer', fontFamily: 'inherit' }}>Decline</button>
                     </div>
                   ) : (
                     <button onClick={() => handleCancelRequest(req.id)} style={{ padding: '7px 14px', borderRadius: 8, background: '#FFF0F0', border: '1px solid #FECACA', fontSize: 13, fontWeight: 600, color: '#DC2626', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
@@ -447,15 +460,15 @@ function CommunityPageInner() {
 
         {/* Empty state */}
         {friends.length === 0 && (
-          <div style={{ background: 'white', borderRadius: 20, padding: '40px 20px', border: '0.5px solid #E5E5EA', textAlign: 'center' }}>
+          <div style={{ background: 'var(--c-surface)', borderRadius: 20, padding: '40px 20px', border: '0.5px solid var(--c-border)', textAlign: 'center' }}>
             <div style={{ width: 72, height: 72, borderRadius: '50%', background: '#F3E8FF', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" />
                 <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" />
               </svg>
             </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px' }}>Build Your Community</h2>
-            <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 20px', lineHeight: 1.5, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 8px' }}>Build Your Community</h2>
+            <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '0 0 20px', lineHeight: 1.5, maxWidth: 280, marginLeft: 'auto', marginRight: 'auto' }}>
               Add friends to share progress, create accountability, and celebrate wins together. Enter their username to get started.
             </p>
             <button
@@ -473,7 +486,7 @@ function CommunityPageInner() {
         {/* Friends list */}
         {friends.length > 0 && (
           <>
-            <p style={{ fontSize: 14, fontWeight: 600, color: '#3C3C43', marginBottom: 12 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-mid)', marginBottom: 12 }}>
               Your Community ({friends.length})
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -517,17 +530,17 @@ function CommunityPageInner() {
           onClick={() => setConfirmFriend(null)}
         >
           <div
-            style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '24px 20px 40px' }}
+            style={{ background: 'var(--c-surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '24px 20px 40px' }}
             onClick={e => e.stopPropagation()}
           >
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px' }}>Remove Friend?</h2>
-            <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 24px', lineHeight: 1.5 }}>
-              Remove <strong style={{ color: '#1C1C1E' }}>@{confirmFriend.username}</strong> from your community? They won&apos;t be notified.
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 8px' }}>Remove Friend?</h2>
+            <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '0 0 24px', lineHeight: 1.5 }}>
+              Remove <strong style={{ color: 'var(--c-text-1)' }}>@{confirmFriend.username}</strong> from your community? They won&apos;t be notified.
             </p>
             <div style={{ display: 'flex', gap: 12 }}>
               <button
                 onClick={() => setConfirmFriend(null)}
-                style={{ flex: 1, padding: '14px', borderRadius: 14, background: '#F2F2F7', border: 'none', fontSize: 15, fontWeight: 600, color: '#3C3C43', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ flex: 1, padding: '14px', borderRadius: 14, background: 'var(--c-surface-3)', border: 'none', fontSize: 15, fontWeight: 600, color: 'var(--c-text-mid)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Cancel
               </button>

@@ -202,7 +202,7 @@ export default function WeeklyPlannerPage() {
     <div style={{ padding: '0 0 16px' }}>
 
       {/* Header */}
-      <div style={{ padding: '56px 16px 16px', background: 'white', borderBottom: '0.5px solid #E5E5EA' }}>
+      <div style={{ padding: '56px 16px 16px', background: 'var(--c-surface)', borderBottom: '0.5px solid var(--c-border)' }}>
         <button
           onClick={() => router.back()}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4, color: '#3B7DFF', fontSize: 14, fontFamily: 'inherit' }}
@@ -210,15 +210,15 @@ export default function WeeklyPlannerPage() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           Home
         </button>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Weekly Planner</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>Week of {weekLabel}</p>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Weekly Planner</h1>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '3px 0 0' }}>Week of {weekLabel}</p>
       </div>
 
       <div style={{ padding: '16px' }}>
 
         {/* Available Hours */}
         <div style={{ background: atCapacity ? '#FFF7ED' : '#F0FFF4', borderRadius: 16, padding: '18px', border: `1px solid ${atCapacity ? '#FED7AA' : '#BBF7D0'}`, marginBottom: 14 }}>
-          <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 4px' }}>Available Hours</p>
+          <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 4px' }}>Available Hours</p>
           <p style={{ fontSize: 13, color: atCapacity ? '#EA580C' : '#16A34A', margin: '0 0 12px' }}>
             {plannedHours} of {availableHours}h planned · {atCapacity ? 'week is full' : `${remainingHours}h remaining`}
           </p>
@@ -238,10 +238,10 @@ export default function WeeklyPlannerPage() {
             onCta={() => router.push('/dashboard/goals')}
           />
         ) : (
-          <div style={{ background: 'white', borderRadius: 16, padding: '18px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
+          <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '18px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
             <div style={{ marginBottom: 14 }}>
-              <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 2px' }}>Goal Priorities</p>
-              <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>Suggested task for each goal — tap Add to schedule</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 2px' }}>Goal Priorities</p>
+              <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: 0 }}>Suggested task for each goal — tap Add to schedule</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
               {goals.slice(0, 3).map((goal, i) => {
@@ -254,30 +254,30 @@ export default function WeeklyPlannerPage() {
                   <div key={goal.id} style={{
                     paddingTop: i > 0 ? 14 : 0,
                     paddingBottom: isLast ? 0 : 14,
-                    borderBottom: isLast ? 'none' : '0.5px solid #F2F2F7',
+                    borderBottom: isLast ? 'none' : '0.5px solid var(--c-border-sub)',
                   }}>
                     {/* Goal label */}
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 5 }}>
                       <span style={{ fontSize: 11, fontWeight: 600, background: catStyle.bg, color: catStyle.color, padding: '2px 8px', borderRadius: 20, textTransform: 'uppercase', letterSpacing: 0.2 }}>
                         Goal
                       </span>
-                      <span style={{ fontSize: 11, color: '#8E8E93' }}>{goal.category} · {hrs}h/wk</span>
+                      <span style={{ fontSize: 11, color: 'var(--c-text-2)' }}>{goal.category} · {hrs}h/wk</span>
                     </div>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: '0 0 8px', lineHeight: 1.35 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 8px', lineHeight: 1.35 }}>
                       {goal.text}
                     </p>
 
                     {/* Suggested task for this goal */}
                     {suggestion ? (
                       <div style={{
-                        background: '#F8F8FC', borderRadius: 10, padding: '10px 12px',
+                        background: 'var(--c-surface-2)', borderRadius: 10, padding: '10px 12px',
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
                       }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: 13, color: '#3C3C43', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <p style={{ fontSize: 13, color: 'var(--c-text-mid)', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {suggestion.task.text.length > 44 ? suggestion.task.text.slice(0, 44) + '…' : suggestion.task.text}
                           </p>
-                          <span style={{ fontSize: 11, color: '#8E8E93' }}>
+                          <span style={{ fontSize: 11, color: 'var(--c-text-2)' }}>
                             {suggestion.task.duration < 1 ? `${Math.round(suggestion.task.duration * 60)}m` : `${suggestion.task.duration}h`}
                           </span>
                         </div>
@@ -296,7 +296,7 @@ export default function WeeklyPlannerPage() {
                         </button>
                       </div>
                     ) : (
-                      <p style={{ fontSize: 12, color: '#C7C7CC', margin: 0 }}>No suggestion available</p>
+                      <p style={{ fontSize: 12, color: 'var(--c-text-3)', margin: 0 }}>No suggestion available</p>
                     )}
                   </div>
                 )
@@ -342,7 +342,7 @@ export default function WeeklyPlannerPage() {
                 {label}
               </button>
               {helperText && (
-                <p style={{ fontSize: 12, color: atCapacity ? '#EA580C' : '#8E8E93', textAlign: 'center', margin: '0 0 10px' }}>
+                <p style={{ fontSize: 12, color: atCapacity ? '#EA580C' : 'var(--c-text-2)', textAlign: 'center', margin: '0 0 10px' }}>
                   {helperText}
                 </p>
               )}
@@ -353,13 +353,13 @@ export default function WeeklyPlannerPage() {
         <div style={{ display: 'flex', gap: 10 }}>
           <button
             onClick={handleResetWeek}
-            style={{ flex: 1, padding: '13px', borderRadius: 12, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ flex: 1, padding: '13px', borderRadius: 12, background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: 'var(--c-text-1)', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Reset Week
           </button>
           <button
             onClick={() => router.push('/dashboard/plan/daily')}
-            style={{ flex: 1, padding: '13px', borderRadius: 12, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ flex: 1, padding: '13px', borderRadius: 12, background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: 'var(--c-text-1)', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             View Daily
           </button>

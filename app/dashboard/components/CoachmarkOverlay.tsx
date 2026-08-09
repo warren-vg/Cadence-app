@@ -151,7 +151,7 @@ export default function CoachmarkOverlay() {
           }}
         >
           <div style={{
-            background: 'white',
+            background: 'var(--c-surface)',
             borderRadius: 20,
             padding: '22px 20px 20px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
@@ -164,7 +164,7 @@ export default function CoachmarkOverlay() {
                 left: caretLeft,
                 ...(arrowOnTop ? { top: -8 } : { bottom: -8 }),
                 width: 16, height: 9,
-                background: 'white',
+                background: 'var(--c-surface)',
                 clipPath: arrowOnTop
                   ? 'polygon(50% 0%, 0% 100%, 100% 100%)'
                   : 'polygon(0% 0%, 100% 0%, 50% 100%)',
@@ -190,7 +190,7 @@ export default function CoachmarkOverlay() {
 
             {/* Title */}
             <p style={{
-              fontSize: 18, fontWeight: 700, color: '#1C1C1E',
+              fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)',
               margin: '0 0 8px', textAlign: 'center', lineHeight: 1.3,
             }}>
               {currentStep.title}
@@ -198,7 +198,7 @@ export default function CoachmarkOverlay() {
 
             {/* Body */}
             <p style={{
-              fontSize: 14, color: '#8E8E93',
+              fontSize: 14, color: 'var(--c-text-2)',
               margin: '0 0 20px', textAlign: 'center', lineHeight: 1.55,
             }}>
               {currentStep.body}
@@ -244,7 +244,7 @@ export default function CoachmarkOverlay() {
                 onClick={skipTour}
                 style={{
                   background: 'none', border: 'none', cursor: 'pointer',
-                  fontSize: 13, color: '#8E8E93',
+                  fontSize: 13, color: 'var(--c-text-2)',
                   fontFamily: 'inherit', padding: 0,
                 }}
               >

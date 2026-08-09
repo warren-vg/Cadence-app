@@ -4,6 +4,18 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { ensureMonthlySnapshot, getMonthlySnapshots, type DBMonthlySnapshot } from '@/lib/db'
 
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return isDark
+}
+
 function MiniMomentumBars({ weeks }: { weeks: number[] }) {
   if (!weeks.length) return <div style={{ height: 8 }} />
   const max = Math.max(...weeks, 1)
@@ -19,7 +31,7 @@ function MiniMomentumBars({ weeks }: { weeks: number[] }) {
       ))}
       {/* pad to 4 bars if fewer */}
       {weeks.length < 4 && Array.from({ length: 4 - weeks.length }).map((_, i) => (
-        <div key={`pad-${i}`} style={{ flex: 1, height: 4, background: '#F2F2F7', borderRadius: '3px 3px 0 0' }} />
+        <div key={`pad-${i}`} style={{ flex: 1, height: 4, background: 'var(--c-border-sub)', borderRadius: '3px 3px 0 0' }} />
       ))}
     </div>
   )
@@ -27,6 +39,7 @@ function MiniMomentumBars({ weeks }: { weeks: number[] }) {
 
 export default function SnapshotsPage() {
   const router = useRouter()
+  const isDark = useIsDark()
   const [snapshots, setSnapshots] = useState<DBMonthlySnapshot[]>([])
   const [loading, setLoading]     = useState(true)
 
@@ -53,7 +66,7 @@ export default function SnapshotsPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading…</div>
+        <div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading…</div>
       </div>
     )
   }
@@ -72,14 +85,14 @@ export default function SnapshotsPage() {
           </svg>
           Back
         </button>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: '0 0 3px' }}>Monthly Snapshots</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>Your story, month by month.</p>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 3px' }}>Monthly Snapshots</h1>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: 0 }}>Your story, month by month.</p>
       </div>
 
       {/* Coming Soon card — current month hasn't ended */}
       <div style={{
-        background: 'white', borderRadius: 18, padding: '28px 20px',
-        border: '0.5px solid #E5E5EA', marginBottom: 14, textAlign: 'center',
+        background: 'var(--c-surface)', borderRadius: 18, padding: '28px 20px',
+        border: '0.5px solid var(--c-border)', marginBottom: 14, textAlign: 'center',
       }}>
         <div style={{
           width: 56, height: 56, borderRadius: '50%', background: '#EFF6FF',
@@ -90,9 +103,9 @@ export default function SnapshotsPage() {
             <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
         </div>
-        <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px' }}>Coming Soon</p>
-        <p style={{ fontSize: 14, color: '#8E8E93', lineHeight: 1.5, margin: 0 }}>
-          Your next snapshot will be ready on <strong style={{ color: '#1C1C1E' }}>{nextSnapshotDate}</strong>.{' '}
+        <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 8px' }}>Coming Soon</p>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', lineHeight: 1.5, margin: 0 }}>
+          Your next snapshot will be ready on <strong style={{ color: 'var(--c-text-1)' }}>{nextSnapshotDate}</strong>.{' '}
           Check back then to see your story.
         </p>
       </div>
@@ -111,26 +124,26 @@ export default function SnapshotsPage() {
             key={snap.id}
             onClick={() => router.push(`/dashboard/snapshots/${snap.id}`)}
             style={{
-              width: '100%', background: 'white', borderRadius: 16,
-              padding: '16px 18px', border: '0.5px solid #E5E5EA',
+              width: '100%', background: 'var(--c-surface)', borderRadius: 16,
+              padding: '16px 18px', border: '0.5px solid var(--c-border)',
               marginBottom: 10, cursor: 'pointer', fontFamily: 'inherit',
               textAlign: 'left',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-              <p style={{ fontSize: 17, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>{snap.month_label}</p>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" strokeWidth="2.5" strokeLinecap="round">
+              <p style={{ fontSize: 17, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>{snap.month_label}</p>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#636366' : '#C7C7CC'} strokeWidth="2.5" strokeLinecap="round">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </div>
-            <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 10px' }}>
+            <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '0 0 10px' }}>
               {snap.goals_worked} goal{snap.goals_worked !== 1 ? 's' : ''} worked{totalTasks > 0 ? ` · ${snap.hours_logged}h logged` : ''}
             </p>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5, margin: 0 }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--c-text-2)', textTransform: 'uppercase', letterSpacing: 0.5, margin: 0 }}>
                 Weekly Momentum
               </p>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>{avgMomentum}</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>{avgMomentum}</p>
             </div>
             <MiniMomentumBars weeks={snap.momentum_weekly} />
           </button>
@@ -138,7 +151,7 @@ export default function SnapshotsPage() {
       })}
 
       {snapshots.length === 0 && (
-        <p style={{ textAlign: 'center', fontSize: 14, color: '#8E8E93', marginTop: 8 }}>
+        <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--c-text-2)', marginTop: 8 }}>
           Your first snapshot will appear here at the end of the month.
         </p>
       )}

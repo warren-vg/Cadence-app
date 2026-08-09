@@ -14,6 +14,18 @@ import EmptyState from '@/app/dashboard/components/EmptyState'
 import { evaluateRewards } from '@/lib/rewards'
 import { useRewards } from '@/app/dashboard/components/RewardContext'
 
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return isDark
+}
+
 const PRIORITY_DOT: Record<string, string> = {
   high:   '#FF3B30',
   medium: '#FF9500',
@@ -26,6 +38,7 @@ function DailyPlanContent() {
   const router   = useRouter()
   const params   = useSearchParams()
   const { queueRewards } = useRewards()
+  const isDark = useIsDark()
   const [tasks, setTasks]           = useState<DBTask[]>([])
   const [notes, setNotes]           = useState('')
   const [lowEnergy, setLowEnergy]   = useState(false)
@@ -338,7 +351,7 @@ function DailyPlanContent() {
     <div style={{ padding: '0 0 16px' }}>
 
       {/* Header */}
-      <div style={{ padding: '56px 16px 16px', background: 'white', borderBottom: '0.5px solid #E5E5EA', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ padding: '56px 16px 16px', background: 'var(--c-surface)', borderBottom: '0.5px solid var(--c-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ flex: 1 }}>
           <button
             onClick={() => router.back()}
@@ -347,33 +360,33 @@ function DailyPlanContent() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
             Plan
           </button>
-          <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Today&apos;s Plan</h1>
-          <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>{displayDate}</p>
+          <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Today&apos;s Plan</h1>
+          <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '3px 0 0' }}>{displayDate}</p>
         </div>
         <div style={{ textAlign: 'right', paddingTop: 36 }}>
-          <p style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>{completed}/{total}</p>
-          <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>completed</p>
+          <p style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>{completed}/{total}</p>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: 0 }}>completed</p>
         </div>
       </div>
 
       <div style={{ padding: '16px' }}>
 
         {/* Low Energy Mode */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '16px 18px', border: '0.5px solid #E5E5EA', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#F2F2F7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '16px 18px', border: '0.5px solid var(--c-border)', marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--c-surface-3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill={lowEnergy ? '#FF9500' : '#8E8E93'} stroke="none">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
           </div>
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>Low Energy Mode</p>
-            <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>{lowEnergy ? 'Light tasks only' : 'Full schedule active'}</p>
+            <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>Low Energy Mode</p>
+            <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>{lowEnergy ? 'Light tasks only' : 'Full schedule active'}</p>
           </div>
           <button
             onClick={handleLowEnergyToggle}
-            style={{ width: 50, height: 30, borderRadius: 15, background: lowEnergy ? '#34C759' : '#E5E5EA', border: 'none', cursor: 'pointer', position: 'relative', padding: 0 }}
+            style={{ width: 50, height: 30, borderRadius: 15, background: lowEnergy ? '#34C759' : 'var(--c-border)', border: 'none', cursor: 'pointer', position: 'relative', padding: 0 }}
           >
-            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'white', position: 'absolute', top: 2, left: lowEnergy ? 22 : 2, transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }} />
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'var(--c-surface)', position: 'absolute', top: 2, left: lowEnergy ? 22 : 2, transition: 'left 0.2s', boxShadow: '0 1px 4px rgba(0,0,0,0.2)' }} />
           </button>
         </div>
 
@@ -387,7 +400,7 @@ function DailyPlanContent() {
             marginBottom: 14,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>Today&apos;s Capacity</p>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>Today&apos;s Capacity</p>
               <p style={{ fontSize: 13, fontWeight: 600, color: overCapacity ? '#EA580C' : '#16A34A', margin: 0 }}>
                 {scheduledHours}h / {dayCapacity}h
               </p>
@@ -400,7 +413,7 @@ function DailyPlanContent() {
               }} />
             </div>
             {dayTimeOfDay && (
-              <p style={{ fontSize: 12, color: '#8E8E93', margin: '6px 0 0' }}>
+              <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '6px 0 0' }}>
                 Preferred: {dayTimeOfDay.charAt(0).toUpperCase() + dayTimeOfDay.slice(1)}
               </p>
             )}
@@ -412,7 +425,7 @@ function DailyPlanContent() {
           {[['high', 'High'], ['medium', 'Medium'], ['low', 'Low']].map(([p, label]) => (
             <div key={p} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: PRIORITY_DOT[p] }} />
-              <span style={{ fontSize: 12, color: '#3C3C43' }}>{label}</span>
+              <span style={{ fontSize: 12, color: 'var(--c-text-mid)' }}>{label}</span>
             </div>
           ))}
         </div>
@@ -426,17 +439,17 @@ function DailyPlanContent() {
 
           const renderTaskRow = (task: DBTask, index: number, listLength: number) => (
             <div key={task.id} style={{
-              background: 'white',
+              background: 'var(--c-surface)',
               borderRadius: index === 0 ? '16px 16px 0 0' : index === listLength - 1 ? '0 0 16px 16px' : '0',
-              padding: '16px 18px', border: '0.5px solid #E5E5EA',
-              borderBottom: index < listLength - 1 ? 'none' : '0.5px solid #E5E5EA',
+              padding: '16px 18px', border: '0.5px solid var(--c-border)',
+              borderBottom: index < listLength - 1 ? 'none' : '0.5px solid var(--c-border)',
               display: 'flex', alignItems: 'flex-start', gap: 14,
             }}>
               <button
                 onClick={() => handleToggle(task)}
                 style={{
                   width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                  background: task.completed ? '#3B7DFF' : 'white',
+                  background: task.completed ? '#3B7DFF' : 'var(--c-surface)',
                   border: task.completed ? 'none' : '2px solid #D1D1D6',
                   cursor: 'pointer', padding: 0, marginTop: 1,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -448,8 +461,8 @@ function DailyPlanContent() {
               </button>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                  <span style={{ fontSize: 13, color: '#8E8E93' }}>{formatTime(task.scheduled_time)}</span>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: PRIORITY_DOT[task.priority] ?? '#C7C7CC', flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, color: 'var(--c-text-2)' }}>{formatTime(task.scheduled_time)}</span>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: PRIORITY_DOT[task.priority] ?? 'var(--c-text-3)', flexShrink: 0 }} />
                   {task.recurrence_template_id && (
                     <button
                       onClick={e => { e.stopPropagation(); setRecurModalTask(task) }}
@@ -462,7 +475,7 @@ function DailyPlanContent() {
                     </button>
                   )}
                 </div>
-                <p style={{ fontSize: 15, fontWeight: 500, color: task.completed ? '#8E8E93' : '#1C1C1E', textDecoration: task.completed ? 'line-through' : 'none', margin: '0 0 3px' }}>
+                <p style={{ fontSize: 15, fontWeight: 500, color: task.completed ? 'var(--c-text-2)' : 'var(--c-text-1)', textDecoration: task.completed ? 'line-through' : 'none', margin: '0 0 3px' }}>
                   {task.text}
                 </p>
                 {task.goal_id && goalNames[task.goal_id] && (
@@ -470,7 +483,7 @@ function DailyPlanContent() {
                     From: {goalNames[task.goal_id]}
                   </p>
                 )}
-                <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>
+                <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>
                   {task.duration} {task.duration === 1 ? 'hour' : 'hours'}
                 </p>
               </div>
@@ -503,8 +516,8 @@ function DailyPlanContent() {
                 </div>
               )}
               {activeTasks.length === 0 && lowEnergy && (
-                <div style={{ background: 'white', borderRadius: 16, padding: '24px 20px', textAlign: 'center', border: '0.5px solid #E5E5EA', color: '#8E8E93' }}>
-                  <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: '#3C3C43' }}>No high-priority tasks today</p>
+                <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '24px 20px', textAlign: 'center', border: '0.5px solid var(--c-border)', color: 'var(--c-text-2)' }}>
+                  <p style={{ fontSize: 15, fontWeight: 500, margin: '0 0 4px', color: 'var(--c-text-mid)' }}>No high-priority tasks today</p>
                   <p style={{ fontSize: 13, margin: 0 }}>Rest up — toggle off Low Energy Mode to see all tasks.</p>
                 </div>
               )}
@@ -513,13 +526,13 @@ function DailyPlanContent() {
                   <button
                     onClick={() => setShowDeferred(s => !s)}
                     style={{
-                      width: '100%', background: 'white', border: '0.5px solid #E5E5EA',
+                      width: '100%', background: 'var(--c-surface)', border: '0.5px solid var(--c-border)',
                       borderRadius: showDeferred ? '16px 16px 0 0' : 16,
                       padding: '14px 18px', cursor: 'pointer', fontFamily: 'inherit',
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                     }}
                   >
-                    <span style={{ fontSize: 14, fontWeight: 500, color: '#3C3C43' }}>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--c-text-mid)' }}>
                       {deferredTasks.length} deferred today
                     </span>
                     <svg
@@ -555,15 +568,15 @@ function DailyPlanContent() {
         )}
 
         {/* Quick Notes */}
-        <div style={{ background: 'white', borderRadius: 16, padding: '16px 18px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
-          <p style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E', margin: '0 0 10px' }}>Quick Notes</p>
+        <div style={{ background: 'var(--c-surface)', borderRadius: 16, padding: '16px 18px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 10px' }}>Quick Notes</p>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
             onBlur={handleNotesBlur}
             placeholder="Add notes about your day..."
             rows={3}
-            style={{ width: '100%', border: '0.5px solid #E5E5EA', borderRadius: 10, padding: '12px', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+            style={{ width: '100%', border: '0.5px solid var(--c-border)', borderRadius: 10, padding: '12px', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface-2)' }}
           />
         </div>
 
@@ -571,13 +584,13 @@ function DailyPlanContent() {
         <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
           <button
             onClick={() => router.push('/dashboard/plan/schedule')}
-            style={{ flex: 1, padding: '13px', borderRadius: 12, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ flex: 1, padding: '13px', borderRadius: 12, background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: 'var(--c-text-1)', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Manage Schedule
           </button>
           <button
             onClick={() => { setShowAddModal(true); setNewDate(date) }}
-            style={{ flex: 1, padding: '13px', borderRadius: 12, background: 'white', border: '0.5px solid #E5E5EA', color: '#3B7DFF', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ flex: 1, padding: '13px', borderRadius: 12, background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: '#3B7DFF', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             + Add Task Block
           </button>
@@ -600,44 +613,44 @@ function DailyPlanContent() {
           onClick={closeAddModal}
         >
           <div
-            style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', padding: '24px 20px 40px' }}
+            style={{ background: 'var(--c-surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, maxHeight: '85vh', overflowY: 'auto', padding: '24px 20px 40px' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>{editingTask ? 'Edit Block' : 'New Block'}</h2>
-                <p style={{ fontSize: 12, color: '#8E8E93', margin: '3px 0 0' }}>{editingTask ? 'Update this task block' : 'Add a new task block to your schedule'}</p>
+                <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>{editingTask ? 'Edit Block' : 'New Block'}</h2>
+                <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '3px 0 0' }}>{editingTask ? 'Update this task block' : 'Add a new task block to your schedule'}</p>
               </div>
               <button
                 onClick={closeAddModal}
-                style={{ background: '#F2F2F7', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                style={{ background: 'var(--c-surface-3)', border: 'none', borderRadius: '50%', width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isDark ? '#EBEBF5' : '#3C3C43'} strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Title</p>
+              <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 6 }}>Title</p>
               <input
                 value={newTitle}
                 onChange={e => setNewTitle(e.target.value)}
                 placeholder="e.g. Deep Work Session"
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 15, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 15, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface-2)' }}
               />
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Date</p>
+              <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 6 }}>Date</p>
               <input
                 type="date"
                 value={newDate}
                 onChange={e => setNewDate(e.target.value)}
-                style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+                style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface-2)' }}
               />
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 8 }}>Category</p>
+              <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 8 }}>Category</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                 {CATEGORIES.slice(0, 9).map(cat => {
                   const s = getCatStyle(cat)
@@ -648,7 +661,7 @@ function DailyPlanContent() {
                       style={{
                         padding: '8px 6px', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
                         fontSize: 12, fontWeight: 500,
-                        background: newCategory === cat ? s.color : '#F2F2F7',
+                        background: newCategory === cat ? s.color : 'var(--c-surface-3)',
                         color:      newCategory === cat ? 'white'   : '#3C3C43',
                       }}
                     >
@@ -661,21 +674,21 @@ function DailyPlanContent() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 4 }}>
               <div>
-                <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Start Time</p>
+                <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 6 }}>Start Time</p>
                 <input
                   type="time"
                   value={newTime}
                   onChange={e => setNewTime(e.target.value)}
-                  style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+                  style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface-2)' }}
                 />
               </div>
               <div>
-                <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>End Time</p>
+                <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 6 }}>End Time</p>
                 <input
                   type="time"
                   value={newEndTime}
                   onChange={e => setNewEndTime(e.target.value)}
-                  style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+                  style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface-2)' }}
                 />
               </div>
             </div>
@@ -686,17 +699,17 @@ function DailyPlanContent() {
               if (mins > 0) {
                 const h = Math.floor(mins / 60)
                 const m = mins % 60
-                return <p style={{ fontSize: 12, color: '#8E8E93', margin: '4px 0 12px' }}>Duration: {h > 0 && m > 0 ? `${h}h ${m}m` : h > 0 ? `${h}h` : `${m}m`}</p>
+                return <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '4px 0 12px' }}>Duration: {h > 0 && m > 0 ? `${h}h ${m}m` : h > 0 ? `${h}h` : `${m}m`}</p>
               }
               return <div style={{ marginBottom: 16 }} />
             })()}
 
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>Goal <span style={{ fontWeight: 400, color: '#FF3B30' }}>*</span></p>
+              <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 6 }}>Goal <span style={{ fontWeight: 400, color: '#FF3B30' }}>*</span></p>
               <select
                 value={newGoalId || ''}
                 onChange={e => setNewGoalId(e.target.value || null)}
-                style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC', appearance: 'none' }}
+                style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface-2)', appearance: 'none' }}
               >
                 <option value="" disabled>Select a goal</option>
                 {goals.map(g => (
@@ -706,7 +719,7 @@ function DailyPlanContent() {
             </div>
 
             <div style={{ marginBottom: 16 }}>
-              <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 8 }}>Priority</p>
+              <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 8 }}>Priority</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 {(['high', 'medium', 'low'] as const).map(p => (
                   <button
@@ -715,7 +728,7 @@ function DailyPlanContent() {
                     style={{
                       flex: 1, padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer', fontFamily: 'inherit',
                       fontSize: 13, fontWeight: 500,
-                      background: newPriority === p ? PRIORITY_DOT[p] : '#F2F2F7',
+                      background: newPriority === p ? PRIORITY_DOT[p] : 'var(--c-surface-3)',
                       color:      newPriority === p ? 'white'          : '#3C3C43',
                     }}
                   >
@@ -730,7 +743,7 @@ function DailyPlanContent() {
               <button
                 onClick={() => setRecurEnabled(v => !v)}
                 style={{
-                  width: '100%', background: 'white', border: '0.5px solid #E5E5EA',
+                  width: '100%', background: 'var(--c-surface)', border: '0.5px solid var(--c-border)',
                   borderRadius: recurEnabled ? '12px 12px 0 0' : 12,
                   padding: '13px 16px', cursor: 'pointer', fontFamily: 'inherit',
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -741,7 +754,7 @@ function DailyPlanContent() {
                     <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
                     <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
                   </svg>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: recurEnabled ? '#3B7DFF' : '#1C1C1E' }}>Repeat</span>
+                  <span style={{ fontSize: 14, fontWeight: 500, color: recurEnabled ? '#3B7DFF' : 'var(--c-text-1)' }}>Repeat</span>
                 </div>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round"
                   style={{ transform: recurEnabled ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>
@@ -750,14 +763,14 @@ function DailyPlanContent() {
               </button>
 
               {recurEnabled && (
-                <div style={{ background: '#F8F8FC', border: '0.5px solid #E5E5EA', borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '16px' }}>
-                  <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 8 }}>Frequency</p>
+                <div style={{ background: 'var(--c-surface-2)', border: '0.5px solid var(--c-border)', borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '16px' }}>
+                  <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 8 }}>Frequency</p>
                   <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
                     {(['daily', 'weekly'] as const).map(f => (
                       <button key={f} onClick={() => setRecurFreq(f)} style={{
                         flex: 1, padding: '10px 0', borderRadius: 10, border: 'none',
                         fontSize: 13, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer',
-                        background: recurFreq === f ? '#3B7DFF' : '#F2F2F7',
+                        background: recurFreq === f ? '#3B7DFF' : 'var(--c-surface-3)',
                         color:      recurFreq === f ? 'white'   : '#3C3C43',
                       }}>
                         {f === 'daily' ? 'Daily' : 'Weekly'}
@@ -767,7 +780,7 @@ function DailyPlanContent() {
 
                   {recurFreq === 'weekly' && (
                     <>
-                      <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 8 }}>Repeat on</p>
+                      <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 8 }}>Repeat on</p>
                       <div style={{ display: 'flex', gap: 5, marginBottom: 16 }}>
                         {['Su','Mo','Tu','We','Th','Fr','Sa'].map((d, i) => (
                           <button key={i} onClick={() => setRecurDays(prev =>
@@ -775,7 +788,7 @@ function DailyPlanContent() {
                           )} style={{
                             flex: 1, padding: '8px 0', borderRadius: 10, border: 'none',
                             fontSize: 12, fontWeight: 600, fontFamily: 'inherit', cursor: 'pointer',
-                            background: recurDays.includes(i) ? '#3B7DFF' : '#F2F2F7',
+                            background: recurDays.includes(i) ? '#3B7DFF' : 'var(--c-surface-3)',
                             color:      recurDays.includes(i) ? 'white'   : '#3C3C43',
                           }}>{d}</button>
                         ))}
@@ -786,14 +799,14 @@ function DailyPlanContent() {
                     </>
                   )}
 
-                  <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 6 }}>
-                    End date <span style={{ fontWeight: 400, color: '#C7C7CC' }}>(optional)</span>
+                  <p style={{ fontSize: 13, color: 'var(--c-text-2)', marginBottom: 6 }}>
+                    End date <span style={{ fontWeight: 400, color: 'var(--c-text-3)' }}>(optional)</span>
                   </p>
                   <input
                     type="date"
                     value={recurEndsOn}
                     onChange={e => setRecurEndsOn(e.target.value)}
-                    style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: '#1C1C1E', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: '#F8F8FC' }}
+                    style={{ width: '100%', padding: '11px 12px', borderRadius: 12, border: '0.5px solid #D1D1D6', fontSize: 14, color: 'var(--c-text-1)', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', background: 'var(--c-surface-2)' }}
                   />
                 </div>
               )}
@@ -829,7 +842,7 @@ function DailyPlanContent() {
           onClick={() => setRecurModalTask(null)}
         >
           <div
-            style={{ background: 'white', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '20px 20px 40px' }}
+            style={{ background: 'var(--c-surface)', borderRadius: '24px 24px 0 0', width: '100%', maxWidth: 480, padding: '20px 20px 40px' }}
             onClick={e => e.stopPropagation()}
           >
             <div style={{ width: 36, height: 4, borderRadius: 2, background: '#D1D1D6', margin: '0 auto 20px' }} />
@@ -838,9 +851,9 @@ function DailyPlanContent() {
                 <polyline points="17 1 21 5 17 9" /><path d="M3 11V9a4 4 0 0 1 4-4h14" />
                 <polyline points="7 23 3 19 7 15" /><path d="M21 13v2a4 4 0 0 1-4 4H3" />
               </svg>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Recurring Task</h2>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Recurring Task</h2>
             </div>
-            <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 24px', paddingLeft: 22 }}>{recurModalTask.text}</p>
+            <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '0 0 24px', paddingLeft: 22 }}>{recurModalTask.text}</p>
 
             <button
               onClick={async () => {
@@ -874,7 +887,7 @@ function DailyPlanContent() {
 
             <button
               onClick={() => setRecurModalTask(null)}
-              style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'white', border: '0.5px solid #E5E5EA', color: '#1C1C1E', fontSize: 15, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ width: '100%', padding: '14px', borderRadius: 12, background: 'var(--c-surface)', border: '0.5px solid var(--c-border)', color: 'var(--c-text-1)', fontSize: 15, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               Cancel
             </button>
@@ -900,7 +913,7 @@ function DailyPlanContent() {
 
 export default function DailyPlanPage() {
   return (
-    <Suspense fallback={<div style={{ padding: '80px 20px', textAlign: 'center', color: '#8E8E93' }}>Loading...</div>}>
+    <Suspense fallback={<div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--c-text-2)' }}>Loading...</div>}>
       <DailyPlanContent />
     </Suspense>
   )
@@ -908,5 +921,5 @@ export default function DailyPlanPage() {
 
 const actionBtnStyle: React.CSSProperties = {
   background: 'none', border: 'none', cursor: 'pointer',
-  fontSize: 13, color: '#8E8E93', fontFamily: 'inherit', padding: '4px 0',
+  fontSize: 13, color: 'var(--c-text-2)', fontFamily: 'inherit', padding: '4px 0',
 }

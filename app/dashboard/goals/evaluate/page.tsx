@@ -171,24 +171,24 @@ export default function GoalEvaluatorPage() {
           background: 'none', border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', gap: 6,
           marginBottom: 20, padding: 0,
-          color: '#3C3C43', fontFamily: 'inherit', fontSize: 15,
+          color: 'var(--c-text-mid)', fontFamily: 'inherit', fontSize: 15,
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3C3C43" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6" />
         </svg>
         Goals
       </button>
 
-      <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: '0 0 4px' }}>Goal Evaluator</h1>
-      <p style={{ fontSize: 14, color: '#8E8E93', margin: '0 0 24px' }}>Score your goal before committing</p>
+      <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 4px' }}>Goal Evaluator</h1>
+      <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '0 0 24px' }}>Score your goal before committing</p>
 
       {/* Category selector */}
       <div style={{
-        background: 'white', borderRadius: 16, padding: '16px 18px',
-        border: '0.5px solid #E5E5EA', marginBottom: 12,
+        background: 'var(--c-surface)', borderRadius: 16, padding: '16px 18px',
+        border: '0.5px solid var(--c-border)', marginBottom: 12,
       }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', margin: '0 0 10px' }}>Category</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 10px' }}>Category</p>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {CATEGORIES.map(cat => (
             <button
@@ -197,8 +197,8 @@ export default function GoalEvaluatorPage() {
               style={{
                 padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 500,
                 border: '0.5px solid #D1D1D6', cursor: 'pointer', fontFamily: 'inherit',
-                background: category === cat ? '#1C1C1E' : 'white',
-                color:      category === cat ? 'white'   : '#3C3C43',
+                background: category === cat ? 'var(--c-text-1)' : 'var(--c-surface)',
+                color:      category === cat ? 'var(--c-surface)' : 'var(--c-text-mid)',
               }}
             >
               {cat}
@@ -209,18 +209,18 @@ export default function GoalEvaluatorPage() {
 
       {/* Input card */}
       <div style={{
-        background: 'white', borderRadius: 16, padding: '18px',
-        border: '0.5px solid #E5E5EA', marginBottom: 16,
+        background: 'var(--c-surface)', borderRadius: 16, padding: '18px',
+        border: '0.5px solid var(--c-border)', marginBottom: 16,
       }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', margin: '0 0 10px' }}>Describe Your Goal</p>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 10px' }}>Describe Your Goal</p>
         <textarea
           value={goalText}
           onChange={e => setGoalText(e.target.value)}
           placeholder="e.g., Launch my freelance consulting business and land 3 clients within 6 months"
           style={{
             width: '100%', minHeight: 90,
-            border: '0.5px solid #E5E5EA', borderRadius: 10,
-            padding: '12px', fontSize: 15, color: '#1C1C1E',
+            border: '0.5px solid var(--c-border)', borderRadius: 10,
+            padding: '12px', fontSize: 15, color: 'var(--c-text-1)',
             fontFamily: 'inherit', resize: 'none', outline: 'none',
             lineHeight: 1.5, boxSizing: 'border-box',
           }}
@@ -230,8 +230,8 @@ export default function GoalEvaluatorPage() {
           onClick={handleEvaluate}
           style={{
             width: '100%', marginTop: 12, padding: '14px',
-            background: '#1C1C1E', border: 'none', borderRadius: 12,
-            fontSize: 15, fontWeight: 600, color: 'white',
+            background: 'var(--c-text-1)', border: 'none', borderRadius: 12,
+            fontSize: 15, fontWeight: 600, color: 'var(--c-surface)',
             cursor: 'pointer', fontFamily: 'inherit',
           }}
         >
@@ -260,10 +260,10 @@ export default function GoalEvaluatorPage() {
           </div>
 
           <div style={{
-            background: 'white', borderRadius: 16, padding: '18px',
-            border: '0.5px solid #E5E5EA', marginBottom: 12,
+            background: 'var(--c-surface)', borderRadius: 16, padding: '18px',
+            border: '0.5px solid var(--c-border)', marginBottom: 12,
           }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 16px' }}>SMART Analysis</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 16px' }}>SMART Analysis</p>
             {([
               { label: 'Specific',   data: result.specific   },
               { label: 'Measurable', data: result.measurable },
@@ -273,37 +273,37 @@ export default function GoalEvaluatorPage() {
             ] as const).map(({ label, data }, i, arr) => (
               <div key={label} style={{ marginBottom: i < arr.length - 1 ? 16 : 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                  <span style={{ fontSize: 15, fontWeight: 600, color: '#1C1C1E' }}>{label}</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-text-1)' }}>{label}</span>
                   <ScoreBadge score={data.score} />
                 </div>
-                <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>{data.feedback}</p>
+                <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>{data.feedback}</p>
               </div>
             ))}
           </div>
 
           {/* Capacity Impact */}
           <div style={{
-            background: 'white', borderRadius: 16, padding: '18px',
-            border: '0.5px solid #E5E5EA', marginBottom: 20,
+            background: 'var(--c-surface)', borderRadius: 16, padding: '18px',
+            border: '0.5px solid var(--c-border)', marginBottom: 20,
           }}>
-            <p style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 16px' }}>Capacity Impact</p>
+            <p style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 16px' }}>Capacity Impact</p>
 
             <div style={{ marginBottom: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 13, color: '#3C3C43' }}>Current used capacity</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>{usedCap}h / {totalCap}h/week</span>
+                <span style={{ fontSize: 13, color: 'var(--c-text-mid)' }}>Current used capacity</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)' }}>{usedCap}h / {totalCap}h/week</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: 13, color: '#3C3C43' }}>Remaining capacity</span>
+                <span style={{ fontSize: 13, color: 'var(--c-text-mid)' }}>Remaining capacity</span>
                 <span style={{ fontSize: 13, fontWeight: 600, color: remainingCap < 4 ? '#DC2626' : '#16A34A' }}>
                   {remainingCap}h/week
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ fontSize: 13, color: '#3C3C43' }}>This goal would add</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E' }}>{newHours}h/week ({capacityImpactPct}%)</span>
+                <span style={{ fontSize: 13, color: 'var(--c-text-mid)' }}>This goal would add</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)' }}>{newHours}h/week ({capacityImpactPct}%)</span>
               </div>
-              <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--c-surface-3)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
                 <div style={{
                   height: '100%',
                   width: `${Math.min(100, Math.round((usedCap / totalCap) * 100))}%`,
@@ -331,9 +331,9 @@ export default function GoalEvaluatorPage() {
               disabled={!canAddGoal}
               style={{
                 flex: 2, padding: '15px',
-                background: canAddGoal ? '#1C1C1E' : '#D1D1D6',
+                background: canAddGoal ? 'var(--c-text-1)' : '#D1D1D6',
                 border: 'none', borderRadius: 14,
-                fontSize: 15, fontWeight: 600, color: 'white',
+                fontSize: 15, fontWeight: 600, color: 'var(--c-surface)',
                 cursor: canAddGoal ? 'pointer' : 'not-allowed',
                 fontFamily: 'inherit',
               }}
@@ -343,9 +343,9 @@ export default function GoalEvaluatorPage() {
             <button
               onClick={handleStartOver}
               style={{
-                flex: 1, padding: '15px', background: 'white',
-                border: '0.5px solid #E5E5EA', borderRadius: 14,
-                fontSize: 15, fontWeight: 500, color: '#3C3C43',
+                flex: 1, padding: '15px', background: 'var(--c-surface)',
+                border: '0.5px solid var(--c-border)', borderRadius: 14,
+                fontSize: 15, fontWeight: 500, color: 'var(--c-text-mid)',
                 cursor: 'pointer', fontFamily: 'inherit',
               }}
             >
@@ -365,28 +365,28 @@ export default function GoalEvaluatorPage() {
           onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}
         >
           <div style={{
-            background: 'white', borderRadius: '20px 20px 0 0',
+            background: 'var(--c-surface)', borderRadius: '20px 20px 0 0',
             padding: '24px 20px 44px', width: '100%', maxWidth: 480,
             maxHeight: '90vh', overflowY: 'auto',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Confirm Goal Details</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Confirm Goal Details</h2>
               <button
                 onClick={() => setShowModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--c-text-2)' }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" strokeWidth="2.5" strokeLinecap="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                   <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
                 </svg>
               </button>
             </div>
 
-            <div style={{ background: '#F2F2F7', borderRadius: 10, padding: '10px 14px', marginBottom: 22 }}>
-              <p style={{ fontSize: 14, color: '#3C3C43', margin: 0, lineHeight: 1.4 }}>{goalText}</p>
+            <div style={{ background: 'var(--c-surface-3)', borderRadius: 10, padding: '10px 14px', marginBottom: 22 }}>
+              <p style={{ fontSize: 14, color: 'var(--c-text-mid)', margin: 0, lineHeight: 1.4 }}>{goalText}</p>
             </div>
 
             <div style={{ marginBottom: 18 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', margin: '0 0 10px' }}>Timeline</p>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 10px' }}>Timeline</p>
               <div style={{ display: 'flex', gap: 8 }}>
                 {TIMELINES.map(t => (
                   <button
@@ -396,8 +396,8 @@ export default function GoalEvaluatorPage() {
                       flex: 1, padding: '9px 8px', borderRadius: 10,
                       fontSize: 13, fontWeight: 500,
                       border: '0.5px solid #D1D1D6', cursor: 'pointer',
-                      background: timeline === t ? '#3B7DFF' : 'white',
-                      color:      timeline === t ? 'white'   : '#3C3C43',
+                      background: timeline === t ? '#3B7DFF' : 'var(--c-surface)',
+                      color:      timeline === t ? 'white'   : 'var(--c-text-mid)',
                       fontFamily: 'inherit',
                     }}
                   >
@@ -408,10 +408,10 @@ export default function GoalEvaluatorPage() {
             </div>
 
             <div style={{ marginBottom: 26 }}>
-              <p style={{ fontSize: 13, fontWeight: 600, color: '#1C1C1E', margin: '0 0 6px' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 6px' }}>
                 Estimated Weekly Hours
               </p>
-              <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 10px' }}>
+              <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 10px' }}>
                 Used to track capacity and your Momentum Score
               </p>
               <input
@@ -422,7 +422,7 @@ export default function GoalEvaluatorPage() {
                 style={{
                   width: '100%', padding: '12px 14px',
                   border: '0.5px solid #D1D1D6', borderRadius: 10,
-                  fontSize: 15, color: '#1C1C1E',
+                  fontSize: 15, color: 'var(--c-text-1)',
                   fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
                 }}
               />

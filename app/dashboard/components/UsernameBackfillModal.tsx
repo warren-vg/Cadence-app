@@ -1,5 +1,17 @@
 'use client'
 import { useCallback, useEffect, useRef, useState } from 'react'
+
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return isDark
+}
 import { supabase } from '@/lib/supabase'
 import { checkUsernameAvailable, setUsername, generateUsernameSuggestions } from '@/lib/db'
 
@@ -40,6 +52,7 @@ function getUI(status: CheckStatus, value: string): StatusUI {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function UsernameBackfillModal() {
+  const isDark = useIsDark()
   const [show, setShow]               = useState(false)
   const [userId, setUserId]           = useState<string | null>(null)
   const [firstName, setFirstName]     = useState('user')
@@ -123,7 +136,7 @@ export default function UsernameBackfillModal() {
   return (
     <div style={{
       position: 'fixed', inset: 0, zIndex: 500,
-      background: 'white', overflowY: 'auto',
+      background: 'var(--c-surface)', overflowY: 'auto',
       display: 'flex', flexDirection: 'column',
       fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
     }}>
@@ -138,25 +151,25 @@ export default function UsernameBackfillModal() {
           <span style={{ color: 'white', fontSize: 28, fontWeight: 700, lineHeight: 1 }}>@</span>
         </div>
 
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: '0 0 8px' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 8px' }}>
           Choose your username
         </h1>
-        <p style={{ fontSize: 15, color: '#8E8E93', lineHeight: 1.5, margin: '0 0 28px' }}>
+        <p style={{ fontSize: 15, color: 'var(--c-text-2)', lineHeight: 1.5, margin: '0 0 28px' }}>
           This is how friends will find you. You can change it later if needed.
         </p>
 
         {/* Input card */}
         <div style={{
-          background: 'white', borderRadius: 16, padding: '16px',
+          background: 'var(--c-surface)', borderRadius: 16, padding: '16px',
           border: `1.5px solid ${ui.borderColor}`,
           transition: 'border-color 0.15s', marginBottom: 20,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#8E8E93', fontSize: 17, fontWeight: 500, flexShrink: 0 }}>@</span>
+            <span style={{ color: 'var(--c-text-2)', fontSize: 17, fontWeight: 500, flexShrink: 0 }}>@</span>
             <input
               type="text" value={value} onChange={e => handleChange(e.target.value)}
               placeholder="your_username" autoComplete="off" autoCapitalize="none" spellCheck={false}
-              style={{ flex: 1, border: 'none', outline: 'none', background: 'none', fontSize: 17, color: '#1C1C1E', fontFamily: 'inherit', padding: '2px 0' }}
+              style={{ flex: 1, border: 'none', outline: 'none', background: 'none', fontSize: 17, color: 'var(--c-text-1)', fontFamily: 'inherit', padding: '2px 0' }}
             />
             {ui.icon === 'check' && (
               <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -179,7 +192,7 @@ export default function UsernameBackfillModal() {
               <>
                 <style>{`@keyframes _bf_spin { to { transform: rotate(360deg) } }`}</style>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" style={{ animation: '_bf_spin 0.8s linear infinite', flexShrink: 0 }}>
-                  <circle cx="12" cy="12" r="10" stroke="#E5E5EA" strokeWidth="2.5" />
+                  <circle cx="12" cy="12" r="10" stroke={isDark ? '#3A3A3C' : '#E5E5EA'} strokeWidth="2.5" />
                   <path d="M12 2a10 10 0 0 1 10 10" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round" />
                 </svg>
               </>
@@ -194,11 +207,11 @@ export default function UsernameBackfillModal() {
 
         {/* Suggestions */}
         <div style={{ marginBottom: 36 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-2)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
             <span>✦</span> Try these suggestions
           </p>
           {loadingSuggs ? (
-            <p style={{ fontSize: 13, color: '#C7C7CC' }}>Finding available names…</p>
+            <p style={{ fontSize: 13, color: 'var(--c-text-3)' }}>Finding available names…</p>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {suggestions.map(s => (

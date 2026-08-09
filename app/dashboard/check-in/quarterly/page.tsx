@@ -39,7 +39,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Creative: '#EA580C', Travel: '#0284C7', Relationships: '#9333EA',
   'Personal Growth': '#9333EA', Education: '#3B7DFF', Business: '#D97706', Community: '#15803D',
 }
-function getCatColor(cat: string) { return CATEGORY_COLORS[cat] || '#8E8E93' }
+function getCatColor(cat: string) { return CATEGORY_COLORS[cat] || 'var(--c-text-2)' }
 
 function getCurrentQuarter(): Quarter {
   const m = new Date().getMonth()
@@ -249,20 +249,20 @@ export default function QuarterlyReviewPage() {
   }
 
   if (loading) {
-    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ color: '#8E8E93', fontSize: 15 }}>Loading…</div></div>
+    return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading…</div></div>
   }
 
   return (
     <div style={{ padding: '0 0 32px' }}>
 
       {/* Header */}
-      <div style={{ padding: '56px 16px 16px', background: 'white', borderBottom: '0.5px solid #E5E5EA' }}>
+      <div style={{ padding: '56px 16px 16px', background: 'var(--c-surface)', borderBottom: '0.5px solid var(--c-border)' }}>
         <button onClick={() => router.back()} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 8px', display: 'flex', alignItems: 'center', gap: 4, color: '#3B7DFF', fontSize: 14, fontFamily: 'inherit' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
           Home
         </button>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Quarterly Review</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', margin: '3px 0 0' }}>{QUARTER_DATES[activeQ].label} — Time to reflect and pivot</p>
+        <h1 style={{ fontSize: 26, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Quarterly Review</h1>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: '3px 0 0' }}>{QUARTER_DATES[activeQ].label} — Time to reflect and pivot</p>
       </div>
 
       <div style={{ padding: '16px' }}>
@@ -282,19 +282,19 @@ export default function QuarterlyReviewPage() {
         </div>
 
         {/* Goal Status */}
-        <div style={{ background: 'white', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Goal Status</h3>
+        <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid var(--c-border)' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 14px' }}>Goal Status</h3>
           {qGoals.length === 0 ? (
-            <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>No active goals for this quarter.</p>
+            <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: 0 }}>No active goals for this quarter.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               {qGoals.slice(0, 5).map(goal => (
                 <div key={goal.id}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                    <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{goal.text}</p>
+                    <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--c-text-1)', margin: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{goal.text}</p>
                     <span style={{ fontSize: 13, fontWeight: 600, color: getCatColor(goal.category), flexShrink: 0 }}>{goal.progress}%</span>
                   </div>
-                  <div style={{ background: '#F2F2F7', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+                  <div style={{ background: 'var(--c-border-sub)', borderRadius: 4, height: 6, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${goal.progress}%`, background: getCatColor(goal.category), borderRadius: 4, transition: 'width 0.5s' }} />
                   </div>
                 </div>
@@ -304,24 +304,24 @@ export default function QuarterlyReviewPage() {
         </div>
 
         {/* D5: Reflection — pre-filled by Generate Check-In if fields are empty */}
-        <div style={{ background: 'white', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Reflection</h3>
+        <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid var(--c-border)' }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 14px' }}>Reflection</h3>
           <div style={{ marginBottom: 12 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', margin: '0 0 6px' }}>What worked well this quarter?</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', margin: '0 0 6px' }}>What worked well this quarter?</p>
             <textarea
               value={wins} onChange={e => setWins(e.target.value)}
               placeholder="Key wins and successful strategies…"
               rows={3}
-              style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', background: '#F9F9FB', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', border: '1px solid var(--c-border)', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: 'var(--c-text-1)', background: '#F9F9FB', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
           <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: '#3C3C43', margin: '0 0 6px' }}>What needs to change?</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-mid)', margin: '0 0 6px' }}>What needs to change?</p>
             <textarea
               value={challenges} onChange={e => setChallenges(e.target.value)}
               placeholder="Adjustments and pivots to consider…"
               rows={3}
-              style={{ width: '100%', border: '1px solid #E5E5EA', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: '#1C1C1E', background: '#F9F9FB', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
+              style={{ width: '100%', border: '1px solid var(--c-border)', borderRadius: 10, padding: '10px 12px', fontSize: 14, color: 'var(--c-text-1)', background: '#F9F9FB', fontFamily: 'inherit', resize: 'none', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
         </div>
@@ -345,10 +345,10 @@ export default function QuarterlyReviewPage() {
           <>
             {/* D6: Recommended Pivots (structured) */}
             {pivotActions.length > 0 && (
-              <div style={{ background: 'white', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid #E5E5EA' }}>
+              <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '18px 20px', marginBottom: 14, border: '0.5px solid var(--c-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  <h3 style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Recommended Pivots</h3>
+                  <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Recommended Pivots</h3>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {pivotActions.map((a, i) => (
@@ -358,7 +358,7 @@ export default function QuarterlyReviewPage() {
                           {a.action === 'pause' ? 'Pause' : 'Focus'}
                         </span>
                       </div>
-                      <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: '0 0 3px' }}>{a.goalText.length > 55 ? a.goalText.slice(0, 55) + '…' : a.goalText}</p>
+                      <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--c-text-1)', margin: '0 0 3px' }}>{a.goalText.length > 55 ? a.goalText.slice(0, 55) + '…' : a.goalText}</p>
                       <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>{a.reason}</p>
                     </div>
                   ))}
@@ -377,7 +377,7 @@ export default function QuarterlyReviewPage() {
             <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
               <button
                 onClick={handleSaveReview}
-                style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid #E5E5EA', background: 'white', fontSize: 14, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer', fontFamily: 'inherit' }}
+                style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid var(--c-border)', background: 'var(--c-surface)', fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 Keep Current Plan
               </button>
@@ -399,26 +399,26 @@ export default function QuarterlyReviewPage() {
       {/* D6: Accept Pivot confirmation modal */}
       {showPivotModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, padding: '20px' }} onClick={() => setShowPivotModal(false)}>
-          <div style={{ background: 'white', borderRadius: 20, width: '100%', maxWidth: 420, padding: '24px 20px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1C1C1E', margin: '0 0 6px' }}>Apply Pivot?</h2>
-            <p style={{ fontSize: 13, color: '#8E8E93', margin: '0 0 20px' }}>These changes will be applied to your goals and tasks:</p>
+          <div style={{ background: 'var(--c-surface)', borderRadius: 20, width: '100%', maxWidth: 420, padding: '24px 20px', maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 6px' }}>Apply Pivot?</h2>
+            <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: '0 0 20px' }}>These changes will be applied to your goals and tasks:</p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
               {pivotActions.map((a, i) => (
-                <div key={i} style={{ background: '#F8F8FC', borderRadius: 12, padding: '12px 14px' }}>
+                <div key={i} style={{ background: 'var(--c-surface-2)', borderRadius: 12, padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                     <span style={{ fontSize: 11, fontWeight: 600, background: a.action === 'pause' ? '#FEE2E2' : '#DCFCE7', color: a.action === 'pause' ? '#991B1B' : '#166534', padding: '2px 8px', borderRadius: 20 }}>
                       {a.action === 'pause' ? '⏸ Pause goal' : '🎯 Generate tasks'}
                     </span>
                   </div>
-                  <p style={{ fontSize: 14, fontWeight: 500, color: '#1C1C1E', margin: '0 0 2px' }}>{a.goalText.length > 55 ? a.goalText.slice(0, 55) + '…' : a.goalText}</p>
-                  <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>{a.reason}</p>
+                  <p style={{ fontSize: 14, fontWeight: 500, color: 'var(--c-text-1)', margin: '0 0 2px' }}>{a.goalText.length > 55 ? a.goalText.slice(0, 55) + '…' : a.goalText}</p>
+                  <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: 0 }}>{a.reason}</p>
                 </div>
               ))}
             </div>
 
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setShowPivotModal(false)} style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid #E5E5EA', background: 'white', fontSize: 14, fontWeight: 600, color: '#1C1C1E', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+              <button onClick={() => setShowPivotModal(false)} style={{ flex: 1, padding: '13px', borderRadius: 12, border: '1.5px solid var(--c-border)', background: 'var(--c-surface)', fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
               <button
                 onClick={handleApplyPivot} disabled={applyingPivot}
                 style={{ flex: 1, padding: '13px', borderRadius: 12, background: applyingPivot ? '#9B9B9B' : '#3B7DFF', border: 'none', fontSize: 14, fontWeight: 700, color: 'white', cursor: applyingPivot ? 'default' : 'pointer', fontFamily: 'inherit' }}

@@ -25,8 +25,8 @@ function Slider({
     <div style={{ marginBottom: 18 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
         <div>
-          <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: 0 }}>{label}</p>
-          <p style={{ fontSize: 12, color: '#8E8E93', margin: '1px 0 0' }}>{sublabel}</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', margin: 0 }}>{label}</p>
+          <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '1px 0 0' }}>{sublabel}</p>
         </div>
         <span style={{ fontSize: 14, fontWeight: 700, color: displayColor }}>{value}%</span>
       </div>
@@ -36,8 +36,8 @@ function Slider({
         style={{ width: '100%', accentColor: displayColor, cursor: 'pointer' }}
       />
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
-        <span style={{ fontSize: 10, color: '#C7C7CC' }}>{inverted ? 'Low cost' : 'Low'}</span>
-        <span style={{ fontSize: 10, color: '#C7C7CC' }}>{inverted ? 'High cost' : 'High'}</span>
+        <span style={{ fontSize: 10, color: 'var(--c-text-3)' }}>{inverted ? 'Low cost' : 'Low'}</span>
+        <span style={{ fontSize: 10, color: 'var(--c-text-3)' }}>{inverted ? 'High cost' : 'High'}</span>
       </div>
     </div>
   )
@@ -129,25 +129,25 @@ export default function OpportunityFilterPage() {
           </svg>
         </button>
         <div>
-          <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>Projects</p>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Opportunity Filter</h1>
-          <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>Not every opportunity deserves your time</p>
+          <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>Projects</p>
+          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Opportunity Filter</h1>
+          <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>Not every opportunity deserves your time</p>
         </div>
       </div>
 
       {/* Title */}
       <div style={{
-        background: 'white', borderRadius: 16, border: '0.5px solid #E5E5EA',
+        background: 'var(--c-surface)', borderRadius: 16, border: '0.5px solid var(--c-border)',
         padding: '14px 16px', marginTop: 16, marginBottom: 14,
       }}>
-        <p style={{ fontSize: 12, color: '#8E8E93', margin: '0 0 6px' }}>Opportunity Title</p>
+        <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: '0 0 6px' }}>Opportunity Title</p>
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="E.g., Speaking engagement, Contract work, Partnership…"
           style={{
             width: '100%', border: 'none', outline: 'none', fontSize: 15,
-            color: '#1C1C1E', background: 'transparent', fontFamily: 'inherit',
+            color: 'var(--c-text-1)', background: 'transparent', fontFamily: 'inherit',
             padding: 0, boxSizing: 'border-box',
           }}
         />
@@ -155,18 +155,18 @@ export default function OpportunityFilterPage() {
 
       {/* Sliders — all 6 inputs */}
       <div style={{
-        background: 'white', borderRadius: 16, border: '0.5px solid #E5E5EA',
+        background: 'var(--c-surface)', borderRadius: 16, border: '0.5px solid var(--c-border)',
         padding: '18px 16px', marginBottom: 14,
       }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-2)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Benefits
         </p>
         <Slider label="Expected Upside"        sublabel="Potential value or impact"          value={inputs.upside}    onChange={setField('upside')}    />
         <Slider label="Alignment with Goals"   sublabel="Supports your current priorities"   value={inputs.alignment} onChange={setField('alignment')} />
         <Slider label="Urgency"                sublabel="Time-sensitivity of the decision"   value={inputs.urgency}   onChange={setField('urgency')}   />
 
-        <div style={{ borderTop: '0.5px solid #F2F2F7', margin: '4px 0 16px' }} />
-        <p style={{ fontSize: 13, fontWeight: 600, color: '#8E8E93', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        <div style={{ borderTop: '0.5px solid var(--c-border-sub)', margin: '4px 0 16px' }} />
+        <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--c-text-2)', margin: '0 0 14px', textTransform: 'uppercase', letterSpacing: 0.5 }}>
           Costs
         </p>
         <Slider label="Time Cost"   sublabel="Hours required per week"     value={inputs.timeCost}   onChange={setField('timeCost')}   inverted />
@@ -206,21 +206,21 @@ export default function OpportunityFilterPage() {
             </p>
             <p style={{ fontSize: 11, color: result.color, margin: '0 0 8px', opacity: 0.7 }}>out of 100</p>
             <p style={{ fontSize: 18, fontWeight: 700, color: result.color, margin: '0 0 8px' }}>{result.label}</p>
-            {title && <p style={{ fontSize: 13, color: '#3C3C43', margin: '0 0 8px', fontStyle: 'italic' }}>"{title}"</p>}
-            <p style={{ fontSize: 13, color: '#3C3C43', margin: 0, lineHeight: 1.5 }}>{result.advice}</p>
+            {title && <p style={{ fontSize: 13, color: 'var(--c-text-mid)', margin: '0 0 8px', fontStyle: 'italic' }}>"{title}"</p>}
+            <p style={{ fontSize: 13, color: 'var(--c-text-mid)', margin: 0, lineHeight: 1.5 }}>{result.advice}</p>
           </div>
 
           {/* Rationale bullets */}
           {result.rationale.length > 0 && (
             <div style={{
-              background: 'white', borderRadius: 16, padding: '16px 18px',
-              border: '0.5px solid #E5E5EA', marginBottom: 14,
+              background: 'var(--c-surface)', borderRadius: 16, padding: '16px 18px',
+              border: '0.5px solid var(--c-border)', marginBottom: 14,
             }}>
-              <p style={{ fontSize: 14, fontWeight: 700, color: '#1C1C1E', margin: '0 0 12px' }}>Key Signals</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 12px' }}>Key Signals</p>
               {result.rationale.map((r, i) => (
                 <div key={i} style={{ display: 'flex', gap: 8, marginBottom: i < result.rationale.length - 1 ? 8 : 0 }}>
                   <div style={{ width: 5, height: 5, borderRadius: '50%', background: result.color, marginTop: 7, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: '#3C3C43', lineHeight: 1.5 }}>{r}</span>
+                  <span style={{ fontSize: 13, color: 'var(--c-text-mid)', lineHeight: 1.5 }}>{r}</span>
                 </div>
               ))}
             </div>
@@ -228,10 +228,10 @@ export default function OpportunityFilterPage() {
 
           {/* Score breakdown */}
           <div style={{
-            background: 'white', borderRadius: 18, padding: '18px 20px',
-            marginBottom: 14, border: '0.5px solid #E5E5EA',
+            background: 'var(--c-surface)', borderRadius: 18, padding: '18px 20px',
+            marginBottom: 14, border: '0.5px solid var(--c-border)',
           }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Score Breakdown</p>
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 14px' }}>Score Breakdown</p>
             {([
               { label: 'Upside',      effective: inputs.upside,          weight: '40%' },
               { label: 'Alignment',   effective: inputs.alignment,        weight: '35%' },
@@ -244,12 +244,12 @@ export default function OpportunityFilterPage() {
               return (
                 <div key={label} style={{ marginBottom: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ fontSize: 13, color: '#3C3C43' }}>
-                      {label} <span style={{ fontSize: 11, color: '#C7C7CC' }}>({weight})</span>
+                    <span style={{ fontSize: 13, color: 'var(--c-text-mid)' }}>
+                      {label} <span style={{ fontSize: 11, color: 'var(--c-text-3)' }}>({weight})</span>
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 600, color }}>{effective}</span>
                   </div>
-                  <div style={{ background: '#F2F2F7', borderRadius: 4, height: 5, overflow: 'hidden' }}>
+                  <div style={{ background: 'var(--c-surface-3)', borderRadius: 4, height: 5, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${effective}%`, background: color, borderRadius: 4 }} />
                   </div>
                 </div>
@@ -319,8 +319,8 @@ export default function OpportunityFilterPage() {
               onClick={handleReset}
               style={{
                 flex: 1, padding: '13px', borderRadius: 12,
-                border: '1.5px solid #E5E5EA', background: 'white',
-                fontSize: 14, fontWeight: 600, color: '#1C1C1E',
+                border: '1.5px solid var(--c-border)', background: 'var(--c-surface)',
+                fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)',
                 cursor: 'pointer', fontFamily: 'inherit',
               }}
             >

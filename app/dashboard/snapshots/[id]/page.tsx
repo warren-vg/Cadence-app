@@ -20,7 +20,7 @@ const CAT_COLORS: Record<string, string> = {
 }
 
 function catColor(cat: string): string {
-  return CAT_COLORS[cat] ?? '#8E8E93'
+  return CAT_COLORS[cat] ?? 'var(--c-text-2)'
 }
 
 function WinIcon({ icon }: { icon: string }) {
@@ -57,11 +57,24 @@ function winIconBg(icon: string): string {
   return '#EFF6FF'
 }
 
+function useIsDark() {
+  const [isDark, setIsDark] = useState(false)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return isDark
+}
+
 function MomentumChart({ weeks }: { weeks: number[] }) {
+  const isDark = useIsDark()
   if (weeks.length < 2) {
     return (
       <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>Not enough data yet</p>
+        <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>Not enough data yet</p>
       </div>
     )
   }
@@ -94,19 +107,19 @@ function MomentumChart({ weeks }: { weeks: number[] }) {
           x1={PAD.left} x2={W - PAD.right}
           y1={PAD.top + f * (H - PAD.top - PAD.bottom)}
           y2={PAD.top + f * (H - PAD.top - PAD.bottom)}
-          stroke="#F2F2F7" strokeWidth="1"
+          stroke={isDark ? '#3A3A3C' : '#F2F2F7'} strokeWidth="1"
         />
       ))}
       <path d={areaD} fill="url(#chartGrad)" opacity="0.25" />
       <path d={pathD} fill="none" stroke="#3B7DFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
       {pts.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="4" fill="white" stroke="#3B7DFF" strokeWidth="2.5" />
+        <circle key={i} cx={p.x} cy={p.y} r="4" fill={isDark ? '#1C1C1E' : 'white'} stroke="#3B7DFF" strokeWidth="2.5" />
       ))}
       {weeks.map((_, i) => (
         <text key={i}
           x={PAD.left + (i / (weeks.length - 1)) * (W - PAD.left - PAD.right)}
           y={H + 2}
-          textAnchor="middle" fontSize="10" fill="#8E8E93"
+          textAnchor="middle" fontSize="10" fill={isDark ? '#636366' : '#8E8E93'}
         >
           W{i + 1}
         </text>
@@ -182,7 +195,7 @@ export default function SnapshotDetailPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#8E8E93', fontSize: 15 }}>Loading…</div>
+        <div style={{ color: 'var(--c-text-2)', fontSize: 15 }}>Loading…</div>
       </div>
     )
   }
@@ -222,8 +235,8 @@ export default function SnapshotDetailPage() {
           </svg>
           Back to Snapshots
         </button>
-        <h1 style={{ fontSize: 28, fontWeight: 700, color: '#1C1C1E', margin: '0 0 3px' }}>{snap.month_label}</h1>
-        <p style={{ fontSize: 14, color: '#8E8E93', margin: 0 }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 3px' }}>{snap.month_label}</h1>
+        <p style={{ fontSize: 14, color: 'var(--c-text-2)', margin: 0 }}>
           Your {snap.month_label.split(' ')[0]} at a glance.
         </p>
       </div>
@@ -237,8 +250,8 @@ export default function SnapshotDetailPage() {
           { label: 'Hours Logged',    value: `${snap.hours_logged}h`,        iconKey: 'clock',  bg: '#FFF7ED', stroke: '#FF9500' },
         ].map(({ label, value, iconKey, bg, stroke }) => (
           <div key={label} style={{
-            background: 'white', borderRadius: 16,
-            padding: '16px 14px', border: '0.5px solid #E5E5EA',
+            background: 'var(--c-surface)', borderRadius: 16,
+            padding: '16px 14px', border: '0.5px solid var(--c-border)',
           }}>
             <div style={{
               width: 38, height: 38, borderRadius: '50%',
@@ -268,21 +281,21 @@ export default function SnapshotDetailPage() {
                 </svg>
               )}
             </div>
-            <p style={{ fontSize: 22, fontWeight: 700, color: '#1C1C1E', margin: '0 0 2px', lineHeight: 1 }}>{value}</p>
-            <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>{label}</p>
+            <p style={{ fontSize: 22, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 2px', lineHeight: 1 }}>{value}</p>
+            <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: 0 }}>{label}</p>
           </div>
         ))}
       </div>
 
       {/* Top Wins */}
       {snap.top_wins.length > 0 && (
-        <div style={{ background: 'white', borderRadius: 18, padding: '18px 16px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Top Wins</p>
+        <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '18px 16px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 14px' }}>Top Wins</p>
           {snap.top_wins.map((win, i) => (
             <div key={i} style={{
               display: 'flex', gap: 12, alignItems: 'flex-start',
               paddingBottom: i < snap.top_wins.length - 1 ? 12 : 0,
-              borderBottom: i < snap.top_wins.length - 1 ? '0.5px solid #F2F2F7' : 'none',
+              borderBottom: i < snap.top_wins.length - 1 ? '0.5px solid var(--c-border-sub)' : 'none',
               marginBottom: i < snap.top_wins.length - 1 ? 12 : 0,
             }}>
               <div style={{
@@ -293,8 +306,8 @@ export default function SnapshotDetailPage() {
                 <WinIcon icon={win.icon} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: '#1C1C1E', margin: '0 0 2px' }}>{win.title}</p>
-                <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>{win.description}</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-text-1)', margin: '0 0 2px' }}>{win.title}</p>
+                <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: 0 }}>{win.description}</p>
               </div>
               <div style={{
                 width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
@@ -307,15 +320,15 @@ export default function SnapshotDetailPage() {
 
       {/* Category Breakdown */}
       {catEntries.length > 0 && (
-        <div style={{ background: 'white', borderRadius: 18, padding: '18px 16px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: '0 0 14px' }}>Category Breakdown</p>
+        <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '18px 16px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text-1)', margin: '0 0 14px' }}>Category Breakdown</p>
           {catEntries.map(([cat, hours], i) => (
             <div key={cat} style={{ marginBottom: i < catEntries.length - 1 ? 12 : 0 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                <p style={{ fontSize: 13, fontWeight: 500, color: '#3C3C43', margin: 0 }}>{cat}</p>
-                <p style={{ fontSize: 13, color: '#8E8E93', margin: 0 }}>{hours}h</p>
+                <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--c-text-mid)', margin: 0 }}>{cat}</p>
+                <p style={{ fontSize: 13, color: 'var(--c-text-2)', margin: 0 }}>{hours}h</p>
               </div>
-              <div style={{ height: 6, background: '#F2F2F7', borderRadius: 3 }}>
+              <div style={{ height: 6, background: 'var(--c-border-sub)', borderRadius: 3 }}>
                 <div style={{
                   height: '100%', borderRadius: 3,
                   background: catColor(cat),
@@ -329,9 +342,9 @@ export default function SnapshotDetailPage() {
 
       {/* Momentum Trend */}
       {snap.momentum_weekly.length > 0 && (
-        <div style={{ background: 'white', borderRadius: 18, padding: '18px 16px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
+        <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '18px 16px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>Momentum Trend</p>
+            <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>Momentum Trend</p>
             <p style={{ fontSize: 14, fontWeight: 700, color: '#3B7DFF', margin: 0 }}>Avg {avgMomentum}</p>
           </div>
           <div style={{ paddingBottom: 10 }}>
@@ -341,17 +354,17 @@ export default function SnapshotDetailPage() {
       )}
 
       {/* Reflection */}
-      <div style={{ background: 'white', borderRadius: 18, padding: '18px 16px', border: '0.5px solid #E5E5EA', marginBottom: 14 }}>
+      <div style={{ background: 'var(--c-surface)', borderRadius: 18, padding: '18px 16px', border: '0.5px solid var(--c-border)', marginBottom: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-          <p style={{ fontSize: 15, fontWeight: 700, color: '#1C1C1E', margin: 0 }}>What This Month Meant</p>
-          {saving && <p style={{ fontSize: 12, color: '#8E8E93', margin: 0 }}>Saving…</p>}
+          <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--c-text-1)', margin: 0 }}>What This Month Meant</p>
+          {saving && <p style={{ fontSize: 12, color: 'var(--c-text-2)', margin: 0 }}>Saving…</p>}
         </div>
         <textarea
           value={reflection}
           onChange={e => handleReflectionChange(e.target.value)}
           placeholder="How did this month feel? What did you learn? What would you do differently?"
           style={{
-            width: '100%', minHeight: 110, fontSize: 14, color: '#1C1C1E',
+            width: '100%', minHeight: 110, fontSize: 14, color: 'var(--c-text-1)',
             lineHeight: 1.6, padding: '10px 0', border: 'none', outline: 'none',
             resize: 'none', fontFamily: 'inherit', background: 'transparent',
             boxSizing: 'border-box',
